@@ -9,7 +9,7 @@ dialoguer = "0.12"
 dirs = "6"
 csv = "1.4.0"
 rand = "0.10.0"
-serde_yaml = "0.9.34"
+serde_yml = "0.0.12"
 slugify = "0.1.0"
 toml = "1"
 

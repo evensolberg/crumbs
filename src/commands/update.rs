@@ -36,7 +36,7 @@ pub fn run(
             }
             item.updated = Local::now().date_naive();
 
-            let frontmatter = serde_yaml::to_string(&item)?;
+            let frontmatter = serde_yml::to_string(&item)?;
             let raw = std::fs::read_to_string(&path)?;
             let body = raw
                 .strip_prefix("---\n")
