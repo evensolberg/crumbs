@@ -51,7 +51,7 @@ crumbs c 'Quick idea'          # shorthand
 | `-t, --item-type` | `task` | `task`, `bug`, `feature`, `epic`, `idea` |
 | `-p, --priority` | `2` | `0` (critical) … `4` (backlog) |
 | `--tags` | — | comma-separated, e.g. `project/foo,needs-review` |
-| `-d, --description` | — | freeform text stored in the markdown body |
+| `-D, --description` | — | freeform text stored in the markdown body |
 | `--depends` | — | comma-separated dependency IDs, e.g. `cr-abc,cr-xyz` |
 
 ### List items
@@ -100,6 +100,33 @@ crumbs search "login"
 ```
 
 Full-text search across all `.md` file contents and titles.
+
+### Shell completions
+
+Generate and install a completion script once, then enjoy tab-completion for all subcommands and flags.
+
+#### zsh
+
+```sh
+crumbs completions zsh > ~/.zfunc/_crumbs
+# Add to ~/.zshrc if not already present:
+#   fpath=(~/.zfunc $fpath)
+#   autoload -U compinit && compinit
+```
+
+#### bash
+
+```sh
+crumbs completions bash > ~/.local/share/bash-completion/completions/crumbs
+```
+
+#### fish
+
+```sh
+crumbs completions fish > ~/.config/fish/completions/crumbs.fish
+```
+
+After reinstalling crumbs, regenerate the file with the same command.
 
 ### Reindex
 

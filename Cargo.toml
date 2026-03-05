@@ -1,6 +1,6 @@
 [package]
 name = "crumbs"
-version = "0.1.8"
+version = "0.1.9"
 edition = "2024"
 
 [dependencies]
@@ -20,6 +20,9 @@ features = ["serde"]
 [dependencies.clap]
 features = ["cargo", "derive", "env", "wrap_help"]
 version = "4.5.60"
+
+[dependencies.clap_complete]
+version = "4"
 
 [dependencies.serde]
 version = "1.0.228"

@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::{Shell, generate};
 use crumbs::{commands, config, item::ItemType};
 
 #[derive(Parser)]
@@ -36,7 +37,7 @@ enum Command {
         priority: u8,
         #[arg(long)]
         tags: Option<String>,
-        #[arg(short, long)]
+        #[arg(short = 'D', long)]
         description: Option<String>,
         /// Comma-separated dependency IDs
         #[arg(long)]
@@ -52,7 +53,7 @@ enum Command {
         priority: u8,
         #[arg(long)]
         tags: Option<String>,
-        #[arg(short, long)]
+        #[arg(short = 'D', long)]
         description: Option<String>,
         /// Comma-separated dependency IDs
         #[arg(long)]
@@ -103,10 +104,21 @@ enum Command {
     Reindex,
     /// Search item content
     Search { query: String },
+    /// Print shell completion script to stdout
+    Completions {
+        /// Shell to generate completions for
+        shell: Shell,
+    },
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+
+    // Completions require no store.
+    if let Command::Completions { shell } = cli.command {
+        generate(shell, &mut Cli::command(), "crumbs", &mut std::io::stdout());
+        return Ok(());
+    }
 
     // For Init: --global initializes the global store; otherwise use cwd/.crumbs.
     if let Command::Init { prefix } = &cli.command {
@@ -205,6 +217,7 @@ fn main() -> Result<()> {
         Command::Search { query } => {
             commands::search::run(&dir, &query)?;
         }
+        Command::Completions { .. } => unreachable!(),
     }
 
     Ok(())
