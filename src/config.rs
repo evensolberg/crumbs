@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-/// Return the global crumbs data directory: `~/.local/share/crumbs` (or platform equivalent).
+/// Return the global crumbs data directory (platform-specific via `dirs::data_dir`).
 pub fn global_dir() -> PathBuf {
     dirs::data_dir()
         .unwrap_or_else(|| PathBuf::from("."))

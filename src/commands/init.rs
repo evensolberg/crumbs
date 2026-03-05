@@ -3,7 +3,7 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use dialoguer::Input;
 
-use crate::store_config::{self, StoreConfig, suggest_prefix};
+use crate::{config, store_config::{self, StoreConfig, suggest_prefix}};
 
 pub fn run(dir: &Path, prefix_override: Option<String>) -> Result<()> {
     if dir.is_dir() {
@@ -17,13 +17,7 @@ pub fn run(dir: &Path, prefix_override: Option<String>) -> Result<()> {
         p.trim().to_lowercase()
     } else {
         // Derive suggestion from directory context.
-        let name = dir.file_name().and_then(|n| n.to_str()).unwrap_or("");
-        let parent_name = dir
-            .parent()
-            .and_then(|p| p.file_name())
-            .and_then(|n| n.to_str())
-            .unwrap_or("");
-        let suggested = if name == "crumbs" && parent_name == "share" {
+        let suggested = if dir == config::global_dir() {
             "glob".to_string()
         } else {
             // Suggest based on the project root (parent of .crumbs), not .crumbs itself.
