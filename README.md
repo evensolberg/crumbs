@@ -157,6 +157,20 @@ crumbs completions bash > ~/.local/share/bash-completion/completions/crumbs
 crumbs completions fish > ~/.config/fish/completions/crumbs.fish
 ```
 
+#### PowerShell
+
+```powershell
+crumbs completions powershell >> $PROFILE
+```
+
+Or save to a file and dot-source it from your profile:
+
+```powershell
+crumbs completions powershell > ~/crumbs_completion.ps1
+# Add to $PROFILE:
+#   . ~/crumbs_completion.ps1
+```
+
 After reinstalling crumbs, regenerate the file with the same command.
 
 ### Reindex
