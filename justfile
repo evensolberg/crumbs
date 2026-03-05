@@ -66,19 +66,16 @@ alias tp := testp
 # Rebuilds the changelog
 @cliff: changelog
 
-# Documents the project, lints it, builds and installs the release version, and cleans up
+# Build and install the release version to ~/.cargo/bin
 @release: format changelog
-    cargo lbuild --release  --color 'always'
-    -cp {{invocation_directory()}}/target/release/{{application}} /usr/local/bin/
-    codesign --sign - --force /usr/local/bin/{{application}}
+    cargo install --path .
     cargo clean
 
-# Documents the project, builds and installs the release version, and cleans up
+# Build and install the ARM64 release version to ~/.cargo/bin
 @releasea: format changelog
-    cargo lbuild --release  --color 'always' --target aarch64-apple-darwin
+    cargo lbuild --release --color 'always' --target aarch64-apple-darwin
     cargo strip -t aarch64-apple-darwin
-    cp {{invocation_directory()}}/target/aarch64-apple-darwin/release/{{application}} /usr/local/bin/
-    codesign --sign - --force /usr/local/bin/{{application}}
+    cargo install --path . --target aarch64-apple-darwin
     cargo clean
 
 # Tag the current version, push to GitHub, and create a release with auto-generated notes
