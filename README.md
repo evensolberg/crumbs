@@ -36,8 +36,9 @@ Creates a `.crumbs/` directory in the current directory.
 ### Create an item
 
 ```sh
-crumbs create "Fix the login bug" --item-type bug --priority 1 --tags project/auth
-crumbs c "Quick idea"          # shorthand
+crumbs create 'Fix the login bug' --item-type bug --priority 1 --tags project/auth
+crumbs c 'Quick idea'          # shorthand
+# Tip: use single quotes to avoid shell expansion of special characters (!, $, etc.)
 ```
 
 | Flag | Default | Values |
