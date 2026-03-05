@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::Result;
 
-use crate::{item::Status, store};
+use crate::{color, item::Status, store};
 
 pub fn run(
     dir: &Path,
@@ -39,19 +39,20 @@ pub fn run(
     }
 
     for (_, item) in filtered {
-        let status_icon = match item.status {
-            Status::Open => "○",
-            Status::InProgress => "●",
-            Status::Closed => "✓",
-        };
+        let icon = color::status_icon_styled(&item.status);
+        let p_style = color::priority(item.priority);
+        let t_style = color::item_type(&item.item_type);
         let tags = if item.tags.is_empty() {
             String::new()
         } else {
             format!(" [{}]", item.tags.join(", "))
         };
         println!(
-            "{status_icon} {} [P{}] [{}] {}{tags}",
-            item.id, item.priority, item.item_type, item.title
+            "{icon} {} {} {} {}{tags}",
+            item.id,
+            p_style.apply_to(format!("[P{}]", item.priority)),
+            t_style.apply_to(format!("[{}]", item.item_type)),
+            item.title
         );
     }
     Ok(())

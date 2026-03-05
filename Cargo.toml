@@ -1,6 +1,6 @@
 [package]
 name = "crumbs"
-version = "0.1.9"
+version = "0.2.0"
 edition = "2024"
 
 [dependencies]
@@ -10,6 +10,7 @@ dirs = "6"
 csv = "1.4.0"
 rand = "0.10.0"
 serde_yml = "0.0.12"
+console = "0.15"
 slugify = "0.1.0"
 toml = "1"
 

@@ -1,22 +1,37 @@
 use std::path::Path;
 
 use anyhow::{Result, bail};
+use console::Style;
 
-use crate::store;
+use crate::{color, store};
 
 pub fn run(dir: &Path, id: &str) -> Result<()> {
     match store::find_by_id(dir, id)? {
         None => bail!("no item found with id: {id}"),
         Some((path, item)) => {
-            println!("{} — {}", item.id, item.title);
-            println!("  Status:   {}", item.status);
-            println!("  Type:     {}", item.item_type);
-            println!("  Priority: P{}", item.priority);
+            let p_style = color::priority(item.priority);
+            let t_style = color::item_type(&item.item_type);
+            let dim = Style::new().dim();
+
+            println!(
+                "{} — {}",
+                Style::new().bold().apply_to(&item.id),
+                item.title
+            );
+            println!(
+                "  Status:   {}",
+                color::status_icon_styled(&item.status) + " " + &item.status.to_string()
+            );
+            println!("  Type:     {}", t_style.apply_to(&item.item_type));
+            println!(
+                "  Priority: {}",
+                p_style.apply_to(format!("P{}", item.priority))
+            );
             if !item.tags.is_empty() {
                 println!("  Tags:     {}", item.tags.join(", "));
             }
-            println!("  Created:  {}", item.created);
-            println!("  Updated:  {}", item.updated);
+            println!("  Created:  {}", dim.apply_to(item.created));
+            println!("  Updated:  {}", dim.apply_to(item.updated));
             if !item.closed_reason.is_empty() {
                 println!("  Closed:   {}", item.closed_reason);
             }
@@ -28,7 +43,7 @@ pub fn run(dir: &Path, id: &str) -> Result<()> {
                 println!("{}", item.description);
                 println!();
             }
-            println!("  File:     {}", path.display());
+            println!("  File:     {}", dim.apply_to(path.display()));
         }
     }
     Ok(())
