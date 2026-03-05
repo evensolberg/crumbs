@@ -1,9 +1,11 @@
 pub mod close;
 pub mod create;
 pub mod delete;
+pub mod edit;
 pub mod init;
 pub mod list;
 pub mod reindex;
 pub mod search;
 pub mod show;
+pub mod stats;
 pub mod update;

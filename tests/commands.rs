@@ -275,7 +275,7 @@ fn list_no_filter_does_not_error() {
     create_task(dir.path(), "List Task 1");
     create_task(dir.path(), "List Task 2");
     // list prints to stdout; just verify no error
-    commands::list::run(dir.path(), None, None, false).unwrap();
+    commands::list::run(dir.path(), None, None, None, false).unwrap();
 }
 
 #[test]

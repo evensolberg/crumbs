@@ -65,12 +65,19 @@ enum Command {
         status: Option<String>,
         #[arg(short, long)]
         tag: Option<String>,
+        /// Filter by priority (0-4)
+        #[arg(short, long)]
+        priority: Option<u8>,
         /// Show all items including closed
         #[arg(short, long)]
         all: bool,
     },
     /// Show a single item
     Show { id: String },
+    /// Open an item in $EDITOR
+    Edit { id: String },
+    /// Show summary statistics
+    Stats,
     /// Update an item
     Update {
         id: String,
@@ -180,11 +187,17 @@ fn main() -> Result<()> {
                 dependencies,
             )?;
         }
-        Command::List { status, tag, all } => {
-            commands::list::run(&dir, status.as_deref(), tag.as_deref(), all)?;
+        Command::List { status, tag, priority, all } => {
+            commands::list::run(&dir, status.as_deref(), tag.as_deref(), priority, all)?;
         }
         Command::Show { id } => {
             commands::show::run(&dir, &id)?;
+        }
+        Command::Edit { id } => {
+            commands::edit::run(&dir, &id)?;
+        }
+        Command::Stats => {
+            commands::stats::run(&dir)?;
         }
         Command::Update {
             id,

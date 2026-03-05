@@ -8,6 +8,7 @@ pub fn run(
     dir: &Path,
     status_filter: Option<&str>,
     tag_filter: Option<&str>,
+    priority_filter: Option<u8>,
     all: bool,
 ) -> Result<()> {
     let items = store::load_all(dir)?;
@@ -26,6 +27,11 @@ pub fn run(
             }
             if let Some(tag) = tag_filter
                 && !item.tags.iter().any(|t| t.contains(tag))
+            {
+                return false;
+            }
+            if let Some(p) = priority_filter
+                && item.priority != p
             {
                 return false;
             }
