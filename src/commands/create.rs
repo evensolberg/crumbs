@@ -16,6 +16,7 @@ pub fn run(
     priority: u8,
     tags: Vec<String>,
     description: String,
+    dependencies: Vec<String>,
 ) -> Result<()> {
     let today = Local::now().date_naive();
     let prefix = store_config::load(dir).prefix;
@@ -29,7 +30,7 @@ pub fn run(
         created: today,
         updated: today,
         closed_reason: String::new(),
-        dependencies: Vec::new(),
+        dependencies,
         description,
     };
     let path = store::write_item(dir, &item)?;

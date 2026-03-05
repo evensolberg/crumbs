@@ -38,6 +38,9 @@ enum Command {
         tags: Option<String>,
         #[arg(short, long)]
         description: Option<String>,
+        /// Comma-separated dependency IDs
+        #[arg(long)]
+        depends: Option<String>,
     },
     /// Shorthand for create
     #[command(name = "c")]
@@ -51,6 +54,9 @@ enum Command {
         tags: Option<String>,
         #[arg(short, long)]
         description: Option<String>,
+        /// Comma-separated dependency IDs
+        #[arg(long)]
+        depends: Option<String>,
     },
     /// List items
     List {
@@ -75,6 +81,9 @@ enum Command {
         tags: Option<String>,
         #[arg(short = 't', long = "type")]
         item_type: Option<String>,
+        /// Comma-separated dependency IDs (replaces existing)
+        #[arg(long)]
+        depends: Option<String>,
     },
     /// Close an item
     Close {
@@ -132,6 +141,7 @@ fn main() -> Result<()> {
             priority,
             tags,
             description,
+            depends,
         }
         | Command::C {
             title,
@@ -139,10 +149,14 @@ fn main() -> Result<()> {
             priority,
             tags,
             description,
+            depends,
         } => {
             let item_type: ItemType = item_type.parse().map_err(|e: String| anyhow::anyhow!(e))?;
             let tags = tags
                 .map(|t| t.split(',').map(|s| s.trim().to_string()).collect())
+                .unwrap_or_default();
+            let dependencies = depends
+                .map(|d| d.split(',').map(|s| s.trim().to_string()).collect())
                 .unwrap_or_default();
             commands::create::run(
                 &dir,
@@ -151,6 +165,7 @@ fn main() -> Result<()> {
                 priority,
                 tags,
                 description.unwrap_or_default(),
+                dependencies,
             )?;
         }
         Command::List { status, tag, all } => {
@@ -165,9 +180,12 @@ fn main() -> Result<()> {
             priority,
             tags,
             item_type,
+            depends,
         } => {
             let tags = tags.map(|t| t.split(',').map(|s| s.trim().to_string()).collect());
-            commands::update::run(&dir, &id, status, priority, tags, item_type)?;
+            let dependencies =
+                depends.map(|d| d.split(',').map(|s| s.trim().to_string()).collect());
+            commands::update::run(&dir, &id, status, priority, tags, item_type, dependencies)?;
         }
         Command::Close { id, reason } => {
             commands::close::run(&dir, &id, reason)?;

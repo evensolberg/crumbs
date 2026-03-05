@@ -16,8 +16,10 @@ fn create_task(dir: &std::path::Path, title: &str) -> String {
         2,
         vec![],
         String::new(),
+        vec![],
     )
     .unwrap();
+
     let items = store::load_all(dir).unwrap();
     items
         .into_iter()
@@ -58,6 +60,7 @@ fn create_produces_md_file() {
         2,
         vec![],
         String::new(),
+        vec![],
     )
     .unwrap();
     let md_files: Vec<_> = std::fs::read_dir(dir.path())
@@ -78,6 +81,7 @@ fn create_writes_correct_frontmatter() {
         1,
         vec!["project/foo".to_string()],
         String::new(),
+        vec![],
     )
     .unwrap();
     let items = store::load_all(dir.path()).unwrap();
@@ -101,6 +105,7 @@ fn create_also_writes_index_csv() {
         2,
         vec![],
         String::new(),
+        vec![],
     )
     .unwrap();
     assert!(dir.path().join("index.csv").exists());
@@ -116,6 +121,7 @@ fn create_with_description_stores_body() {
         2,
         vec![],
         "This is more detail.".to_string(),
+        vec![],
     )
     .unwrap();
     let items = store::load_all(dir.path()).unwrap();
@@ -133,6 +139,7 @@ fn create_with_description_appears_in_md_body() {
         2,
         vec![],
         "Extra context here.".to_string(),
+        vec![],
     )
     .unwrap();
     let md: Vec<_> = std::fs::read_dir(dir.path())
@@ -154,6 +161,7 @@ fn create_without_description_has_empty_description() {
         2,
         vec![],
         String::new(),
+        vec![],
     )
     .unwrap();
     let items = store::load_all(dir.path()).unwrap();
@@ -173,6 +181,7 @@ fn update_changes_status() {
         None,
         None,
         None,
+        None,
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -183,7 +192,7 @@ fn update_changes_status() {
 fn update_changes_priority() {
     let dir = tempdir().unwrap();
     let id = create_task(dir.path(), "Priority Update");
-    commands::update::run(dir.path(), &id, None, Some(0), None, None).unwrap();
+    commands::update::run(dir.path(), &id, None, Some(0), None, None, None).unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
     assert_eq!(item.priority, 0);
 }
@@ -199,6 +208,7 @@ fn update_replaces_tags() {
         None,
         Some(vec!["new-tag".to_string()]),
         None,
+        None,
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -209,7 +219,16 @@ fn update_replaces_tags() {
 fn update_changes_type() {
     let dir = tempdir().unwrap();
     let id = create_task(dir.path(), "Type Update");
-    commands::update::run(dir.path(), &id, None, None, None, Some("bug".to_string())).unwrap();
+    commands::update::run(
+        dir.path(),
+        &id,
+        None,
+        None,
+        None,
+        Some("bug".to_string()),
+        None,
+    )
+    .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
     assert_eq!(item.item_type, ItemType::Bug);
 }
@@ -217,7 +236,7 @@ fn update_changes_type() {
 #[test]
 fn update_unknown_id_errors() {
     let dir = tempdir().unwrap();
-    let result = commands::update::run(dir.path(), "bc-zzz", None, None, None, None);
+    let result = commands::update::run(dir.path(), "bc-zzz", None, None, None, None, None);
     assert!(result.is_err());
 }
 
@@ -290,6 +309,7 @@ fn list_tag_filter_only_shows_matching() {
         2,
         vec!["project/x".to_string()],
         String::new(),
+        vec![],
     )
     .unwrap();
     commands::create::run(
@@ -299,6 +319,7 @@ fn list_tag_filter_only_shows_matching() {
         2,
         vec![],
         String::new(),
+        vec![],
     )
     .unwrap();
 
@@ -346,6 +367,49 @@ fn delete_closed_noop_when_none_closed() {
     commands::delete::run_closed(dir.path()).unwrap(); // should not error
     let items = store::load_all(dir.path()).unwrap();
     assert_eq!(items.len(), 1);
+}
+
+// ── dependencies ─────────────────────────────────────────────────────────────
+
+#[test]
+fn create_with_dependencies_stores_them() {
+    let dir = tempdir().unwrap();
+    let dep_id = create_task(dir.path(), "Dep Task");
+    commands::create::run(
+        dir.path(),
+        "Dependent Task".to_string(),
+        ItemType::Task,
+        2,
+        vec![],
+        String::new(),
+        vec![dep_id.clone()],
+    )
+    .unwrap();
+    let items = store::load_all(dir.path()).unwrap();
+    let dependent = items
+        .iter()
+        .find(|(_, i)| i.title == "Dependent Task")
+        .unwrap();
+    assert_eq!(dependent.1.dependencies, vec![dep_id]);
+}
+
+#[test]
+fn update_replaces_dependencies() {
+    let dir = tempdir().unwrap();
+    let id = create_task(dir.path(), "Task With Deps");
+    let dep_id = create_task(dir.path(), "Another Task");
+    commands::update::run(
+        dir.path(),
+        &id,
+        None,
+        None,
+        None,
+        None,
+        Some(vec![dep_id.clone()]),
+    )
+    .unwrap();
+    let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    assert_eq!(item.dependencies, vec![dep_id]);
 }
 
 // ── search ───────────────────────────────────────────────────────────────────

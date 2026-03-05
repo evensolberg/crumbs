@@ -52,6 +52,7 @@ crumbs c 'Quick idea'          # shorthand
 | `-p, --priority` | `2` | `0` (critical) … `4` (backlog) |
 | `--tags` | — | comma-separated, e.g. `project/foo,needs-review` |
 | `-d, --description` | — | freeform text stored in the markdown body |
+| `--depends` | — | comma-separated dependency IDs, e.g. `cr-abc,cr-xyz` |
 
 ### List items
 
@@ -75,6 +76,7 @@ crumbs update bc-x7q --status in_progress
 crumbs update bc-x7q --priority 0
 crumbs update bc-x7q --tags project/auth,urgent
 crumbs update bc-x7q --type bug
+crumbs update bc-x7q --depends cr-abc,cr-xyz
 ```
 
 ### Close an item

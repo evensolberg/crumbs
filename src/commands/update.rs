@@ -12,6 +12,7 @@ pub fn run(
     priority: Option<u8>,
     tags: Option<Vec<String>>,
     item_type: Option<String>,
+    dependencies: Option<Vec<String>>,
 ) -> Result<()> {
     match store::find_by_id(dir, id)? {
         None => bail!("no item found with id: {id}"),
@@ -29,6 +30,9 @@ pub fn run(
                 item.item_type = t
                     .parse::<ItemType>()
                     .map_err(|e: String| anyhow::anyhow!(e))?;
+            }
+            if let Some(d) = dependencies {
+                item.dependencies = d;
             }
             item.updated = Local::now().date_naive();
 
