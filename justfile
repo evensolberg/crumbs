@@ -84,7 +84,8 @@ publish:
     echo "Publishing $version"
     git tag "$version"
     git push {{application}} main "$version"
-    gh release create "$version" --repo evensolberg/{{application}} --title "$version" --generate-notes
+    gh release create "$version" --repo evensolberg/{{application}} --title "$version" --generate-notes \
+        skills/crumbs.skill
 
 # Build the documentation
 @doc:
