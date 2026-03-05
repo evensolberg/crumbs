@@ -1,0 +1,97 @@
+filters:
+  and:
+    - 'file.ext == "md"'
+    - 'file.basename != "index"'
+
+formulas:
+  days_until_due: 'if(due, ((date(due) - today()) / 86400000).round(0), "")'
+  overdue: 'if(due, date(due) < today() && status != "closed", false)'
+  priority_label: 'if(priority == 0, "P0 Critical", if(priority == 1, "P1 High", if(priority == 2, "P2 Normal", if(priority == 3, "P3 Low", "P4 Backlog"))))'
+
+properties:
+  id:
+    displayName: ID
+  title:
+    displayName: Title
+  status:
+    displayName: Status
+  type:
+    displayName: Type
+  priority:
+    displayName: Priority
+  tags:
+    displayName: Tags
+  due:
+    displayName: Due
+  created:
+    displayName: Created
+  updated:
+    displayName: Updated
+  closed_reason:
+    displayName: Closed Reason
+  formula.days_until_due:
+    displayName: Days Until Due
+  formula.priority_label:
+    displayName: Priority
+
+views:
+  - type: table
+    name: Open
+    filters:
+      or:
+        - 'status == "open"'
+        - 'status == "in_progress"'
+    order:
+      - id
+      - title
+      - status
+      - formula.priority_label
+      - type
+      - tags
+      - due
+      - formula.days_until_due
+    groupBy:
+      property: status
+      direction: ASC
+
+  - type: table
+    name: All Items
+    order:
+      - id
+      - title
+      - status
+      - formula.priority_label
+      - type
+      - tags
+      - due
+      - created
+      - updated
+    groupBy:
+      property: status
+      direction: ASC
+
+  - type: table
+    name: Overdue
+    filters:
+      and:
+        - 'formula.overdue == true'
+    order:
+      - id
+      - title
+      - formula.priority_label
+      - due
+      - formula.days_until_due
+      - status
+
+  - type: table
+    name: Closed
+    filters:
+      and:
+        - 'status == "closed"'
+    order:
+      - id
+      - title
+      - formula.priority_label
+      - type
+      - updated
+      - closed_reason
