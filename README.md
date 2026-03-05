@@ -132,6 +132,17 @@ crumbs search "login"
 
 Full-text search across all `.md` file contents and titles.
 
+### Export
+
+```sh
+crumbs export                        # JSON to stdout (default)
+crumbs export --format csv           # CSV to stdout
+crumbs export --format toon          # TOON to stdout
+crumbs export --format json --output items.json
+```
+
+Exports all items. TOON (Token-Oriented Object Notation) is a compact, token-efficient format suited for feeding into LLMs.
+
 ### Shell completions
 
 Generate and install a completion script once, then enjoy tab-completion for all subcommands and flags.

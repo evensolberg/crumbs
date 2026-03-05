@@ -1,6 +1,6 @@
 [package]
 name = "crumbs"
-version = "0.4.1"
+version = "0.5.0"
 edition = "2024"
 
 [dependencies]
@@ -9,6 +9,8 @@ dialoguer = "0.12"
 dirs = "6"
 csv = "1.4.0"
 rand = "0.10.0"
+serde_json = "1"
+serde_toon_format = "0.1.2"
 serde_yml = "0.0.12"
 console = "0.15"
 slugify = "0.1.0"

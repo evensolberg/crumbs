@@ -126,6 +126,15 @@ enum Command {
     Reindex,
     /// Search item content
     Search { query: String },
+    /// Export items to CSV, JSON, or TOON
+    Export {
+        /// Output format: csv, json, or toon
+        #[arg(short, long, default_value = "json")]
+        format: String,
+        /// Write output to a file (default: stdout)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
     /// Print shell completion script to stdout
     Completions {
         /// Shell to generate completions for
@@ -205,7 +214,12 @@ fn main() -> Result<()> {
                 due,
             )?;
         }
-        Command::List { status, tag, priority, all } => {
+        Command::List {
+            status,
+            tag,
+            priority,
+            all,
+        } => {
             commands::list::run(&dir, status.as_deref(), tag.as_deref(), priority, all)?;
         }
         Command::Show { id } => {
@@ -234,7 +248,15 @@ fn main() -> Result<()> {
             let dependencies =
                 depends.map(|d| d.split(',').map(|s| s.trim().to_string()).collect());
             commands::update::run(
-                &dir, &id, status, priority, tags, item_type, dependencies, due, clear_due,
+                &dir,
+                &id,
+                status,
+                priority,
+                tags,
+                item_type,
+                dependencies,
+                due,
+                clear_due,
             )?;
         }
         Command::Close { id, reason } => {
@@ -254,6 +276,9 @@ fn main() -> Result<()> {
         }
         Command::Search { query } => {
             commands::search::run(&dir, &query)?;
+        }
+        Command::Export { format, output } => {
+            commands::export::run(&dir, &format, output.as_deref())?;
         }
         Command::Completions { .. } => unreachable!(),
     }
