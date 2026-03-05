@@ -5,7 +5,7 @@ use clap::{Parser, Subcommand};
 use crumbs::{commands, config, item::ItemType};
 
 #[derive(Parser)]
-#[command(name = "crumbs", about = "Flat-folder Markdown task tracker")]
+#[command(name = "crumbs", about = "Flat-folder Markdown task tracker", version)]
 struct Cli {
     /// Explicit directory to use
     #[arg(short, long, global = true)]
