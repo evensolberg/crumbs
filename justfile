@@ -73,8 +73,6 @@ alias tp := testp
 
 # Build and install the ARM64 release version to ~/.cargo/bin
 @releasea: format changelog
-    cargo lbuild --release --color 'always' --target aarch64-apple-darwin
-    cargo strip -t aarch64-apple-darwin
     cargo install --path . --target aarch64-apple-darwin
     cargo clean
 
