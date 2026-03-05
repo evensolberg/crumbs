@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
+use chrono::NaiveDate;
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::{Shell, generate};
 use crumbs::{commands, config, item::ItemType};
@@ -42,6 +43,9 @@ enum Command {
         /// Comma-separated dependency IDs
         #[arg(long)]
         depends: Option<String>,
+        /// Due date (YYYY-MM-DD)
+        #[arg(long)]
+        due: Option<NaiveDate>,
     },
     /// Shorthand for create
     #[command(name = "c")]
@@ -58,6 +62,9 @@ enum Command {
         /// Comma-separated dependency IDs
         #[arg(long)]
         depends: Option<String>,
+        /// Due date (YYYY-MM-DD)
+        #[arg(long)]
+        due: Option<NaiveDate>,
     },
     /// List items
     List {
@@ -78,6 +85,8 @@ enum Command {
     Edit { id: String },
     /// Show summary statistics
     Stats,
+    /// Show the highest-priority open item
+    Next,
     /// Update an item
     Update {
         id: String,
@@ -92,6 +101,12 @@ enum Command {
         /// Comma-separated dependency IDs (replaces existing)
         #[arg(long)]
         depends: Option<String>,
+        /// Due date (YYYY-MM-DD)
+        #[arg(long)]
+        due: Option<NaiveDate>,
+        /// Remove the due date
+        #[arg(long)]
+        clear_due: bool,
     },
     /// Close an item
     Close {
@@ -161,6 +176,7 @@ fn main() -> Result<()> {
             tags,
             message,
             depends,
+            due,
         }
         | Command::C {
             title,
@@ -169,6 +185,7 @@ fn main() -> Result<()> {
             tags,
             message,
             depends,
+            due,
         } => {
             let item_type: ItemType = item_type.parse().map_err(|e: String| anyhow::anyhow!(e))?;
             let tags = tags
@@ -185,6 +202,7 @@ fn main() -> Result<()> {
                 tags,
                 message.unwrap_or_default(),
                 dependencies,
+                due,
             )?;
         }
         Command::List { status, tag, priority, all } => {
@@ -199,6 +217,9 @@ fn main() -> Result<()> {
         Command::Stats => {
             commands::stats::run(&dir)?;
         }
+        Command::Next => {
+            commands::next::run(&dir)?;
+        }
         Command::Update {
             id,
             status,
@@ -206,11 +227,15 @@ fn main() -> Result<()> {
             tags,
             item_type,
             depends,
+            due,
+            clear_due,
         } => {
             let tags = tags.map(|t| t.split(',').map(|s| s.trim().to_string()).collect());
             let dependencies =
                 depends.map(|d| d.split(',').map(|s| s.trim().to_string()).collect());
-            commands::update::run(&dir, &id, status, priority, tags, item_type, dependencies)?;
+            commands::update::run(
+                &dir, &id, status, priority, tags, item_type, dependencies, due, clear_due,
+            )?;
         }
         Command::Close { id, reason } => {
             commands::close::run(&dir, &id, reason)?;

@@ -3,6 +3,8 @@ use std::path::Path;
 use anyhow::Result;
 use chrono::Local;
 
+use chrono::NaiveDate;
+
 use crate::{
     id,
     item::{Item, ItemType, Status},
@@ -17,6 +19,7 @@ pub fn run(
     tags: Vec<String>,
     description: String,
     dependencies: Vec<String>,
+    due: Option<NaiveDate>,
 ) -> Result<()> {
     let today = Local::now().date_naive();
     let prefix = store_config::load(dir).prefix;
@@ -31,6 +34,7 @@ pub fn run(
         updated: today,
         closed_reason: String::new(),
         dependencies,
+        due,
         description,
     };
     let path = store::write_item(dir, &item)?;

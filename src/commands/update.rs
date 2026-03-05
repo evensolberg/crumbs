@@ -3,6 +3,8 @@ use std::path::Path;
 use anyhow::{Result, bail};
 use chrono::Local;
 
+use chrono::NaiveDate;
+
 use crate::{item::ItemType, store};
 
 pub fn run(
@@ -13,6 +15,8 @@ pub fn run(
     tags: Option<Vec<String>>,
     item_type: Option<String>,
     dependencies: Option<Vec<String>>,
+    due: Option<NaiveDate>,
+    clear_due: bool,
 ) -> Result<()> {
     match store::find_by_id(dir, id)? {
         None => bail!("no item found with id: {id}"),
@@ -33,6 +37,11 @@ pub fn run(
             }
             if let Some(d) = dependencies {
                 item.dependencies = d;
+            }
+            if clear_due {
+                item.due = None;
+            } else if due.is_some() {
+                item.due = due;
             }
             item.updated = Local::now().date_naive();
 

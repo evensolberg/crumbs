@@ -4,6 +4,7 @@ pub mod delete;
 pub mod edit;
 pub mod init;
 pub mod list;
+pub mod next;
 pub mod reindex;
 pub mod search;
 pub mod show;

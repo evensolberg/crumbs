@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use anyhow::{Result, bail};
+use chrono::Local;
 use console::Style;
 
 use crate::{color, store};
@@ -27,6 +28,17 @@ pub fn run(dir: &Path, id: &str) -> Result<()> {
                 "  Priority: {}",
                 p_style.apply_to(format!("P{}", item.priority))
             );
+            if let Some(due) = item.due {
+                let today = Local::now().date_naive();
+                if due < today {
+                    println!(
+                        "  Due:      {}",
+                        Style::new().red().bold().apply_to(format!("{due} (overdue)"))
+                    );
+                } else {
+                    println!("  Due:      {due}");
+                }
+            }
             if !item.tags.is_empty() {
                 println!("  Tags:     {}", item.tags.join(", "));
             }

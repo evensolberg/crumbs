@@ -17,6 +17,7 @@ fn create_task(dir: &std::path::Path, title: &str) -> String {
         vec![],
         String::new(),
         vec![],
+        None,
     )
     .unwrap();
 
@@ -44,7 +45,7 @@ fn init_is_idempotent() {
     let base = tempdir().unwrap();
     let target = base.path().join(".crumbs");
     commands::init::run(&target, Some("ts".to_string())).unwrap();
-    commands::init::run(&target, Some("ts".to_string())).unwrap(); // second call should not error
+    commands::init::run(&target, Some("ts".to_string())).unwrap();
     assert!(target.is_dir());
 }
 
@@ -53,16 +54,7 @@ fn init_is_idempotent() {
 #[test]
 fn create_produces_md_file() {
     let dir = tempdir().unwrap();
-    commands::create::run(
-        dir.path(),
-        "My Task".to_string(),
-        ItemType::Task,
-        2,
-        vec![],
-        String::new(),
-        vec![],
-    )
-    .unwrap();
+    commands::create::run(dir.path(), "My Task".to_string(), ItemType::Task, 2, vec![], String::new(), vec![], None).unwrap();
     let md_files: Vec<_> = std::fs::read_dir(dir.path())
         .unwrap()
         .filter_map(|e| e.ok())
@@ -74,16 +66,7 @@ fn create_produces_md_file() {
 #[test]
 fn create_writes_correct_frontmatter() {
     let dir = tempdir().unwrap();
-    commands::create::run(
-        dir.path(),
-        "Frontmatter Check".to_string(),
-        ItemType::Bug,
-        1,
-        vec!["project/foo".to_string()],
-        String::new(),
-        vec![],
-    )
-    .unwrap();
+    commands::create::run(dir.path(), "Frontmatter Check".to_string(), ItemType::Bug, 1, vec!["project/foo".to_string()], String::new(), vec![], None).unwrap();
     let items = store::load_all(dir.path()).unwrap();
     assert_eq!(items.len(), 1);
     let item = &items[0].1;
@@ -98,32 +81,14 @@ fn create_writes_correct_frontmatter() {
 #[test]
 fn create_also_writes_index_csv() {
     let dir = tempdir().unwrap();
-    commands::create::run(
-        dir.path(),
-        "CSV Test".to_string(),
-        ItemType::Task,
-        2,
-        vec![],
-        String::new(),
-        vec![],
-    )
-    .unwrap();
+    commands::create::run(dir.path(), "CSV Test".to_string(), ItemType::Task, 2, vec![], String::new(), vec![], None).unwrap();
     assert!(dir.path().join("index.csv").exists());
 }
 
 #[test]
 fn create_with_description_stores_body() {
     let dir = tempdir().unwrap();
-    commands::create::run(
-        dir.path(),
-        "Described Task".to_string(),
-        ItemType::Task,
-        2,
-        vec![],
-        "This is more detail.".to_string(),
-        vec![],
-    )
-    .unwrap();
+    commands::create::run(dir.path(), "Described Task".to_string(), ItemType::Task, 2, vec![], "This is more detail.".to_string(), vec![], None).unwrap();
     let items = store::load_all(dir.path()).unwrap();
     assert_eq!(items.len(), 1);
     assert_eq!(items[0].1.description, "This is more detail.");
@@ -132,16 +97,7 @@ fn create_with_description_stores_body() {
 #[test]
 fn create_with_description_appears_in_md_body() {
     let dir = tempdir().unwrap();
-    commands::create::run(
-        dir.path(),
-        "Body Task".to_string(),
-        ItemType::Task,
-        2,
-        vec![],
-        "Extra context here.".to_string(),
-        vec![],
-    )
-    .unwrap();
+    commands::create::run(dir.path(), "Body Task".to_string(), ItemType::Task, 2, vec![], "Extra context here.".to_string(), vec![], None).unwrap();
     let md: Vec<_> = std::fs::read_dir(dir.path())
         .unwrap()
         .filter_map(|e| e.ok())
@@ -154,16 +110,7 @@ fn create_with_description_appears_in_md_body() {
 #[test]
 fn create_without_description_has_empty_description() {
     let dir = tempdir().unwrap();
-    commands::create::run(
-        dir.path(),
-        "No Desc".to_string(),
-        ItemType::Task,
-        2,
-        vec![],
-        String::new(),
-        vec![],
-    )
-    .unwrap();
+    commands::create::run(dir.path(), "No Desc".to_string(), ItemType::Task, 2, vec![], String::new(), vec![], None).unwrap();
     let items = store::load_all(dir.path()).unwrap();
     assert!(items[0].1.description.is_empty());
 }
@@ -174,16 +121,7 @@ fn create_without_description_has_empty_description() {
 fn update_changes_status() {
     let dir = tempdir().unwrap();
     let id = create_task(dir.path(), "Status Update");
-    commands::update::run(
-        dir.path(),
-        &id,
-        Some("in_progress".to_string()),
-        None,
-        None,
-        None,
-        None,
-    )
-    .unwrap();
+    commands::update::run(dir.path(), &id, Some("in_progress".to_string()), None, None, None, None, None, false).unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
     assert_eq!(item.status, Status::InProgress);
 }
@@ -192,7 +130,7 @@ fn update_changes_status() {
 fn update_changes_priority() {
     let dir = tempdir().unwrap();
     let id = create_task(dir.path(), "Priority Update");
-    commands::update::run(dir.path(), &id, None, Some(0), None, None, None).unwrap();
+    commands::update::run(dir.path(), &id, None, Some(0), None, None, None, None, false).unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
     assert_eq!(item.priority, 0);
 }
@@ -201,16 +139,7 @@ fn update_changes_priority() {
 fn update_replaces_tags() {
     let dir = tempdir().unwrap();
     let id = create_task(dir.path(), "Tag Update");
-    commands::update::run(
-        dir.path(),
-        &id,
-        None,
-        None,
-        Some(vec!["new-tag".to_string()]),
-        None,
-        None,
-    )
-    .unwrap();
+    commands::update::run(dir.path(), &id, None, None, Some(vec!["new-tag".to_string()]), None, None, None, false).unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
     assert_eq!(item.tags, vec!["new-tag"]);
 }
@@ -219,16 +148,7 @@ fn update_replaces_tags() {
 fn update_changes_type() {
     let dir = tempdir().unwrap();
     let id = create_task(dir.path(), "Type Update");
-    commands::update::run(
-        dir.path(),
-        &id,
-        None,
-        None,
-        None,
-        Some("bug".to_string()),
-        None,
-    )
-    .unwrap();
+    commands::update::run(dir.path(), &id, None, None, None, Some("bug".to_string()), None, None, false).unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
     assert_eq!(item.item_type, ItemType::Bug);
 }
@@ -236,7 +156,7 @@ fn update_changes_type() {
 #[test]
 fn update_unknown_id_errors() {
     let dir = tempdir().unwrap();
-    let result = commands::update::run(dir.path(), "bc-zzz", None, None, None, None, None);
+    let result = commands::update::run(dir.path(), "bc-zzz", None, None, None, None, None, None, false);
     assert!(result.is_err());
 }
 
@@ -274,7 +194,6 @@ fn list_no_filter_does_not_error() {
     let dir = tempdir().unwrap();
     create_task(dir.path(), "List Task 1");
     create_task(dir.path(), "List Task 2");
-    // list prints to stdout; just verify no error
     commands::list::run(dir.path(), None, None, None, false).unwrap();
 }
 
@@ -285,16 +204,9 @@ fn list_status_filter_only_shows_matching() {
     create_task(dir.path(), "Open Two");
     commands::close::run(dir.path(), &id, None).unwrap();
 
-    // Manually verify filtering logic via store
     let items = store::load_all(dir.path()).unwrap();
-    let open: Vec<_> = items
-        .iter()
-        .filter(|(_, i)| i.status == Status::Open)
-        .collect();
-    let closed: Vec<_> = items
-        .iter()
-        .filter(|(_, i)| i.status == Status::Closed)
-        .collect();
+    let open: Vec<_> = items.iter().filter(|(_, i)| i.status == Status::Open).collect();
+    let closed: Vec<_> = items.iter().filter(|(_, i)| i.status == Status::Closed).collect();
     assert_eq!(open.len(), 1);
     assert_eq!(closed.len(), 1);
 }
@@ -302,32 +214,11 @@ fn list_status_filter_only_shows_matching() {
 #[test]
 fn list_tag_filter_only_shows_matching() {
     let dir = tempdir().unwrap();
-    commands::create::run(
-        dir.path(),
-        "Tagged".to_string(),
-        ItemType::Task,
-        2,
-        vec!["project/x".to_string()],
-        String::new(),
-        vec![],
-    )
-    .unwrap();
-    commands::create::run(
-        dir.path(),
-        "Untagged".to_string(),
-        ItemType::Task,
-        2,
-        vec![],
-        String::new(),
-        vec![],
-    )
-    .unwrap();
+    commands::create::run(dir.path(), "Tagged".to_string(), ItemType::Task, 2, vec!["project/x".to_string()], String::new(), vec![], None).unwrap();
+    commands::create::run(dir.path(), "Untagged".to_string(), ItemType::Task, 2, vec![], String::new(), vec![], None).unwrap();
 
     let items = store::load_all(dir.path()).unwrap();
-    let with_tag: Vec<_> = items
-        .iter()
-        .filter(|(_, i)| i.tags.iter().any(|t: &String| t.contains("project/x")))
-        .collect();
+    let with_tag: Vec<_> = items.iter().filter(|(_, i)| i.tags.iter().any(|t: &String| t.contains("project/x"))).collect();
     assert_eq!(with_tag.len(), 1);
     assert_eq!(with_tag[0].1.title, "Tagged");
 }
@@ -364,7 +255,7 @@ fn delete_closed_removes_only_closed() {
 fn delete_closed_noop_when_none_closed() {
     let dir = tempdir().unwrap();
     create_task(dir.path(), "Open Task");
-    commands::delete::run_closed(dir.path()).unwrap(); // should not error
+    commands::delete::run_closed(dir.path()).unwrap();
     let items = store::load_all(dir.path()).unwrap();
     assert_eq!(items.len(), 1);
 }
@@ -375,21 +266,9 @@ fn delete_closed_noop_when_none_closed() {
 fn create_with_dependencies_stores_them() {
     let dir = tempdir().unwrap();
     let dep_id = create_task(dir.path(), "Dep Task");
-    commands::create::run(
-        dir.path(),
-        "Dependent Task".to_string(),
-        ItemType::Task,
-        2,
-        vec![],
-        String::new(),
-        vec![dep_id.clone()],
-    )
-    .unwrap();
+    commands::create::run(dir.path(), "Dependent Task".to_string(), ItemType::Task, 2, vec![], String::new(), vec![dep_id.clone()], None).unwrap();
     let items = store::load_all(dir.path()).unwrap();
-    let dependent = items
-        .iter()
-        .find(|(_, i)| i.title == "Dependent Task")
-        .unwrap();
+    let dependent = items.iter().find(|(_, i)| i.title == "Dependent Task").unwrap();
     assert_eq!(dependent.1.dependencies, vec![dep_id]);
 }
 
@@ -398,16 +277,7 @@ fn update_replaces_dependencies() {
     let dir = tempdir().unwrap();
     let id = create_task(dir.path(), "Task With Deps");
     let dep_id = create_task(dir.path(), "Another Task");
-    commands::update::run(
-        dir.path(),
-        &id,
-        None,
-        None,
-        None,
-        None,
-        Some(vec![dep_id.clone()]),
-    )
-    .unwrap();
+    commands::update::run(dir.path(), &id, None, None, None, None, Some(vec![dep_id.clone()]), None, false).unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
     assert_eq!(item.dependencies, vec![dep_id]);
 }
@@ -419,7 +289,6 @@ fn search_matches_title() {
     let dir = tempdir().unwrap();
     create_task(dir.path(), "Unique Needle Title");
     create_task(dir.path(), "Other Task");
-    // Just verifying no error; search prints to stdout
     commands::search::run(dir.path(), "Needle").unwrap();
 }
 
@@ -436,9 +305,7 @@ fn search_does_not_error_on_no_results() {
 fn reindex_rebuilds_stale_csv() {
     let dir = tempdir().unwrap();
     create_task(dir.path(), "Before Reindex");
-    // Corrupt the CSV
     std::fs::write(dir.path().join("index.csv"), "garbage").unwrap();
-    // Reindex should fix it
     commands::reindex::run(dir.path()).unwrap();
     let content = std::fs::read_to_string(dir.path().join("index.csv")).unwrap();
     assert!(content.contains("Before Reindex"));

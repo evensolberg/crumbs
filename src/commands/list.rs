@@ -1,6 +1,8 @@
 use std::path::Path;
 
 use anyhow::Result;
+use chrono::Local;
+use console::Style;
 
 use crate::{color, item::Status, store};
 
@@ -44,6 +46,7 @@ pub fn run(
         return Ok(());
     }
 
+    let today = Local::now().date_naive();
     for (_, item) in filtered {
         let icon = color::status_icon_styled(&item.status);
         let p_style = color::priority(item.priority);
@@ -53,8 +56,15 @@ pub fn run(
         } else {
             format!(" [{}]", item.tags.join(", "))
         };
+        let due_marker = match item.due {
+            Some(d) if d < today => {
+                format!(" {}", Style::new().red().bold().apply_to("!due"))
+            }
+            Some(d) => format!(" due:{d}"),
+            None => String::new(),
+        };
         println!(
-            "{icon} {} {} {} {}{tags}",
+            "{icon} {} {} {} {}{tags}{due_marker}",
             item.id,
             p_style.apply_to(format!("[P{}]", item.priority)),
             t_style.apply_to(format!("[{}]", item.item_type)),
