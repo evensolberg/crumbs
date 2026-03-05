@@ -116,7 +116,8 @@ enum Command {
         id: String,
         /// Relationship direction: "blocks" or "blocked-by"
         relation: String,
-        target: String,
+        /// Comma-separated target IDs
+        targets: String,
         /// Remove the link instead of adding it
         #[arg(long)]
         remove: bool,
@@ -277,10 +278,14 @@ fn main() -> Result<()> {
         Command::Link {
             id,
             relation,
-            target,
+            targets,
             remove,
         } => {
-            commands::link::run(&dir, &id, &relation, &target, remove)?;
+            let target_ids: Vec<String> = targets
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect();
+            commands::link::run(&dir, &id, &relation, &target_ids, remove)?;
         }
         Command::Close { id, reason } => {
             commands::close::run(&dir, &id, reason)?;

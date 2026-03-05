@@ -81,6 +81,16 @@ alias tp := testp
     codesign --sign - --force /usr/local/bin/{{application}}
     cargo clean
 
+# Tag the current version, push to GitHub, and create a release with auto-generated notes
+publish:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    version="v$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')"
+    echo "Publishing $version"
+    git tag "$version"
+    git push {{application}} main "$version"
+    gh release create "$version" --repo evensolberg/{{application}} --title "$version" --generate-notes
+
 # Build the documentation
 @doc:
     cargo doc --no-deps

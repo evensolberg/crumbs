@@ -98,12 +98,13 @@ crumbs update bc-x7q --message 'Now includes OAuth flow'
 ### Link items
 
 ```sh
-crumbs link bc-x7q blocks bc-y8r      # bc-x7q blocks bc-y8r (bidirectional)
-crumbs link bc-x7q blocked-by bc-z9s  # bc-x7q is blocked by bc-z9s
-crumbs link bc-x7q blocks bc-y8r --remove  # remove the link
+crumbs link bc-x7q blocks bc-y8r             # bc-x7q blocks bc-y8r (bidirectional)
+crumbs link bc-x7q blocks bc-y8r,bc-z9s      # link multiple targets at once
+crumbs link bc-x7q blocked-by bc-z9s         # bc-x7q is blocked by bc-z9s
+crumbs link bc-x7q blocks bc-y8r --remove    # remove the link
 ```
 
-Both items are updated atomically. `show` displays `Blocks:` and `Blocked:` rows when non-empty.
+Targets are comma-separated so you can link to multiple items in one command. Both sides are updated atomically. `show` displays `Blocks:` and `Blocked:` rows when non-empty.
 
 ### Edit an item
 
