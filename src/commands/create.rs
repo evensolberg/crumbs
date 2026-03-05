@@ -6,7 +6,7 @@ use chrono::Local;
 use crate::{
     id,
     item::{Item, ItemType, Status},
-    store,
+    store, store_config,
 };
 
 pub fn run(
@@ -15,10 +15,12 @@ pub fn run(
     item_type: ItemType,
     priority: u8,
     tags: Vec<String>,
+    description: String,
 ) -> Result<()> {
     let today = Local::now().date_naive();
+    let prefix = store_config::load(dir).prefix;
     let item = Item {
-        id: id::generate(),
+        id: id::generate(&prefix),
         title,
         status: Status::Open,
         item_type,
@@ -28,6 +30,7 @@ pub fn run(
         updated: today,
         closed_reason: String::new(),
         dependencies: Vec::new(),
+        description,
     };
     let path = store::write_item(dir, &item)?;
     store::reindex(dir)?;

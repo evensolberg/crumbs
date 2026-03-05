@@ -8,6 +8,8 @@ Each item is a plain `.md` file with YAML frontmatter. A `index.csv` acts as a r
 
 Items live either in a local `.crumbs/` directory (per-project) or a global store (`~/.local/share/crumbs`).
 
+Because every item is a plain `.md` file, the store is trivially version-controlled. Commit `.crumbs/` to your repository and get full history, branching, and recovery for free via `git log`, `git diff`, and `git checkout`.
+
 ## Installation
 
 ```sh
@@ -25,18 +27,21 @@ crumbs locates its store in this order:
 
 ## Usage
 
-### Initialize a local store
+### Initialize a store
 
 ```sh
-crumbs init
+crumbs init                    # local store in .crumbs/
+crumbs init --global           # global store at ~/.local/share/crumbs
+crumbs init --prefix myp       # skip interactive prompt, set prefix directly
 ```
 
-Creates a `.crumbs/` directory in the current directory.
+`crumbs init` prompts for an ID prefix (e.g. `cr`, `ma`), pre-filled from the directory name. Press Enter to accept or type your own. The prefix is saved to `.crumbs/config.toml` and used for all new item IDs in that store.
 
 ### Create an item
 
 ```sh
 crumbs create 'Fix the login bug' --item-type bug --priority 1 --tags project/auth
+crumbs create 'Auth redesign' --description 'Covers login, OAuth, and session handling'
 crumbs c 'Quick idea'          # shorthand
 # Tip: use single quotes to avoid shell expansion of special characters (!, $, etc.)
 ```
@@ -46,11 +51,13 @@ crumbs c 'Quick idea'          # shorthand
 | `-t, --item-type` | `task` | `task`, `bug`, `feature`, `epic`, `idea` |
 | `-p, --priority` | `2` | `0` (critical) … `4` (backlog) |
 | `--tags` | — | comma-separated, e.g. `project/foo,needs-review` |
+| `-d, --description` | — | freeform text stored in the markdown body |
 
 ### List items
 
 ```sh
-crumbs list
+crumbs list                    # open and in-progress only
+crumbs list --all              # include closed
 crumbs list --status open
 crumbs list --tag project/auth
 ```
@@ -67,6 +74,7 @@ crumbs show bc-x7q
 crumbs update bc-x7q --status in_progress
 crumbs update bc-x7q --priority 0
 crumbs update bc-x7q --tags project/auth,urgent
+crumbs update bc-x7q --type bug
 ```
 
 ### Close an item
@@ -74,6 +82,13 @@ crumbs update bc-x7q --tags project/auth,urgent
 ```sh
 crumbs close bc-x7q
 crumbs close bc-x7q --reason "fixed in PR #42"
+```
+
+### Delete an item
+
+```sh
+crumbs delete cr-x7q              # delete a specific item
+crumbs delete --closed            # delete all closed items at once
 ```
 
 ### Search

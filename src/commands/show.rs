@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 use crate::store;
 
@@ -22,6 +22,11 @@ pub fn run(dir: &Path, id: &str) -> Result<()> {
             }
             if !item.dependencies.is_empty() {
                 println!("  Deps:     {}", item.dependencies.join(", "));
+            }
+            if !item.description.is_empty() {
+                println!();
+                println!("{}", item.description);
+                println!();
             }
             println!("  File:     {}", path.display());
         }

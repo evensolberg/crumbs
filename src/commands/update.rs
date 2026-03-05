@@ -1,9 +1,9 @@
 use std::path::Path;
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use chrono::Local;
 
-use crate::store;
+use crate::{item::ItemType, store};
 
 pub fn run(
     dir: &Path,
@@ -11,6 +11,7 @@ pub fn run(
     status: Option<String>,
     priority: Option<u8>,
     tags: Option<Vec<String>>,
+    item_type: Option<String>,
 ) -> Result<()> {
     match store::find_by_id(dir, id)? {
         None => bail!("no item found with id: {id}"),
@@ -23,6 +24,11 @@ pub fn run(
             }
             if let Some(t) = tags {
                 item.tags = t;
+            }
+            if let Some(t) = item_type {
+                item.item_type = t
+                    .parse::<ItemType>()
+                    .map_err(|e: String| anyhow::anyhow!(e))?;
             }
             item.updated = Local::now().date_naive();
 

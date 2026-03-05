@@ -1,0 +1,12 @@
+id,title,status,type,priority,tags,created,updated,closed_reason
+cr-1ke,Add --description flag to create command,closed,feature,3,project/crumbs,2026-03-04,2026-03-05,Implemented in v0.1.5
+cr-6bs,Should closed crumbs have a -closed ending to their filename so it is easy for a human to tell?,open,task,2,,2026-03-04,2026-03-04,
+cr-9qh,Add --version flag to CLI,closed,feature,2,project/crumbs,2026-03-04,2026-03-04,Implemented via #[command(version)] in clap derive macro in v0.1.4
+cr-cnc,"Need to be able to delete crumbs, not just close them.",closed,feature,2,,2026-03-04,2026-03-05,delete command implemented with --closed flag for bulk cleanup
+cr-d6l,Need to change the crumbs ID to somethis project related or global.,closed,task,2,,2026-03-04,2026-03-05,"Implemented: prefix stored in .crumbs/config.toml, suggested from dir name on init, changeable via --prefix"
+cr-enf,Need to be able to specify dependencies by ID,open,feature,2,,2026-03-04,2026-03-04,
+cr-hts,Update readme to include init --global,closed,task,2,,2026-03-05,2026-03-05,README updated with init --global section
+cr-jmp,Add shell completions,open,feature,4,project/crumbs,2026-03-04,2026-03-04,
+cr-kg8,update needs to be able to set the type,closed,task,1,,2026-03-04,2026-03-05,Implemented --type/-t flag on update command
+cr-u86,"Need flags for all user-settable properties like priority, type, etc",closed,task,2,,2026-03-04,2026-03-04,
+cr-xwu,Need better error messages if used in a non-initialized directory.,closed,feature,2,,2026-03-04,2026-03-05,implemented: bail with helpful message if store dir missing

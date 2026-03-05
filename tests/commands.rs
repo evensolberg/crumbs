@@ -9,7 +9,15 @@ use crumbs::{
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 fn create_task(dir: &std::path::Path, title: &str) -> String {
-    commands::create::run(dir, title.to_string(), ItemType::Task, 2, vec![]).unwrap();
+    commands::create::run(
+        dir,
+        title.to_string(),
+        ItemType::Task,
+        2,
+        vec![],
+        String::new(),
+    )
+    .unwrap();
     let items = store::load_all(dir).unwrap();
     items
         .into_iter()
@@ -25,7 +33,7 @@ fn create_task(dir: &std::path::Path, title: &str) -> String {
 fn init_creates_crumbs_dir() {
     let base = tempdir().unwrap();
     let target = base.path().join(".crumbs");
-    commands::init::run(&target).unwrap();
+    commands::init::run(&target, Some("ts".to_string())).unwrap();
     assert!(target.is_dir());
 }
 
@@ -33,8 +41,8 @@ fn init_creates_crumbs_dir() {
 fn init_is_idempotent() {
     let base = tempdir().unwrap();
     let target = base.path().join(".crumbs");
-    commands::init::run(&target).unwrap();
-    commands::init::run(&target).unwrap(); // second call should not error
+    commands::init::run(&target, Some("ts".to_string())).unwrap();
+    commands::init::run(&target, Some("ts".to_string())).unwrap(); // second call should not error
     assert!(target.is_dir());
 }
 
@@ -49,6 +57,7 @@ fn create_produces_md_file() {
         ItemType::Task,
         2,
         vec![],
+        String::new(),
     )
     .unwrap();
     let md_files: Vec<_> = std::fs::read_dir(dir.path())
@@ -68,6 +77,7 @@ fn create_writes_correct_frontmatter() {
         ItemType::Bug,
         1,
         vec!["project/foo".to_string()],
+        String::new(),
     )
     .unwrap();
     let items = store::load_all(dir.path()).unwrap();
@@ -78,13 +88,76 @@ fn create_writes_correct_frontmatter() {
     assert_eq!(item.priority, 1);
     assert_eq!(item.tags, vec!["project/foo"]);
     assert_eq!(item.status, Status::Open);
+    assert!(item.description.is_empty());
 }
 
 #[test]
 fn create_also_writes_index_csv() {
     let dir = tempdir().unwrap();
-    commands::create::run(dir.path(), "CSV Test".to_string(), ItemType::Task, 2, vec![]).unwrap();
+    commands::create::run(
+        dir.path(),
+        "CSV Test".to_string(),
+        ItemType::Task,
+        2,
+        vec![],
+        String::new(),
+    )
+    .unwrap();
     assert!(dir.path().join("index.csv").exists());
+}
+
+#[test]
+fn create_with_description_stores_body() {
+    let dir = tempdir().unwrap();
+    commands::create::run(
+        dir.path(),
+        "Described Task".to_string(),
+        ItemType::Task,
+        2,
+        vec![],
+        "This is more detail.".to_string(),
+    )
+    .unwrap();
+    let items = store::load_all(dir.path()).unwrap();
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0].1.description, "This is more detail.");
+}
+
+#[test]
+fn create_with_description_appears_in_md_body() {
+    let dir = tempdir().unwrap();
+    commands::create::run(
+        dir.path(),
+        "Body Task".to_string(),
+        ItemType::Task,
+        2,
+        vec![],
+        "Extra context here.".to_string(),
+    )
+    .unwrap();
+    let md: Vec<_> = std::fs::read_dir(dir.path())
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().extension().is_some_and(|x| x == "md"))
+        .collect();
+    let content = std::fs::read_to_string(md[0].path()).unwrap();
+    assert!(content.contains("Extra context here."));
+}
+
+#[test]
+fn create_without_description_has_empty_description() {
+    let dir = tempdir().unwrap();
+    commands::create::run(
+        dir.path(),
+        "No Desc".to_string(),
+        ItemType::Task,
+        2,
+        vec![],
+        String::new(),
+    )
+    .unwrap();
+    let items = store::load_all(dir.path()).unwrap();
+    assert!(items[0].1.description.is_empty());
 }
 
 // ── update ───────────────────────────────────────────────────────────────────
@@ -93,7 +166,15 @@ fn create_also_writes_index_csv() {
 fn update_changes_status() {
     let dir = tempdir().unwrap();
     let id = create_task(dir.path(), "Status Update");
-    commands::update::run(dir.path(), &id, Some("in_progress".to_string()), None, None).unwrap();
+    commands::update::run(
+        dir.path(),
+        &id,
+        Some("in_progress".to_string()),
+        None,
+        None,
+        None,
+    )
+    .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
     assert_eq!(item.status, Status::InProgress);
 }
@@ -102,7 +183,7 @@ fn update_changes_status() {
 fn update_changes_priority() {
     let dir = tempdir().unwrap();
     let id = create_task(dir.path(), "Priority Update");
-    commands::update::run(dir.path(), &id, None, Some(0), None).unwrap();
+    commands::update::run(dir.path(), &id, None, Some(0), None, None).unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
     assert_eq!(item.priority, 0);
 }
@@ -117,6 +198,7 @@ fn update_replaces_tags() {
         None,
         None,
         Some(vec!["new-tag".to_string()]),
+        None,
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -124,9 +206,18 @@ fn update_replaces_tags() {
 }
 
 #[test]
+fn update_changes_type() {
+    let dir = tempdir().unwrap();
+    let id = create_task(dir.path(), "Type Update");
+    commands::update::run(dir.path(), &id, None, None, None, Some("bug".to_string())).unwrap();
+    let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    assert_eq!(item.item_type, ItemType::Bug);
+}
+
+#[test]
 fn update_unknown_id_errors() {
     let dir = tempdir().unwrap();
-    let result = commands::update::run(dir.path(), "bc-zzz", None, None, None);
+    let result = commands::update::run(dir.path(), "bc-zzz", None, None, None, None);
     assert!(result.is_err());
 }
 
@@ -165,7 +256,7 @@ fn list_no_filter_does_not_error() {
     create_task(dir.path(), "List Task 1");
     create_task(dir.path(), "List Task 2");
     // list prints to stdout; just verify no error
-    commands::list::run(dir.path(), None, None).unwrap();
+    commands::list::run(dir.path(), None, None, false).unwrap();
 }
 
 #[test]
@@ -198,9 +289,18 @@ fn list_tag_filter_only_shows_matching() {
         ItemType::Task,
         2,
         vec!["project/x".to_string()],
+        String::new(),
     )
     .unwrap();
-    commands::create::run(dir.path(), "Untagged".to_string(), ItemType::Task, 2, vec![]).unwrap();
+    commands::create::run(
+        dir.path(),
+        "Untagged".to_string(),
+        ItemType::Task,
+        2,
+        vec![],
+        String::new(),
+    )
+    .unwrap();
 
     let items = store::load_all(dir.path()).unwrap();
     let with_tag: Vec<_> = items
@@ -209,6 +309,43 @@ fn list_tag_filter_only_shows_matching() {
         .collect();
     assert_eq!(with_tag.len(), 1);
     assert_eq!(with_tag[0].1.title, "Tagged");
+}
+
+// ── delete ───────────────────────────────────────────────────────────────────
+
+#[test]
+fn delete_removes_item() {
+    let dir = tempdir().unwrap();
+    let id = create_task(dir.path(), "Delete Me");
+    commands::delete::run(dir.path(), &id).unwrap();
+    assert!(store::find_by_id(dir.path(), &id).unwrap().is_none());
+}
+
+#[test]
+fn delete_unknown_id_errors() {
+    let dir = tempdir().unwrap();
+    let result = commands::delete::run(dir.path(), "cr-zzz");
+    assert!(result.is_err());
+}
+
+#[test]
+fn delete_closed_removes_only_closed() {
+    let dir = tempdir().unwrap();
+    let id_a = create_task(dir.path(), "Keep Me");
+    let id_b = create_task(dir.path(), "Delete Me Closed");
+    commands::close::run(dir.path(), &id_b, None).unwrap();
+    commands::delete::run_closed(dir.path()).unwrap();
+    assert!(store::find_by_id(dir.path(), &id_a).unwrap().is_some());
+    assert!(store::find_by_id(dir.path(), &id_b).unwrap().is_none());
+}
+
+#[test]
+fn delete_closed_noop_when_none_closed() {
+    let dir = tempdir().unwrap();
+    create_task(dir.path(), "Open Task");
+    commands::delete::run_closed(dir.path()).unwrap(); // should not error
+    let items = store::load_all(dir.path()).unwrap();
+    assert_eq!(items.len(), 1);
 }
 
 // ── search ───────────────────────────────────────────────────────────────────

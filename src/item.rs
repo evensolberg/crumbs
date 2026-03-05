@@ -84,6 +84,8 @@ pub struct Item {
     pub closed_reason: String,
     #[serde(default)]
     pub dependencies: Vec<String>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
 }
 
 #[cfg(test)]

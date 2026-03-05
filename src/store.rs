@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use slugify::slugify;
 
 use crate::item::Item;
@@ -17,14 +17,20 @@ pub fn unique_path(dir: &Path, item: &Item) -> PathBuf {
         return base;
     }
     let slug = slugify!(&item.title, max_length = 50);
-    let id_suffix = item.id.trim_start_matches("bc-");
+    // Strip the prefix (everything up to and including the first '-')
+    let id_suffix = item.id.split_once('-').map(|x| x.1).unwrap_or(&item.id);
     dir.join(format!("{slug}-{id_suffix}.md"))
 }
 
 pub fn write_item(dir: &Path, item: &Item) -> Result<PathBuf> {
     let path = unique_path(dir, item);
     let frontmatter = serde_yaml::to_string(item).context("serialize frontmatter")?;
-    let content = format!("---\n{frontmatter}---\n\n# {}\n", item.title);
+    let body = if item.description.is_empty() {
+        format!("# {}\n", item.title)
+    } else {
+        format!("# {}\n\n{}\n", item.title, item.description.trim())
+    };
+    let content = format!("---\n{frontmatter}---\n\n{body}");
     std::fs::write(&path, content).context("write item file")?;
     Ok(path)
 }
@@ -35,11 +41,22 @@ pub fn read_item(path: &Path) -> Result<Item> {
 }
 
 pub fn parse_item(raw: &str) -> Result<Item> {
-    let inner = raw
+    let (fm, body) = raw
         .strip_prefix("---\n")
-        .and_then(|s| s.split_once("\n---\n").map(|(fm, _)| fm))
+        .and_then(|s| s.split_once("\n---\n"))
         .ok_or_else(|| anyhow!("missing frontmatter delimiters"))?;
-    let item: Item = serde_yaml::from_str(inner).context("deserialize frontmatter")?;
+    let mut item: Item = serde_yaml::from_str(fm).context("deserialize frontmatter")?;
+    // Extract description: body after the `# Title` heading line
+    let description = body
+        .trim_start_matches('\n')
+        .split_once('\n')
+        .map(|x| x.1)
+        .unwrap_or("")
+        .trim_matches('\n')
+        .to_string();
+    if !description.is_empty() {
+        item.description = description;
+    }
     Ok(item)
 }
 
@@ -67,7 +84,14 @@ pub fn reindex(dir: &Path) -> Result<()> {
     let index_path = dir.join("index.csv");
     let mut wtr = csv::Writer::from_path(&index_path).context("open index.csv")?;
     wtr.write_record([
-        "id", "title", "status", "type", "priority", "tags", "created", "updated",
+        "id",
+        "title",
+        "status",
+        "type",
+        "priority",
+        "tags",
+        "created",
+        "updated",
         "closed_reason",
     ])?;
     for (_, item) in &items {
@@ -112,6 +136,7 @@ mod tests {
             updated: NaiveDate::from_ymd_opt(2026, 3, 1).unwrap(),
             closed_reason: String::new(),
             dependencies: Vec::new(),
+            description: String::new(),
         }
     }
 
