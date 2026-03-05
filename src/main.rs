@@ -78,9 +78,13 @@ enum Command {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    // For Init, always use cwd/.crumbs regardless of other flags.
+    // For Init: --global initializes the global store; otherwise use cwd/.crumbs.
     if matches!(&cli.command, Command::Init) {
-        let target = std::env::current_dir()?.join(".crumbs");
+        let target = if cli.global {
+            config::global_dir()
+        } else {
+            std::env::current_dir()?.join(".crumbs")
+        };
         return commands::init::run(&target);
     }
 
@@ -88,8 +92,18 @@ fn main() -> Result<()> {
 
     match cli.command {
         Command::Init => unreachable!(),
-        Command::Create { title, item_type, priority, tags }
-        | Command::C { title, item_type, priority, tags } => {
+        Command::Create {
+            title,
+            item_type,
+            priority,
+            tags,
+        }
+        | Command::C {
+            title,
+            item_type,
+            priority,
+            tags,
+        } => {
             let item_type: ItemType = item_type.parse().map_err(|e: String| anyhow::anyhow!(e))?;
             let tags = tags
                 .map(|t| t.split(',').map(|s| s.trim().to_string()).collect())
@@ -102,7 +116,12 @@ fn main() -> Result<()> {
         Command::Show { id } => {
             commands::show::run(&dir, &id)?;
         }
-        Command::Update { id, status, priority, tags } => {
+        Command::Update {
+            id,
+            status,
+            priority,
+            tags,
+        } => {
             let tags = tags.map(|t| t.split(',').map(|s| s.trim().to_string()).collect());
             commands::update::run(&dir, &id, status, priority, tags)?;
         }
