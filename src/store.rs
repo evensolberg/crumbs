@@ -113,7 +113,16 @@ pub fn reindex(dir: &Path) -> Result<()> {
 
 pub fn find_by_id(dir: &Path, id: &str) -> Result<Option<(PathBuf, Item)>> {
     let items = load_all(dir)?;
-    Ok(items.into_iter().find(|(_, item)| item.id == id))
+    if let Some(found) = items.iter().find(|(_, item)| item.id == id) {
+        return Ok(Some(found.clone()));
+    }
+    // If the input looks like a bare suffix (no '-'), try prepending the store prefix.
+    if !id.contains('-') {
+        let prefix = crate::store_config::load(dir).prefix;
+        let full_id = format!("{prefix}-{id}");
+        return Ok(items.into_iter().find(|(_, item)| item.id == full_id));
+    }
+    Ok(None)
 }
 
 #[cfg(test)]
