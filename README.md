@@ -41,7 +41,7 @@ crumbs init --prefix myp       # skip interactive prompt, set prefix directly
 
 ```sh
 crumbs create 'Fix the login bug' --item-type bug --priority 1 --tags project/auth
-crumbs create 'Auth redesign' --description 'Covers login, OAuth, and session handling'
+crumbs create 'Auth redesign' --message 'Covers login, OAuth, and session handling'
 crumbs c 'Quick idea'          # shorthand
 # Tip: use single quotes to avoid shell expansion of special characters (!, $, etc.)
 ```
@@ -51,7 +51,7 @@ crumbs c 'Quick idea'          # shorthand
 | `-t, --item-type` | `task` | `task`, `bug`, `feature`, `epic`, `idea` |
 | `-p, --priority` | `2` | `0` (critical) … `4` (backlog) |
 | `--tags` | — | comma-separated, e.g. `project/foo,needs-review` |
-| `-D, --description` | — | freeform text stored in the markdown body |
+| `-m, --message` | — | freeform text stored in the markdown body |
 | `--depends` | — | comma-separated dependency IDs, e.g. `cr-abc,cr-xyz` |
 
 ### List items

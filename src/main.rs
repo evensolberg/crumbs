@@ -37,8 +37,8 @@ enum Command {
         priority: u8,
         #[arg(long)]
         tags: Option<String>,
-        #[arg(short = 'D', long)]
-        description: Option<String>,
+        #[arg(short = 'm', long)]
+        message: Option<String>,
         /// Comma-separated dependency IDs
         #[arg(long)]
         depends: Option<String>,
@@ -53,8 +53,8 @@ enum Command {
         priority: u8,
         #[arg(long)]
         tags: Option<String>,
-        #[arg(short = 'D', long)]
-        description: Option<String>,
+        #[arg(short = 'm', long)]
+        message: Option<String>,
         /// Comma-separated dependency IDs
         #[arg(long)]
         depends: Option<String>,
@@ -152,7 +152,7 @@ fn main() -> Result<()> {
             item_type,
             priority,
             tags,
-            description,
+            message,
             depends,
         }
         | Command::C {
@@ -160,7 +160,7 @@ fn main() -> Result<()> {
             item_type,
             priority,
             tags,
-            description,
+            message,
             depends,
         } => {
             let item_type: ItemType = item_type.parse().map_err(|e: String| anyhow::anyhow!(e))?;
@@ -176,7 +176,7 @@ fn main() -> Result<()> {
                 item_type,
                 priority,
                 tags,
-                description.unwrap_or_default(),
+                message.unwrap_or_default(),
                 dependencies,
             )?;
         }
