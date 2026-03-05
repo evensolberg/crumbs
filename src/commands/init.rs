@@ -24,7 +24,7 @@ pub fn run(dir: &Path, prefix_override: Option<String>) -> Result<()> {
             .and_then(|n| n.to_str())
             .unwrap_or("");
         let suggested = if name == "crumbs" && parent_name == "share" {
-            "glb".to_string()
+            "glob".to_string()
         } else {
             // Suggest based on the project root (parent of .crumbs), not .crumbs itself.
             suggest_prefix(dir.parent().unwrap_or(dir))

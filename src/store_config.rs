@@ -92,9 +92,9 @@ mod tests {
 
     #[test]
     fn suggest_prefix_global_fallback() {
-        // "glb" would come from the caller passing a path whose last component is "crumbs"
+        // "glob" would come from the caller passing a path whose last component is "crumbs"
         // for the global store — tested indirectly via the init command
-        assert_eq!(suggest_prefix(&PathBuf::from("glb")), "g");
+        assert_eq!(suggest_prefix(&PathBuf::from("glob")), "g");
     }
 
     #[test]

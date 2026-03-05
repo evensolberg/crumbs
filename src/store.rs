@@ -24,7 +24,7 @@ pub fn unique_path(dir: &Path, item: &Item) -> PathBuf {
 
 pub fn write_item(dir: &Path, item: &Item) -> Result<PathBuf> {
     let path = unique_path(dir, item);
-    let frontmatter = serde_yml::to_string(item).context("serialize frontmatter")?;
+    let frontmatter = serde_yaml_ng::to_string(item).context("serialize frontmatter")?;
     let body = if item.description.is_empty() {
         format!("# {}\n", item.title)
     } else {
@@ -45,7 +45,7 @@ pub fn parse_item(raw: &str) -> Result<Item> {
         .strip_prefix("---\n")
         .and_then(|s| s.split_once("\n---\n"))
         .ok_or_else(|| anyhow!("missing frontmatter delimiters"))?;
-    let mut item: Item = serde_yml::from_str(fm).context("deserialize frontmatter")?;
+    let mut item: Item = serde_yaml_ng::from_str(fm).context("deserialize frontmatter")?;
     // Extract description: body after the `# Title` heading line
     let description = body
         .trim_start_matches('\n')
@@ -113,14 +113,15 @@ pub fn reindex(dir: &Path) -> Result<()> {
 
 pub fn find_by_id(dir: &Path, id: &str) -> Result<Option<(PathBuf, Item)>> {
     let items = load_all(dir)?;
-    if let Some(found) = items.iter().find(|(_, item)| item.id == id) {
+    let id_lower = id.to_lowercase();
+    if let Some(found) = items.iter().find(|(_, item)| item.id.to_lowercase() == id_lower) {
         return Ok(Some(found.clone()));
     }
     // If the input looks like a bare suffix (no '-'), try prepending the store prefix.
     if !id.contains('-') {
         let prefix = crate::store_config::load(dir).prefix;
-        let full_id = format!("{prefix}-{id}");
-        return Ok(items.into_iter().find(|(_, item)| item.id == full_id));
+        let full_id = format!("{prefix}-{id_lower}");
+        return Ok(items.into_iter().find(|(_, item)| item.id.to_lowercase() == full_id));
     }
     Ok(None)
 }
