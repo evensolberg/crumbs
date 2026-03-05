@@ -1,0 +1,75 @@
+# cargo-deny configuration template (v0.19+)
+# https://embarkstudios.github.io/cargo-deny/
+#
+# Copy this file to your project root as `deny.toml`.
+# Add project-specific licenses to the allow list as needed.
+
+# ── Graph ────────────────────────────────────────────────────────────────────
+# Target triples to check. Empty = all targets.
+# Uncomment and add triples to limit checks to specific platforms.
+[graph]
+targets = [
+    #{ triple = "x86_64-unknown-linux-musl" },
+    #{ triple = "aarch64-apple-darwin" },
+]
+
+# ── Advisories ───────────────────────────────────────────────────────────────
+# https://embarkstudios.github.io/cargo-deny/checks/advisories/cfg.html
+[advisories]
+# Fail for unmaintained crates only when they are direct workspace deps
+# (possible values: all, workspace, transitive, none)
+unmaintained = "workspace"
+# Warn about yanked crates (possible values: deny, warn, allow)
+yanked = "warn"
+# Advisory IDs to ignore
+ignore = [
+    #"RUSTSEC-0000-0000",
+]
+
+# ── Licenses ─────────────────────────────────────────────────────────────────
+# https://embarkstudios.github.io/cargo-deny/checks/licenses/cfg.html
+#
+# Deny-by-default: only licenses in the allow list are accepted.
+# Add licenses as needed for your project's dependencies.
+[licenses]
+confidence-threshold = 0.8
+allow = [
+    "MIT",
+    "MIT-0",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "CC0-1.0",
+    "Zlib",
+    "MPL-2.0",
+]
+# Per-crate license exceptions
+exceptions = [
+    #{ allow = ["OpenSSL"], name = "ring", version = "*" },
+]
+
+[licenses.private]
+# If true, ignores workspace crates that aren't published (publish = false)
+ignore = true
+registries = []
+
+# ── Bans ─────────────────────────────────────────────────────────────────────
+# https://embarkstudios.github.io/cargo-deny/checks/bans/cfg.html
+[bans]
+# Lint level for duplicate crate versions (deny, warn, allow)
+multiple-versions = "warn"
+# Lint level for wildcard version requirements (deny, warn, allow)
+wildcards = "allow"
+# Graph highlighting for duplicate versions
+highlight = "all"
+
+# ── Sources ──────────────────────────────────────────────────────────────────
+# https://embarkstudios.github.io/cargo-deny/checks/sources/cfg.html
+[sources]
+unknown-registry = "warn"
+unknown-git = "warn"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

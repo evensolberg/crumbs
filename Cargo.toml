@@ -1,0 +1,30 @@
+[package]
+name = "crumbs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.102"
+dirs = "6"
+csv = "1.4.0"
+glob = "0.3.3"
+rand = "0.10.0"
+serde_json = "1.0.149"
+serde_yaml = "0.9.34"
+shellexpand = "3.1.2"
+slugify = "0.1.0"
+
+[dependencies.chrono]
+version = "0.4.44"
+features = ["serde"]
+
+[dependencies.clap]
+features = ["cargo", "derive", "env", "wrap_help"]
+version = "4.5.60"
+
+[dependencies.serde]
+version = "1.0.228"
+features = ["derive"]
+
+[dev-dependencies]
+tempfile = "3"

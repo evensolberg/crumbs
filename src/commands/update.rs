@@ -1,0 +1,43 @@
+use std::path::Path;
+
+use anyhow::{bail, Result};
+use chrono::Local;
+
+use crate::store;
+
+pub fn run(
+    dir: &Path,
+    id: &str,
+    status: Option<String>,
+    priority: Option<u8>,
+    tags: Option<Vec<String>>,
+) -> Result<()> {
+    match store::find_by_id(dir, id)? {
+        None => bail!("no item found with id: {id}"),
+        Some((path, mut item)) => {
+            if let Some(s) = status {
+                item.status = s.parse().map_err(|e: String| anyhow::anyhow!(e))?;
+            }
+            if let Some(p) = priority {
+                item.priority = p;
+            }
+            if let Some(t) = tags {
+                item.tags = t;
+            }
+            item.updated = Local::now().date_naive();
+
+            let frontmatter = serde_yaml::to_string(&item)?;
+            let raw = std::fs::read_to_string(&path)?;
+            let body = raw
+                .strip_prefix("---\n")
+                .and_then(|s| s.split_once("\n---\n").map(|(_, body)| body))
+                .unwrap_or("");
+            let new_content = format!("---\n{frontmatter}---\n{body}");
+            std::fs::write(&path, new_content)?;
+
+            store::reindex(dir)?;
+            println!("Updated {}", item.id);
+        }
+    }
+    Ok(())
+}
