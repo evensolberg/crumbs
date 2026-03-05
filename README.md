@@ -42,6 +42,7 @@ crumbs init --prefix myp       # skip interactive prompt, set prefix directly
 ```sh
 crumbs create 'Fix the login bug' --item-type bug --priority 1 --tags project/auth
 crumbs create 'Auth redesign' --message 'Covers login, OAuth, and session handling'
+crumbs create 'Ship it' --due 2026-04-01
 crumbs c 'Quick idea'          # shorthand
 # Tip: use single quotes to avoid shell expansion of special characters (!, $, etc.)
 ```
@@ -53,6 +54,7 @@ crumbs c 'Quick idea'          # shorthand
 | `--tags` | — | comma-separated, e.g. `project/foo,needs-review` |
 | `-m, --message` | — | freeform text stored in the markdown body |
 | `--depends` | — | comma-separated dependency IDs, e.g. `cr-abc,cr-xyz` |
+| `--due` | — | due date in `YYYY-MM-DD` format |
 
 ### List items
 
@@ -61,13 +63,24 @@ crumbs list                    # open and in-progress only
 crumbs list --all              # include closed
 crumbs list --status open
 crumbs list --tag project/auth
+crumbs list --priority 0       # show only P0 items
 ```
+
+Overdue items are flagged with `!due` in bold red. Items with a future due date show `due:YYYY-MM-DD`.
 
 ### Show an item
 
 ```sh
 crumbs show bc-x7q
 ```
+
+### Show next item
+
+```sh
+crumbs next
+```
+
+Shows the highest-priority open item (sorted by priority, then age). Useful for a quick "what should I work on?" answer.
 
 ### Update an item
 
@@ -77,7 +90,17 @@ crumbs update bc-x7q --priority 0
 crumbs update bc-x7q --tags project/auth,urgent
 crumbs update bc-x7q --type bug
 crumbs update bc-x7q --depends cr-abc,cr-xyz
+crumbs update bc-x7q --due 2026-04-01
+crumbs update bc-x7q --clear-due
 ```
+
+### Edit an item
+
+```sh
+crumbs edit bc-x7q
+```
+
+Opens the item's `.md` file in `$EDITOR` (falls back to `$VISUAL`, then `vi`). The index is rebuilt automatically after the editor exits.
 
 ### Close an item
 
@@ -92,6 +115,14 @@ crumbs close bc-x7q --reason "fixed in PR #42"
 crumbs delete cr-x7q              # delete a specific item
 crumbs delete --closed            # delete all closed items at once
 ```
+
+### Statistics
+
+```sh
+crumbs stats
+```
+
+Prints a summary of items by status, type, and priority with color coding.
 
 ### Search
 
@@ -151,6 +182,7 @@ created: 2026-03-05
 updated: 2026-03-05
 closed_reason: ""
 dependencies: []
+due: 2026-04-01     # optional
 ---
 ```
 
