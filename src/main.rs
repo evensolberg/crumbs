@@ -107,6 +107,19 @@ enum Command {
         /// Remove the due date
         #[arg(long)]
         clear_due: bool,
+        /// Replace the item description
+        #[arg(short = 'm', long)]
+        message: Option<String>,
+    },
+    /// Add or remove blocks/blocked-by relationships between items
+    Link {
+        id: String,
+        /// Relationship direction: "blocks" or "blocked-by"
+        relation: String,
+        target: String,
+        /// Remove the link instead of adding it
+        #[arg(long)]
+        remove: bool,
     },
     /// Close an item
     Close {
@@ -243,6 +256,7 @@ fn main() -> Result<()> {
             depends,
             due,
             clear_due,
+            message,
         } => {
             let tags = tags.map(|t| t.split(',').map(|s| s.trim().to_string()).collect());
             let dependencies =
@@ -257,7 +271,16 @@ fn main() -> Result<()> {
                 dependencies,
                 due,
                 clear_due,
+                message,
             )?;
+        }
+        Command::Link {
+            id,
+            relation,
+            target,
+            remove,
+        } => {
+            commands::link::run(&dir, &id, &relation, &target, remove)?;
         }
         Command::Close { id, reason } => {
             commands::close::run(&dir, &id, reason)?;

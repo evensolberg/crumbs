@@ -92,7 +92,18 @@ crumbs update bc-x7q --type bug
 crumbs update bc-x7q --depends cr-abc,cr-xyz
 crumbs update bc-x7q --due 2026-04-01
 crumbs update bc-x7q --clear-due
+crumbs update bc-x7q --message 'Now includes OAuth flow'
 ```
+
+### Link items
+
+```sh
+crumbs link bc-x7q blocks bc-y8r      # bc-x7q blocks bc-y8r (bidirectional)
+crumbs link bc-x7q blocked-by bc-z9s  # bc-x7q is blocked by bc-z9s
+crumbs link bc-x7q blocks bc-y8r --remove  # remove the link
+```
+
+Both items are updated atomically. `show` displays `Blocks:` and `Blocked:` rows when non-empty.
 
 ### Edit an item
 

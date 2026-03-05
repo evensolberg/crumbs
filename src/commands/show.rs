@@ -33,7 +33,10 @@ pub fn run(dir: &Path, id: &str) -> Result<()> {
                 if due < today {
                     println!(
                         "  Due:      {}",
-                        Style::new().red().bold().apply_to(format!("{due} (overdue)"))
+                        Style::new()
+                            .red()
+                            .bold()
+                            .apply_to(format!("{due} (overdue)"))
                     );
                 } else {
                     println!("  Due:      {due}");
@@ -49,6 +52,15 @@ pub fn run(dir: &Path, id: &str) -> Result<()> {
             }
             if !item.dependencies.is_empty() {
                 println!("  Deps:     {}", item.dependencies.join(", "));
+            }
+            if !item.blocks.is_empty() {
+                println!("  Blocks:   {}", item.blocks.join(", "));
+            }
+            if !item.blocked_by.is_empty() {
+                println!(
+                    "  Blocked:  {}",
+                    Style::new().red().apply_to(item.blocked_by.join(", "))
+                );
             }
             if !item.description.is_empty() {
                 println!();

@@ -145,6 +145,8 @@ mod tests {
             updated: NaiveDate::from_ymd_opt(2026, 3, 1).unwrap(),
             closed_reason: String::new(),
             dependencies: Vec::new(),
+            blocks: Vec::new(),
+            blocked_by: Vec::new(),
             due: None,
             description: String::new(),
         }

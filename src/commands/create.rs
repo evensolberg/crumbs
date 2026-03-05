@@ -34,6 +34,8 @@ pub fn run(
         updated: today,
         closed_reason: String::new(),
         dependencies,
+        blocks: Vec::new(),
+        blocked_by: Vec::new(),
         due,
         description,
     };
