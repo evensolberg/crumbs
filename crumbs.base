@@ -1,13 +1,11 @@
 filters:
   and:
-    - 'file.ext == "md"'
-    - 'file.basename != "index"'
-
+    - file.hasProperty("id")
+    - file.hasProperty("status")
 formulas:
-  days_until_due: 'if(due, ((date(due) - today()) / 86400000).round(0), "")'
-  overdue: 'if(due, date(due) < today() && status != "closed", false)'
-  priority_label: 'if(priority == 0, "P0 Critical", if(priority == 1, "P1 High", if(priority == 2, "P2 Normal", if(priority == 3, "P3 Low", "P4 Backlog"))))'
-
+  days_until_due: if(due, ((date(due) - today()) / 86400000).round(0), "")
+  overdue: if(due, date(due) < today() && status != "closed", false)
+  priority_label: if(priority == 0, "P0 Critical", if(priority == 1, "P1 High", if(priority == 2, "P2 Normal", if(priority == 3, "P3 Low", "P4 Backlog"))))
 properties:
   id:
     displayName: ID
@@ -33,14 +31,16 @@ properties:
     displayName: Days Until Due
   formula.priority_label:
     displayName: Priority
-
 views:
   - type: table
     name: Open
     filters:
       or:
-        - 'status == "open"'
-        - 'status == "in_progress"'
+        - status == "open"
+        - status == "in_progress"
+    groupBy:
+      property: status
+      direction: ASC
     order:
       - id
       - title
@@ -50,12 +50,11 @@ views:
       - tags
       - due
       - formula.days_until_due
+  - type: table
+    name: All Items
     groupBy:
       property: status
       direction: ASC
-
-  - type: table
-    name: All Items
     order:
       - id
       - title
@@ -66,15 +65,11 @@ views:
       - due
       - created
       - updated
-    groupBy:
-      property: status
-      direction: ASC
-
   - type: table
     name: Overdue
     filters:
       and:
-        - 'formula.overdue == true'
+        - formula.overdue == true
     order:
       - id
       - title
@@ -82,12 +77,11 @@ views:
       - due
       - formula.days_until_due
       - status
-
   - type: table
     name: Closed
     filters:
       and:
-        - 'status == "closed"'
+        - status == "closed"
     order:
       - id
       - title

@@ -12,9 +12,7 @@ pub fn run(dir: &Path, id: &str) -> Result<()> {
     match store::find_by_id(dir, id)? {
         None => bail!("no item found with id: {id}"),
         Some((path, _)) => {
-            let status = std::process::Command::new(&editor)
-                .arg(&path)
-                .status()?;
+            let status = std::process::Command::new(&editor).arg(&path).status()?;
             if !status.success() {
                 bail!("editor exited with status: {status}");
             }

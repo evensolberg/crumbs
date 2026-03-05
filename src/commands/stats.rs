@@ -3,7 +3,10 @@ use std::path::Path;
 use anyhow::Result;
 use console::Style;
 
-use crate::{item::{ItemType, Status}, store};
+use crate::{
+    item::{ItemType, Status},
+    store,
+};
 
 pub fn run(dir: &Path) -> Result<()> {
     let items = store::load_all(dir)?;
@@ -14,16 +17,28 @@ pub fn run(dir: &Path) -> Result<()> {
     }
 
     let total = items.len();
-    let open = items.iter().filter(|(_, i)| i.status == Status::Open).count();
-    let in_progress = items.iter().filter(|(_, i)| i.status == Status::InProgress).count();
-    let closed = items.iter().filter(|(_, i)| i.status == Status::Closed).count();
+    let open = items
+        .iter()
+        .filter(|(_, i)| i.status == Status::Open)
+        .count();
+    let in_progress = items
+        .iter()
+        .filter(|(_, i)| i.status == Status::InProgress)
+        .count();
+    let closed = items
+        .iter()
+        .filter(|(_, i)| i.status == Status::Closed)
+        .count();
 
     let bold = Style::new().bold();
     let dim = Style::new().dim();
 
     println!("{}", bold.apply_to("Status"));
     println!("  ○ Open:        {open}");
-    println!("  {} In Progress:  {in_progress}", Style::new().yellow().apply_to("●"));
+    println!(
+        "  {} In Progress:  {in_progress}",
+        Style::new().yellow().apply_to("●")
+    );
     println!("  {} Closed:       {closed}", dim.apply_to("✓"));
     println!("  {} Total:        {total}", bold.apply_to("∑"));
 
@@ -36,7 +51,10 @@ pub fn run(dir: &Path) -> Result<()> {
         (ItemType::Task, Style::new()),
         (ItemType::Idea, Style::new().dim()),
     ] {
-        let count = items.iter().filter(|(_, i)| i.item_type == type_name).count();
+        let count = items
+            .iter()
+            .filter(|(_, i)| i.item_type == type_name)
+            .count();
         if count > 0 {
             println!("  {:<12} {count}", style.apply_to(format!("{type_name}:")));
         }
