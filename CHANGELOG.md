@@ -8,6 +8,14 @@ All notable changes to this project will be documented in this file.
 
 - Close completed crumbs, update changelog, reformat main.rs
 
+## [0.6.1] - 2026-03-06
+
+### Fix
+
+- `move --to` and `--to-global` are now mutually required/exclusive at
+  parse time (clap enforcement, not runtime bail)
+- Same for `import --from` and `--from-global`
+
 ## [0.6.0] - 2026-03-06
 
 ### Feat
