@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
+## [0.5.3] - 2026-03-05
 
 ### Chore
 
@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Simplify releasea recipe
 - Remove Obsidian Base file
 - Attach crumbs.skill to GitHub releases via publish recipe
+- Bump version to 0.5.3
 
 ### Docs
 

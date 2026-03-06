@@ -281,10 +281,8 @@ fn main() -> Result<()> {
             targets,
             remove,
         } => {
-            let target_ids: Vec<String> = targets
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .collect();
+            let target_ids: Vec<String> =
+                targets.split(',').map(|s| s.trim().to_string()).collect();
             commands::link::run(&dir, &id, &relation, &target_ids, remove)?;
         }
         Command::Close { id, reason } => {

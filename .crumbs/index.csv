@@ -1,21 +1,2 @@
 id,title,status,type,priority,tags,created,updated,closed_reason
-cr-1ke,Add --description flag to create command,closed,feature,3,project/crumbs,2026-03-04,2026-03-05,Implemented in v0.1.5
-cr-1ph,link command: explicit blocks/blocked-by relationships,closed,feature,3,,2026-03-05,2026-03-05,Implemented in v0.5.1: bidirectional blocks/blocked-by with link command
-cr-6bs,Should closed crumbs have a -closed ending to their filename so it is easy for a human to tell?,closed,task,2,,2026-03-04,2026-03-05,won't do — rename-on-close breaks git history continuity; use crumbs list --status closed instead
-cr-9qh,Add --version flag to CLI,closed,feature,2,project/crumbs,2026-03-04,2026-03-04,Implemented via #[command(version)] in clap derive macro in v0.1.4
-cr-9rj,crumbs show without a prefix assumes the current folder and prepends the prefix before attempting to show,closed,task,2,,2026-03-05,2026-03-05,implemented via prefix fallback in find_by_id
-cr-bgs,list --priority filter,closed,feature,2,,2026-03-05,2026-03-05,implemented
-cr-cbf,edit command: open item in $EDITOR,closed,feature,1,,2026-03-05,2026-03-05,implemented
-cr-cnc,"Need to be able to delete crumbs, not just close them.",closed,feature,2,,2026-03-04,2026-03-05,delete command implemented with --closed flag for bulk cleanup
-cr-d6l,Need to change the crumbs ID to somethis project related or global.,closed,task,2,,2026-03-04,2026-03-05,"Implemented: prefix stored in .crumbs/config.toml, suggested from dir name on init, changeable via --prefix"
-cr-enf,Need to be able to specify dependencies by ID,closed,feature,2,,2026-03-04,2026-03-05,implemented: --depends on create and update; show displays resolved deps
-cr-hts,Update readme to include init --global,closed,task,2,,2026-03-05,2026-03-05,README updated with init --global section
-cr-izv,due dates: --due flag on create/update with overdue highlighting,closed,feature,3,,2026-03-05,2026-03-05,implemented
-cr-jmp,Add shell completions,closed,feature,4,project/crumbs,2026-03-04,2026-03-05,implemented via clap_complete; crumbs completions zsh|bash|fish
-cr-kg8,update needs to be able to set the type,closed,task,1,,2026-03-04,2026-03-05,Implemented --type/-t flag on update command
-cr-lqo,"export command: dump items to CSV, JSON, or TOON",closed,feature,3,,2026-03-05,2026-03-05,"Implemented in v0.5.0: csv, json, toon via serde_toon_format crate"
-cr-tc3,next command: show highest-priority open item,closed,feature,2,,2026-03-05,2026-03-05,implemented
-cr-tke,crumbs update doesn't support -m or --message,closed,bug,1,,2026-03-05,2026-03-05,Implemented in v0.5.1: --message flag added to update command
-cr-u86,"Need flags for all user-settable properties like priority, type, etc",closed,task,2,,2026-03-04,2026-03-04,
-cr-wf3,stats command: summary by status and type,closed,feature,2,,2026-03-05,2026-03-05,implemented
-cr-xwu,Need better error messages if used in a non-initialized directory.,closed,feature,2,,2026-03-04,2026-03-05,implemented: bail with helpful message if store dir missing
+cr-1f0,"What happens if I try to create a crumb in a non-initialized drectory? It should go to global then, so at least it is caputred and can potentially be moved later.",open,task,2,,2026-03-05,2026-03-05,
