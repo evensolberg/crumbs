@@ -27,7 +27,8 @@ pub fn run(
     let filtered: Vec<_> = items
         .iter()
         .filter(|(_, item)| {
-            // By default hide closed items unless --all or an explicit status filter is given
+            // By default hide closed items unless --all or an explicit status filter is given.
+            // Blocked and deferred items remain visible by default.
             if !all && status_filter_parsed.is_none() && item.status == Status::Closed {
                 return false;
             }

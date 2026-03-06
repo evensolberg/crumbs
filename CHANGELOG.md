@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [unreleased]
+
+### Chore
+
+- Close completed crumbs, update changelog, reformat main.rs
+
+## [0.6.0] - 2026-03-06
+
+### Feat
+
+- Add `blocked` and `deferred` status variants with distinct icons (⊘, ◷)
+- Add `block` subcommand: links items and sets blocked status on targets;
+  `--remove` unlinks and reopens targets when no other blockers remain
+- Add `defer` subcommand: sets status to deferred; `--reopen` restores open
+- Add `move` subcommand: moves an item to another store with a new ID
+- Add `import` subcommand: pulls an item from another store into this one
+- `link blocks` now auto-sets blocked status on targets; unlinking
+  auto-restores open when no other blockers remain
+
+## [0.5.4] - 2026-03-06
+
+### Fix
+
+- Robustness and security improvements (v0.5.4)
+
 ## [0.5.3] - 2026-03-05
 
 ### Chore

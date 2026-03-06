@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 pub enum Status {
     Open,
     InProgress,
+    Blocked,
+    Deferred,
     Closed,
 }
 
@@ -14,6 +16,8 @@ impl std::fmt::Display for Status {
         match self {
             Self::Open => write!(f, "open"),
             Self::InProgress => write!(f, "in_progress"),
+            Self::Blocked => write!(f, "blocked"),
+            Self::Deferred => write!(f, "deferred"),
             Self::Closed => write!(f, "closed"),
         }
     }
@@ -25,6 +29,8 @@ impl std::str::FromStr for Status {
         match s {
             "open" => Ok(Self::Open),
             "in_progress" | "in-progress" => Ok(Self::InProgress),
+            "blocked" => Ok(Self::Blocked),
+            "deferred" => Ok(Self::Deferred),
             "closed" => Ok(Self::Closed),
             other => Err(format!("unknown status: {other}")),
         }
@@ -104,6 +110,8 @@ mod tests {
     fn status_display() {
         assert_eq!(Status::Open.to_string(), "open");
         assert_eq!(Status::InProgress.to_string(), "in_progress");
+        assert_eq!(Status::Blocked.to_string(), "blocked");
+        assert_eq!(Status::Deferred.to_string(), "deferred");
         assert_eq!(Status::Closed.to_string(), "closed");
     }
 
@@ -112,6 +120,8 @@ mod tests {
         assert_eq!("open".parse::<Status>().unwrap(), Status::Open);
         assert_eq!("in_progress".parse::<Status>().unwrap(), Status::InProgress);
         assert_eq!("in-progress".parse::<Status>().unwrap(), Status::InProgress);
+        assert_eq!("blocked".parse::<Status>().unwrap(), Status::Blocked);
+        assert_eq!("deferred".parse::<Status>().unwrap(), Status::Deferred);
         assert_eq!("closed".parse::<Status>().unwrap(), Status::Closed);
     }
 
@@ -124,7 +134,7 @@ mod tests {
 
     #[test]
     fn status_round_trip() {
-        for s in [Status::Open, Status::InProgress, Status::Closed] {
+        for s in [Status::Open, Status::InProgress, Status::Blocked, Status::Deferred, Status::Closed] {
             assert_eq!(s.to_string().parse::<Status>().unwrap(), s);
         }
     }

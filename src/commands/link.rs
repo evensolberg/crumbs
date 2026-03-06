@@ -3,7 +3,7 @@ use std::path::Path;
 use anyhow::{Result, bail};
 use chrono::Local;
 
-use crate::store;
+use crate::{item::Status, store};
 
 fn update_item_file(path: &std::path::PathBuf, item: &crate::item::Item) -> Result<()> {
     let frontmatter = serde_yaml_ng::to_string(item)?;
@@ -38,6 +38,10 @@ pub fn run(
                 if remove {
                     src_item.blocks.retain(|id| id != &tgt_item.id);
                     tgt_item.blocked_by.retain(|id| id != &src_item.id);
+                    // Reopen target if nothing else blocks it.
+                    if tgt_item.blocked_by.is_empty() && tgt_item.status == Status::Blocked {
+                        tgt_item.status = Status::Open;
+                    }
                 } else {
                     if !src_item.blocks.contains(&tgt_item.id) {
                         src_item.blocks.push(tgt_item.id.clone());
@@ -45,12 +49,17 @@ pub fn run(
                     if !tgt_item.blocked_by.contains(&src_item.id) {
                         tgt_item.blocked_by.push(src_item.id.clone());
                     }
+                    tgt_item.status = Status::Blocked;
                 }
             }
             "blocked-by" => {
                 if remove {
                     src_item.blocked_by.retain(|id| id != &tgt_item.id);
                     tgt_item.blocks.retain(|id| id != &src_item.id);
+                    // Reopen source if nothing else blocks it.
+                    if src_item.blocked_by.is_empty() && src_item.status == Status::Blocked {
+                        src_item.status = Status::Open;
+                    }
                 } else {
                     if !src_item.blocked_by.contains(&tgt_item.id) {
                         src_item.blocked_by.push(tgt_item.id.clone());
@@ -58,6 +67,7 @@ pub fn run(
                     if !tgt_item.blocks.contains(&src_item.id) {
                         tgt_item.blocks.push(src_item.id.clone());
                     }
+                    src_item.status = Status::Blocked;
                 }
             }
             other => bail!("unknown relation: {other} (expected 'blocks' or 'blocked-by')"),

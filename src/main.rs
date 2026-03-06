@@ -111,6 +111,45 @@ enum Command {
         #[arg(short = 'm', long)]
         message: Option<String>,
     },
+    /// Mark an item as blocking others (links + sets blocked status on targets)
+    Block {
+        /// The item that is doing the blocking
+        id: String,
+        /// Comma-separated IDs of items being blocked (omit to mark <id> itself as blocked)
+        targets: Option<String>,
+        /// Remove the blocking relationship (and reopen targets if unblocked)
+        #[arg(long)]
+        remove: bool,
+    },
+    /// Defer an item (or reopen a deferred item)
+    Defer {
+        id: String,
+        /// Reopen a deferred item (set status back to open)
+        #[arg(long)]
+        reopen: bool,
+    },
+    /// Move an item to a different store (assigns a new ID)
+    Move {
+        /// ID of the item to move
+        id: String,
+        /// Destination store directory
+        #[arg(long)]
+        to: Option<std::path::PathBuf>,
+        /// Move to the global store
+        #[arg(long)]
+        to_global: bool,
+    },
+    /// Import an item from another store into the current store
+    Import {
+        /// Full ID of the item to import (e.g. glob-x7q)
+        id: String,
+        /// Source store directory (default: global store)
+        #[arg(long)]
+        from: Option<PathBuf>,
+        /// Import from the global store (default if no --from given)
+        #[arg(long)]
+        from_global: bool,
+    },
     /// Add or remove blocks/blocked-by relationships between items
     Link {
         id: String,
@@ -274,6 +313,31 @@ fn main() -> Result<()> {
                 clear_due,
                 message,
             )?;
+        }
+        Command::Block { id, targets, remove } => {
+            if let Some(targets) = targets {
+                let target_ids: Vec<String> =
+                    targets.split(',').map(|s| s.trim().to_string()).collect();
+                commands::block::run(&dir, &id, &target_ids, remove)?;
+            } else {
+                commands::block::run_set(&dir, &id)?;
+            }
+        }
+        Command::Defer { id, reopen } => {
+            commands::defer::run(&dir, &id, reopen)?;
+        }
+        Command::Move { id, to, to_global } => {
+            let dst = if let Some(path) = to {
+                path
+            } else if to_global {
+                config::global_dir()
+            } else {
+                anyhow::bail!("provide --to <dir> or --to-global");
+            };
+            commands::move_::run(&dir, &id, &dst)?;
+        }
+        Command::Import { id, from, from_global } => {
+            commands::move_::run_import(&dir, &id, from.as_deref(), from_global)?;
         }
         Command::Link {
             id,

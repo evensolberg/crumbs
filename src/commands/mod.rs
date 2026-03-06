@@ -1,11 +1,14 @@
+pub mod block;
 pub mod close;
 pub mod create;
+pub mod defer;
 pub mod delete;
 pub mod edit;
 pub mod export;
 pub mod init;
 pub mod link;
 pub mod list;
+pub mod move_;
 pub mod next;
 pub mod reindex;
 pub mod search;

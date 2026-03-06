@@ -26,6 +26,8 @@ pub fn status_icon(s: &Status) -> &'static str {
     match s {
         Status::Open => "○",
         Status::InProgress => "●",
+        Status::Blocked => "⊘",
+        Status::Deferred => "◷",
         Status::Closed => "✓",
     }
 }
@@ -35,6 +37,8 @@ pub fn status_icon_styled(s: &Status) -> String {
     match s {
         Status::Open => icon.to_string(),
         Status::InProgress => Style::new().yellow().apply_to(icon).to_string(),
+        Status::Blocked => Style::new().red().apply_to(icon).to_string(),
+        Status::Deferred => Style::new().dim().apply_to(icon).to_string(),
         Status::Closed => Style::new().dim().apply_to(icon).to_string(),
     }
 }
