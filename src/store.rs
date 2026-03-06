@@ -1,3 +1,4 @@
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, anyhow};
@@ -5,25 +6,35 @@ use slugify::slugify;
 
 use crate::item::Item;
 
+/// Atomically overwrite `path` with `content`.
+///
+/// Writes to a sibling temp file then renames, so a mid-write crash or kill
+/// leaves the original file intact.
+pub fn atomic_write(path: &Path, content: &str) -> Result<()> {
+    let dir = path.parent().context("item path has no parent directory")?;
+    let mut tmp = tempfile::NamedTempFile::new_in(dir).context("create temp file")?;
+    tmp.write_all(content.as_bytes())
+        .context("write temp file")?;
+    tmp.flush().context("flush temp file")?;
+    tmp.persist(path)
+        .map_err(|e| e.error)
+        .context("rename temp file")?;
+    Ok(())
+}
+
 pub fn item_path(dir: &Path, item: &Item) -> PathBuf {
     let slug = slugify!(&item.title, max_length = 60);
     dir.join(format!("{slug}.md"))
 }
 
-/// Resolve a unique file path, appending the ID suffix on collision.
-pub fn unique_path(dir: &Path, item: &Item) -> PathBuf {
-    let base = item_path(dir, item);
-    if !base.exists() {
-        return base;
-    }
+/// Build the fallback path (slug + ID suffix) used when the base slug collides.
+fn fallback_path(dir: &Path, item: &Item) -> PathBuf {
     let slug = slugify!(&item.title, max_length = 50);
-    // Strip the prefix (everything up to and including the first '-')
     let id_suffix = item.id.split_once('-').map(|x| x.1).unwrap_or(&item.id);
     dir.join(format!("{slug}-{id_suffix}.md"))
 }
 
 pub fn write_item(dir: &Path, item: &Item) -> Result<PathBuf> {
-    let path = unique_path(dir, item);
     let frontmatter = serde_yaml_ng::to_string(item).context("serialize frontmatter")?;
     let body = if item.description.is_empty() {
         format!("# {}\n", item.title)
@@ -31,7 +42,33 @@ pub fn write_item(dir: &Path, item: &Item) -> Result<PathBuf> {
         format!("# {}\n\n{}\n", item.title, item.description.trim())
     };
     let content = format!("---\n{frontmatter}---\n\n{body}");
-    std::fs::write(&path, content).context("write item file")?;
+
+    // Use create_new(true) for an atomic exclusive create, avoiding a TOCTOU
+    // race between an existence check and the write.  On collision fall back to
+    // the ID-suffixed path.
+    let base = item_path(dir, item);
+    let path = match std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&base)
+    {
+        Ok(mut f) => {
+            f.write_all(content.as_bytes()).context("write item file")?;
+            base
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+            let fallback = fallback_path(dir, item);
+            std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&fallback)
+                .context("write item file (fallback path)")?
+                .write_all(content.as_bytes())
+                .context("write item file (fallback path)")?;
+            fallback
+        }
+        Err(e) => return Err(e).context("write item file"),
+    };
     Ok(path)
 }
 
@@ -46,14 +83,19 @@ pub fn parse_item(raw: &str) -> Result<Item> {
         .and_then(|s| s.split_once("\n---\n"))
         .ok_or_else(|| anyhow!("missing frontmatter delimiters"))?;
     let mut item: Item = serde_yaml_ng::from_str(fm).context("deserialize frontmatter")?;
-    // Extract description: body after the `# Title` heading line
-    let description = body
-        .trim_start_matches('\n')
-        .split_once('\n')
-        .map(|x| x.1)
-        .unwrap_or("")
-        .trim_matches('\n')
-        .to_string();
+    // The body must start with `# <title>` (possibly preceded by a blank line).
+    // We verify the heading matches and extract everything after it as the
+    // description, so hand-edits that remove the heading are detected early.
+    let body_trimmed = body.trim_start_matches('\n');
+    let (heading_line, rest) = body_trimmed.split_once('\n').unwrap_or((body_trimmed, ""));
+    let expected_heading = format!("# {}", item.title);
+    if heading_line != expected_heading {
+        eprintln!(
+            "warning: body heading {:?} does not match title {:?}; description may be incomplete",
+            heading_line, item.title
+        );
+    }
+    let description = rest.trim_matches('\n').to_string();
     if !description.is_empty() {
         item.description = description;
     }
@@ -62,18 +104,22 @@ pub fn parse_item(raw: &str) -> Result<Item> {
 
 pub fn load_all(dir: &Path) -> Result<Vec<(PathBuf, Item)>> {
     let mut items = Vec::new();
+    let mut skipped = 0usize;
     for entry in std::fs::read_dir(dir).context("read dir")? {
         let entry: std::fs::DirEntry = entry?;
         let path = entry.path();
         if path.extension().and_then(|e: &std::ffi::OsStr| e.to_str()) == Some("md") {
-            if path.file_name().and_then(|n: &std::ffi::OsStr| n.to_str()) == Some("index.csv") {
-                continue;
-            }
             match read_item(&path) {
                 Ok(item) => items.push((path, item)),
-                Err(e) => eprintln!("warning: skipping {}: {e}", path.display()),
+                Err(e) => {
+                    eprintln!("warning: skipping {}: {e}", path.display());
+                    skipped += 1;
+                }
             }
         }
+    }
+    if skipped > 0 {
+        eprintln!("warning: {skipped} item(s) skipped due to parse errors");
     }
     items.sort_by(|a, b| a.1.id.cmp(&b.1.id));
     Ok(items)
@@ -114,14 +160,19 @@ pub fn reindex(dir: &Path) -> Result<()> {
 pub fn find_by_id(dir: &Path, id: &str) -> Result<Option<(PathBuf, Item)>> {
     let items = load_all(dir)?;
     let id_lower = id.to_lowercase();
-    if let Some(found) = items.iter().find(|(_, item)| item.id.to_lowercase() == id_lower) {
+    if let Some(found) = items
+        .iter()
+        .find(|(_, item)| item.id.to_lowercase() == id_lower)
+    {
         return Ok(Some(found.clone()));
     }
     // If the input looks like a bare suffix (no '-'), try prepending the store prefix.
     if !id.contains('-') {
         let prefix = crate::store_config::load(dir).prefix;
         let full_id = format!("{prefix}-{id_lower}");
-        return Ok(items.into_iter().find(|(_, item)| item.id.to_lowercase() == full_id));
+        return Ok(items
+            .into_iter()
+            .find(|(_, item)| item.id.to_lowercase() == full_id));
     }
     Ok(None)
 }
@@ -202,16 +253,16 @@ mod tests {
     }
 
     #[test]
-    fn unique_path_collision_appends_id() {
+    fn write_item_collision_uses_fallback_path() {
         let dir = tempdir().unwrap();
         let item = sample_item("bc-col", "Collision Title");
-        // Write once to create the base slug file
-        write_item(dir.path(), &item).unwrap();
-        // Second call should produce a different path
-        let p1 = item_path(dir.path(), &item);
-        let p2 = unique_path(dir.path(), &item);
+        // Write once to occupy the base slug path.
+        let p1 = write_item(dir.path(), &item).unwrap();
+        // A second item with the same title gets a different file.
+        let item2 = sample_item("bc-c2x", "Collision Title");
+        let p2 = write_item(dir.path(), &item2).unwrap();
         assert_ne!(p1, p2);
-        assert!(p2.to_string_lossy().contains("col"));
+        assert!(p2.to_string_lossy().contains("c2x"));
     }
 
     // --- load_all ---

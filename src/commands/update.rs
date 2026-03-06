@@ -61,9 +61,9 @@ pub fn run(
             } else {
                 body.to_string()
             };
-            let frontmatter = serde_yml::to_string(&item)?;
+            let frontmatter = serde_yaml_ng::to_string(&item)?;
             let new_content = format!("---\n{frontmatter}---\n{new_body}");
-            std::fs::write(&path, new_content)?;
+            store::atomic_write(&path, &new_content)?;
 
             store::reindex(dir)?;
             println!("Updated {}", item.id);

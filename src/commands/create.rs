@@ -23,8 +23,16 @@ pub fn run(
 ) -> Result<()> {
     let today = Local::now().date_naive();
     let prefix = store_config::load(dir).prefix;
+    // Collect existing IDs so we can guarantee uniqueness.
+    let existing_ids: std::collections::HashSet<String> = store::load_all(dir)
+        .unwrap_or_default()
+        .into_iter()
+        .map(|(_, i)| i.id.to_lowercase())
+        .collect();
     let item = Item {
-        id: id::generate(&prefix),
+        id: id::generate(&prefix, |candidate| {
+            existing_ids.contains(&candidate.to_lowercase())
+        })?,
         title,
         status: Status::Open,
         item_type,

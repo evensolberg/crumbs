@@ -13,19 +13,29 @@ pub fn run(
     priority_filter: Option<u8>,
     all: bool,
 ) -> Result<()> {
+    // Validate the status filter up front so a typo surfaces as an error
+    // rather than silently returning "No items found."
+    let status_filter_parsed: Option<Status> = match status_filter {
+        None => None,
+        Some(s) => Some(
+            s.parse()
+                .map_err(|e: String| anyhow::anyhow!("invalid --status value: {e}"))?,
+        ),
+    };
+
     let items = store::load_all(dir)?;
     let filtered: Vec<_> = items
         .iter()
         .filter(|(_, item)| {
             // By default hide closed items unless --all or an explicit status filter is given
-            if !all && status_filter.is_none() && item.status == Status::Closed {
+            if !all && status_filter_parsed.is_none() && item.status == Status::Closed {
                 return false;
             }
-            if let Some(s) = status_filter {
-                let parsed: Result<Status, _> = s.parse();
-                if parsed.ok().as_ref() != Some(&item.status) {
-                    return false;
-                }
+            if status_filter_parsed
+                .as_ref()
+                .is_some_and(|s| s != &item.status)
+            {
+                return false;
             }
             if let Some(tag) = tag_filter
                 && !item.tags.iter().any(|t| t.contains(tag))

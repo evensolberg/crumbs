@@ -240,7 +240,7 @@ dependencies = [
 
 [[package]]
 name = "crumbs"
-version = "0.5.3"
+version = "0.5.4"
 dependencies = [
  "anyhow",
  "chrono",
@@ -255,6 +255,7 @@ dependencies = [
  "serde_json",
  "serde_toon_format",
  "serde_yaml_ng",
+ "shell-words",
  "slugify",
  "tempfile",
  "toml",

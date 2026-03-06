@@ -6,17 +6,23 @@ use chrono::Local;
 use crate::store;
 
 fn update_item_file(path: &std::path::PathBuf, item: &crate::item::Item) -> Result<()> {
-    let frontmatter = serde_yml::to_string(item)?;
+    let frontmatter = serde_yaml_ng::to_string(item)?;
     let raw = std::fs::read_to_string(path)?;
     let body = raw
         .strip_prefix("---\n")
         .and_then(|s| s.split_once("\n---\n").map(|(_, body)| body))
         .unwrap_or("");
-    std::fs::write(path, format!("---\n{frontmatter}---\n{body}"))?;
+    store::atomic_write(path, &format!("---\n{frontmatter}---\n{body}"))?;
     Ok(())
 }
 
-pub fn run(dir: &Path, source_id: &str, relation: &str, target_ids: &[String], remove: bool) -> Result<()> {
+pub fn run(
+    dir: &Path,
+    source_id: &str,
+    relation: &str,
+    target_ids: &[String],
+    remove: bool,
+) -> Result<()> {
     let (src_path, mut src_item) = store::find_by_id(dir, source_id)?
         .ok_or_else(|| anyhow::anyhow!("no item found with id: {source_id}"))?;
 
