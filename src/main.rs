@@ -133,21 +133,21 @@ enum Command {
         /// ID of the item to move
         id: String,
         /// Destination store directory
-        #[arg(long)]
+        #[arg(long, conflicts_with = "to_global", required_unless_present = "to_global")]
         to: Option<std::path::PathBuf>,
         /// Move to the global store
-        #[arg(long)]
+        #[arg(long, conflicts_with = "to", required_unless_present = "to")]
         to_global: bool,
     },
     /// Import an item from another store into the current store
     Import {
         /// Full ID of the item to import (e.g. glob-x7q)
         id: String,
-        /// Source store directory (default: global store)
-        #[arg(long)]
+        /// Source store directory
+        #[arg(long, conflicts_with = "from_global", required_unless_present = "from_global")]
         from: Option<PathBuf>,
-        /// Import from the global store (default if no --from given)
-        #[arg(long)]
+        /// Import from the global store
+        #[arg(long, conflicts_with = "from", required_unless_present = "from")]
         from_global: bool,
     },
     /// Add or remove blocks/blocked-by relationships between items
@@ -314,7 +314,11 @@ fn main() -> Result<()> {
                 message,
             )?;
         }
-        Command::Block { id, targets, remove } => {
+        Command::Block {
+            id,
+            targets,
+            remove,
+        } => {
             if let Some(targets) = targets {
                 let target_ids: Vec<String> =
                     targets.split(',').map(|s| s.trim().to_string()).collect();
@@ -329,14 +333,17 @@ fn main() -> Result<()> {
         Command::Move { id, to, to_global } => {
             let dst = if let Some(path) = to {
                 path
-            } else if to_global {
-                config::global_dir()
             } else {
-                anyhow::bail!("provide --to <dir> or --to-global");
+                debug_assert!(to_global);
+                config::global_dir()
             };
             commands::move_::run(&dir, &id, &dst)?;
         }
-        Command::Import { id, from, from_global } => {
+        Command::Import {
+            id,
+            from,
+            from_global,
+        } => {
             commands::move_::run_import(&dir, &id, from.as_deref(), from_global)?;
         }
         Command::Link {
