@@ -2,46 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
+## [0.6.3] - 2026-03-06
+
+### Fix
+
+- Hide `--dir`/`--global` from `-h` (short help) but keep them visible
+  in `--help` and in subcommand `--help` output
 
 ## [0.6.2] - 2026-03-06
 
 ### Fix
 
-- Replace `--to-global`/`--from-global` boolean flags on `move`/`import`
-  with the keyword `"global"` passed to `--to`/`--from`, eliminating the
-  confusing boolean sidecar flags
-- Add `skills/SKILL.md` as the source-of-truth for the packaged skill
-
-### Docs
-
-- Update README and skill with new block/defer/move/import commands
-- Document `blocked` and `deferred` statuses in schema section
-
-### Chore
-
-- Close completed crumbs, update changelog, reformat main.rs
+- Use 'global' keyword for --to/--from; add skills/SKILL.md (v0.6.2)
 
 ## [0.6.1] - 2026-03-06
 
 ### Fix
 
-- `move --to` and `--to-global` are now mutually required/exclusive at
-  parse time (clap enforcement, not runtime bail)
-- Same for `import --from` and `--from-global`
+- Make --to/--to-global and --from/--from-global mutually required
+- Enforce --to/--from flags at parse time, bump to v0.6.1
 
 ## [0.6.0] - 2026-03-06
 
+### Chore
+
+- Close completed crumbs, update changelog, reformat main.rs
+
 ### Feat
 
-- Add `blocked` and `deferred` status variants with distinct icons (⊘, ◷)
-- Add `block` subcommand: links items and sets blocked status on targets;
-  `--remove` unlinks and reopens targets when no other blockers remain
-- Add `defer` subcommand: sets status to deferred; `--reopen` restores open
-- Add `move` subcommand: moves an item to another store with a new ID
-- Add `import` subcommand: pulls an item from another store into this one
-- `link blocks` now auto-sets blocked status on targets; unlinking
-  auto-restores open when no other blockers remain
+- Add blocked/deferred statuses and block/defer/move/import (v0.6.0)
 
 ## [0.5.4] - 2026-03-06
 

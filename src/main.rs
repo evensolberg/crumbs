@@ -10,11 +10,11 @@ use crumbs::{commands, config, item::ItemType};
 #[command(name = "crumbs", about = "Flat-folder Markdown task tracker", version)]
 struct Cli {
     /// Explicit directory to use
-    #[arg(short, long, global = true)]
+    #[arg(short, long, global = true, hide_short_help = true)]
     dir: Option<PathBuf>,
 
     /// Use the global crumbs store (~/.local/share/crumbs)
-    #[arg(short, long, global = true)]
+    #[arg(short, long, global = true, hide_short_help = true)]
     global: bool,
 
     #[command(subcommand)]
