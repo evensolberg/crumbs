@@ -95,6 +95,28 @@ crumbs update bc-x7q --clear-due
 crumbs update bc-x7q --message 'Now includes OAuth flow'
 ```
 
+### Block and defer
+
+```sh
+crumbs block bc-x7q bc-y8r,bc-z9s   # bc-x7q blocks bc-y8r and bc-z9s;
+                                     # targets are automatically set to blocked status
+crumbs block bc-x7q bc-y8r --remove # unlink; targets reopen if nothing else blocks them
+crumbs block bc-x7q                  # mark bc-x7q itself as blocked (no link)
+crumbs defer bc-x7q                  # defer an item
+crumbs defer bc-x7q --reopen         # reopen a deferred item
+```
+
+### Move and import between stores
+
+```sh
+crumbs move bc-x7q --to /path/to/other/.crumbs   # move to another store
+crumbs move bc-x7q --to global                    # move to the global store
+crumbs import glob-x7q --from global              # import from global into current store
+crumbs import glob-x7q --from /path/to/.crumbs   # import from a specific store
+```
+
+Moved and imported items get a new ID using the destination store's prefix.
+
 ### Link items
 
 ```sh
@@ -104,7 +126,7 @@ crumbs link bc-x7q blocked-by bc-z9s         # bc-x7q is blocked by bc-z9s
 crumbs link bc-x7q blocks bc-y8r --remove    # remove the link
 ```
 
-Targets are comma-separated so you can link to multiple items in one command. Both sides are updated atomically. `show` displays `Blocks:` and `Blocked:` rows when non-empty.
+Targets are comma-separated so you can link to multiple items in one command. Both sides are updated atomically. `link blocks` also sets the target's status to `blocked`; unlinking restores `open` when no other blockers remain. `show` displays `Blocks:` and `Blocked:` rows when non-empty.
 
 ### Edit an item
 
@@ -210,7 +232,7 @@ Rebuilds `index.csv` from all `.md` files. Useful if files were edited manually 
 ---
 id: bc-x7q
 title: "Example item"
-status: open        # open | in_progress | closed
+status: open        # open | in_progress | blocked | deferred | closed
 type: task          # task | bug | feature | epic | idea
 priority: 2         # 0=critical … 4=backlog
 tags:
@@ -219,6 +241,8 @@ created: 2026-03-05
 updated: 2026-03-05
 closed_reason: ""
 dependencies: []
+blocks: []          # set via link/block command
+blocked_by: []      # set via link/block command
 due: 2026-04-01     # optional
 ---
 ```

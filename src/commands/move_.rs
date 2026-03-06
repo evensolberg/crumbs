@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::{Result, bail};
 
-use crate::{config, id, store, store_config};
+use crate::{id, store, store_config};
 
 /// Move an item from `src_dir` to `dst_dir`.
 ///
@@ -43,26 +43,3 @@ pub fn run(src_dir: &Path, id: &str, dst_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Import an item from another store into `dst_dir` (the current store).
-///
-/// `src_id` must include the full ID (with prefix). The source store is
-/// resolved from the prefix embedded in the ID:
-///   1. `--from <dir>` explicit override
-///   2. `--from-global` → global store
-///   3. Falls back to the global store
-/// Clap enforces that exactly one of `from_dir` or `from_global` is set.
-pub fn run_import(
-    dst_dir: &Path,
-    src_id: &str,
-    from_dir: Option<&Path>,
-    from_global: bool,
-) -> Result<()> {
-    let src_dir = if let Some(d) = from_dir {
-        d.to_path_buf()
-    } else {
-        debug_assert!(from_global);
-        config::global_dir()
-    };
-
-    run(&src_dir, src_id, dst_dir)
-}

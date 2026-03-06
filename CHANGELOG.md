@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+## [0.6.2] - 2026-03-06
+
+### Fix
+
+- Replace `--to-global`/`--from-global` boolean flags on `move`/`import`
+  with the keyword `"global"` passed to `--to`/`--from`, eliminating the
+  confusing boolean sidecar flags
+- Add `skills/SKILL.md` as the source-of-truth for the packaged skill
+
+### Docs
+
+- Update README and skill with new block/defer/move/import commands
+- Document `blocked` and `deferred` statuses in schema section
+
 ### Chore
 
 - Close completed crumbs, update changelog, reformat main.rs

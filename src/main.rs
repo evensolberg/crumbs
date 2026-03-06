@@ -132,23 +132,17 @@ enum Command {
     Move {
         /// ID of the item to move
         id: String,
-        /// Destination store directory
-        #[arg(long, conflicts_with = "to_global", required_unless_present = "to_global")]
-        to: Option<std::path::PathBuf>,
-        /// Move to the global store
-        #[arg(long, conflicts_with = "to", required_unless_present = "to")]
-        to_global: bool,
+        /// Destination store path, or "global" for the global store
+        #[arg(long)]
+        to: String,
     },
     /// Import an item from another store into the current store
     Import {
         /// Full ID of the item to import (e.g. glob-x7q)
         id: String,
-        /// Source store directory
-        #[arg(long, conflicts_with = "from_global", required_unless_present = "from_global")]
-        from: Option<PathBuf>,
-        /// Import from the global store
-        #[arg(long, conflicts_with = "from", required_unless_present = "from")]
-        from_global: bool,
+        /// Source store path, or "global" for the global store
+        #[arg(long)]
+        from: String,
     },
     /// Add or remove blocks/blocked-by relationships between items
     Link {
@@ -330,21 +324,21 @@ fn main() -> Result<()> {
         Command::Defer { id, reopen } => {
             commands::defer::run(&dir, &id, reopen)?;
         }
-        Command::Move { id, to, to_global } => {
-            let dst = if let Some(path) = to {
-                path
-            } else {
-                debug_assert!(to_global);
+        Command::Move { id, to } => {
+            let dst = if to == "global" {
                 config::global_dir()
+            } else {
+                PathBuf::from(&to)
             };
             commands::move_::run(&dir, &id, &dst)?;
         }
-        Command::Import {
-            id,
-            from,
-            from_global,
-        } => {
-            commands::move_::run_import(&dir, &id, from.as_deref(), from_global)?;
+        Command::Import { id, from } => {
+            let src = if from == "global" {
+                config::global_dir()
+            } else {
+                PathBuf::from(&from)
+            };
+            commands::move_::run(&dir, &id, &src)?;
         }
         Command::Link {
             id,
