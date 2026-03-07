@@ -76,7 +76,7 @@ alias tp := testp
     cargo install --path crumbs --target aarch64-apple-darwin
     cargo clean
 
-# Tag the current version, push to GitHub, and create a release with auto-generated notes
+# Tag the current version and push to GitHub — CI handles the release build and artifact upload
 publish:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -84,8 +84,25 @@ publish:
     echo "Publishing $version"
     git tag "$version"
     git push {{application}} main "$version"
-    gh release create "$version" --repo evensolberg/{{application}} --title "$version" --generate-notes \
-        skills/crumbs.skill
+
+# Build all release artifacts locally into release-dist/ (CLI + GUI for current platform + skill file)
+dist:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    version="v$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name=="crumbs") | .version')"
+    out="release-dist/$version"
+    mkdir -p "$out"
+    echo "Building CLI…"
+    cargo build -p crumbs --release
+    cp target/release/crumbs "$out/crumbs"
+    echo "Building GUI…"
+    cp crumbs-gui/{index.html,main.js,style.css} crumbs-gui/dist/
+    cd crumbs-gui && cargo tauri build --target aarch64-apple-darwin
+    cd ..
+    cp -r target/aarch64-apple-darwin/release/bundle/macos/crumbs.app "$out/"
+    cp skills/crumbs.skill "$out/crumbs.skill"
+    echo "Done → $out/"
+    ls -lh "$out/"
 
 # Launch the GUI in dev mode (hot-reload)
 @gui-dev:
