@@ -1,0 +1,31 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.5.2 Chrome/142.0.7444.265 Electron/39.6.1 Safari/537.36" version="29.5.2">
+  <diagram name="Page-1" id="c9db0220-8083-56f3-ca83-edcdcd058819">
+    <mxGraphModel dx="3346" dy="1870" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1.5" pageWidth="826" pageHeight="1169" background="none" math="0" shadow="0">
+      <root>
+        <mxCell id="0" style=";html=1;" />
+        <mxCell id="1" parent="0" style=";html=1;" />
+        <mxCell id="GrwZ7M8q6R07ygwGwaZH-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="770" width="950" x="120" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="GrwZ7M8q6R07ygwGwaZH-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Libraries/Directories" vertex="1">
+          <mxGeometry height="640" width="230" x="140" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="GrwZ7M8q6R07ygwGwaZH-3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="310" width="650" x="400" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="GrwZ7M8q6R07ygwGwaZH-4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Toolbar with actions and filters" vertex="1">
+          <mxGeometry height="60" width="910" x="140" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="GrwZ7M8q6R07ygwGwaZH-5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Crumbs" vertex="1">
+          <mxGeometry height="310" width="650" x="400" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="GrwZ7M8q6R07ygwGwaZH-7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Crumb Properties" vertex="1">
+          <mxGeometry height="290" width="160" x="420" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="GrwZ7M8q6R07ygwGwaZH-8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Crumb Text" vertex="1">
+          <mxGeometry height="290" width="450" x="590" y="570" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

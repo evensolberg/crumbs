@@ -1,2 +1,9 @@
-id,title,status,type,priority,tags,created,updated,closed_reason
-cr-1f0,"What happens if I try to create a crumb in a non-initialized drectory? It should go to global then, so at least it is caputred and can potentially be moved later.",open,task,2,,2026-03-05,2026-03-05,
+id,title,status,type,priority,tags,created,updated,closed_reason,story_points
+cr-1f0,"What happens if I try to create a crumb in a non-initialized drectory? It should go to global then, so at least it is caputred and can potentially be moved later.",closed,task,2,,2026-03-05,2026-03-05,,
+cr-73q,Need more statuses than just open and closed. Need blocked and deferred at least.,closed,task,2,,2026-03-05,2026-03-06,Added blocked and deferred status variants in v0.6.0,
+cr-74h,GUI table updates,closed,task,2,,2026-03-06,2026-03-06,Done.,
+cr-kan,Crumbs marked as blocked by other crumbs should have blocked status. Updating one with blocking should mark the other as blocked_by,closed,task,2,,2026-03-06,2026-03-06,link/block commands auto-set blocked status in v0.6.0,
+cr-r48,GUI table enhancements,closed,task,2,,2026-03-06,2026-03-06,Implemented.,
+cr-v64,Investigate building a GUI app to manage crumbs. Rust with Tauri.,closed,epic,2,,2026-03-06,2026-03-06,Done.,8
+cr-vvq,COnsider adding story_points to crumbs for planning,closed,task,2,,2026-03-06,2026-03-06,implemented story_points with Fibonacci validation; CSV/export/GUI support included,
+cr-yqe,There needs to be a move function,closed,task,2,,2026-03-06,2026-03-06,Added move and import subcommands in v0.6.0,

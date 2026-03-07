@@ -9,8 +9,9 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build ${{ matrix.target }}
+  # ── CLI binaries ─────────────────────────────────────────────────────────
+  cli:
+    name: CLI ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -40,8 +41,8 @@ jobs:
         if: matrix.target == 'x86_64-unknown-linux-musl'
         run: sudo apt-get install -y musl-tools
 
-      - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
+      - name: Build CLI
+        run: cargo build --release -p crumbs --target ${{ matrix.target }}
 
       - name: Rename binary
         shell: bash
@@ -57,23 +58,77 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: crumbs-${{ matrix.target }}
+          name: cli-${{ matrix.target }}
           path: ${{ env.ASSET }}
 
+  # ── GUI installers (Tauri) ────────────────────────────────────────────────
+  gui:
+    name: GUI ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            platform: macos-aarch64
+            args: --target aarch64-apple-darwin
+          - os: macos-latest
+            platform: macos-x86_64
+            args: --target x86_64-apple-darwin
+          - os: ubuntu-latest
+            platform: linux-x86_64
+            args: ""
+          - os: windows-latest
+            platform: windows-x86_64
+            args: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Build and package GUI
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: crumbs-gui
+          tauriScript: cargo tauri
+          args: ${{ matrix.args }}
+          tagName: ${{ github.ref_name }}
+          releaseName: ${{ github.ref_name }}
+          releaseBody: ""
+          releaseDraft: false
+          prerelease: false
+
+  # ── Collect CLI artifacts into the release ───────────────────────────────
   release:
-    name: Create Release
-    needs: build
+    name: Attach CLI binaries
+    needs: [cli, gui]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download all artifacts
+      - name: Download CLI artifacts
         uses: actions/download-artifact@v4
         with:
+          pattern: cli-*
           path: artifacts
           merge-multiple: true
 
-      - name: Upload binaries to release
+      - name: Upload CLI binaries to release
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/*

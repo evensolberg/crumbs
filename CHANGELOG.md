@@ -6,8 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fix
 
-- Hide `--dir`/`--global` from `-h` (short help) but keep them visible
-  in `--help` and in subcommand `--help` output
+- Hide --dir/--global from -h; visible in --help (v0.6.3)
 
 ## [0.6.2] - 2026-03-06
 

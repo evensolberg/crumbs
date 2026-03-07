@@ -25,27 +25,27 @@ alias tp := testp
 
 # Check if it builds at all
 @check: format
-    cargo lcheck  --color 'always'
+    cargo lcheck -p crumbs --color 'always'
 
 # Only compiles the project
 @build: format changelog
    -git mit es
-   cargo nextest run
-   cargo lbuild --color 'always'
+   cargo nextest run -p crumbs
+   cargo lbuild -p crumbs --color 'always'
 
 # Compile a release version of the project without moving the binaries
 @buildr: format changelog
-    cargo lbuild --release --color 'always'
+    cargo lbuild -p crumbs --release --color 'always'
 
 # Compile a release version of the project for Apple ARM64 without moving the binaries
 @buildra: format changelog
-    cargo lbuild --release --color 'always' --target aarch64-apple-darwin
+    cargo lbuild -p crumbs --release --color 'always' --target aarch64-apple-darwin
     cargo strip -t aarch64-apple-darwin
 
 # Cleans and builds again
 @rebuild: format changelog
     cargo clean
-    cargo lbuild --color 'always'
+    cargo lbuild -p crumbs --color 'always'
 
 # Updates the CHANGELOG.md file
 @changelog:
@@ -68,28 +68,44 @@ alias tp := testp
 
 # Build and install the release version to ~/.cargo/bin
 @release: format changelog
-    cargo install --path .
+    cargo install --path crumbs
     cargo clean
 
 # Build and install the ARM64 release version to ~/.cargo/bin
 @releasea: format changelog
-    cargo install --path . --target aarch64-apple-darwin
+    cargo install --path crumbs --target aarch64-apple-darwin
     cargo clean
 
 # Tag the current version, push to GitHub, and create a release with auto-generated notes
 publish:
     #!/usr/bin/env bash
     set -euo pipefail
-    version="v$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')"
+    version="v$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name=="crumbs") | .version')"
     echo "Publishing $version"
     git tag "$version"
     git push {{application}} main "$version"
     gh release create "$version" --repo evensolberg/{{application}} --title "$version" --generate-notes \
         skills/crumbs.skill
 
+# Launch the GUI in dev mode (hot-reload)
+@gui-dev:
+    cp crumbs-gui/{index.html,main.js,style.css} crumbs-gui/dist/
+    cd crumbs-gui && cargo tauri dev
+
+# Build the GUI for Apple ARM64
+@gui-build:
+    cp crumbs-gui/{index.html,main.js,style.css} crumbs-gui/dist/
+    cd crumbs-gui && cargo tauri build --target aarch64-apple-darwin
+
+# Build and install the GUI into /Applications
+@gui-install:
+    cp crumbs-gui/{index.html,main.js,style.css} crumbs-gui/dist/
+    cd crumbs-gui && cargo tauri build --target aarch64-apple-darwin
+    cp -r target/aarch64-apple-darwin/release/bundle/macos/crumbs.app /Applications/crumbs.app
+
 # Build the documentation
 @doc:
-    cargo doc --no-deps
+    cargo doc --no-deps -p crumbs
 
 # Documents the project
 @docs: format
@@ -118,11 +134,11 @@ publish:
 
 # Tests the project
 @test:
-    cargo nextest run
+    cargo nextest run -p crumbs
 
 # Tests the project with output
 @testp:
-    cargo nextest run --no-capture
+    cargo nextest run -p crumbs --no-capture
 
 # Checks the project for inefficiencies and bloat
 @inspect: format doc lint spell
@@ -133,15 +149,15 @@ publish:
 
 # Checks for potential code improvements
 @lint:
-    cargo lclippy -- -W clippy::pedantic -W clippy::nursery -W clippy::unwrap_used
+    cargo lclippy -p crumbs -- -W clippy::pedantic -W clippy::nursery -W clippy::unwrap_used
 
 # Checks for potential code improvements and fixes what it can
 @lintfix:
-    cargo lclippy --fix -- -W clippy::pedantic -W clippy::nursery -W clippy::unwrap_used
+    cargo lclippy -p crumbs --fix -- -W clippy::pedantic -W clippy::nursery -W clippy::unwrap_used
 
 # Checks for potential code improvements and fixes what it can (allows dirty)
 @lintfixd:
-    cargo lclippy --fix --allow-dirty -- -W clippy::pedantic -W clippy::nursery -W clippy::unwrap_used
+    cargo lclippy -p crumbs --fix --allow-dirty -- -W clippy::pedantic -W clippy::nursery -W clippy::unwrap_used
 
 # Initialize directory for various services such as cargo deny
 @init:
@@ -183,27 +199,27 @@ publish:
 
 # Builds (if necessary) and runs the project
 @run:
-    cargo lrun  --color 'always'
+    cargo lrun -p crumbs --color 'always'
 
 # Build and run with a --help parameter
 @runh:
-    cargo lrun  --color 'always' -- --help
+    cargo lrun -p crumbs --color 'always' -- --help
 
 # Build and run with a --debug parameter
 @rund:
-    cargo lrun  --color 'always' -- --debug
+    cargo lrun -p crumbs --color 'always' -- --debug
 
 # Build and run with a --debug parameter, tee to debug.txt
 @rundt:
-    cargo lrun  --color 'always' -- --debug | tee debug.txt
+    cargo lrun -p crumbs --color 'always' -- --debug | tee debug.txt
 
 # Build and run with double --debug parameters
 @rundd:
-    cargo lrun  --color 'always' -- --debug --debug
+    cargo lrun -p crumbs --color 'always' -- --debug --debug
 
 # Build and run with double --debug parameters, tee to trace.txt
 @runddt:
-    cargo lrun  --color 'always' -- --debug --debug | tee trace.txt
+    cargo lrun -p crumbs --color 'always' -- --debug --debug | tee trace.txt
 
 # Spellcheck the documents except CHANGELOG
 @spell:
