@@ -99,6 +99,9 @@ jobs:
             librsvg2-dev \
             patchelf
 
+      - name: Install cargo-tauri
+        run: cargo install tauri-cli --version "^2" --locked
+
       - name: Build and package GUI
         uses: tauri-apps/tauri-action@v0
         env:
