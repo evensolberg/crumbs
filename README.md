@@ -1,41 +1,96 @@
 # crumbs
 
-A flat-folder Markdown task tracker written in Rust. A lightweight replacement for Beads with no daemon, no database — just `.md` files and a CSV cache.
+A flat-folder Markdown task tracker written in Rust. No daemon, no database — just `.md` files and a CSV index cache.
+
+Available as a **CLI** (`crumbs`) and a **desktop GUI** (`crumbs-gui`, built with Tauri).
 
 ## Concept
 
-Each item is a plain `.md` file with YAML frontmatter. A `index.csv` acts as a read cache and is rebuilt after every write. There is no server process; everything is a file operation.
+Each item is a plain `.md` file with YAML frontmatter. An `index.csv` acts as a read cache and is rebuilt after every write. There is no server process; everything is a file operation.
 
-Items live either in a local `.crumbs/` directory (per-project) or a global store (`~/.local/share/crumbs`).
+Items live either in a local `.crumbs/` directory (per-project) or a global store:
 
-Because every item is a plain `.md` file, the store is trivially version-controlled. Commit `.crumbs/` to your repository and get full history, branching, and recovery for free via `git log`, `git diff`, and `git checkout`.
+| Platform | Global store path                       |
+| -------- | --------------------------------------- |
+| macOS    | `~/Library/Application Support/crumbs` |
+| Linux    | `~/.local/share/crumbs`                 |
+| Windows  | `%APPDATA%\crumbs`                      |
+
+Because every item is a plain `.md` file, the store is trivially version-controlled. Commit `.crumbs/` to your repository and get full history, branching, and recovery via `git log`, `git diff`, and `git checkout`.
+
+---
 
 ## Installation
 
+### CLI
+
 ```sh
-cargo install --path .
+cargo install --path crumbs
 ```
+
+Or download a pre-built binary from [GitHub Releases](https://github.com/evensolberg/crumbs/releases).
+
+### GUI
+
+Download the installer for your platform from [GitHub Releases](https://github.com/evensolberg/crumbs/releases):
+
+| Platform              | Artifact              |
+| --------------------- | --------------------- |
+| macOS (Apple Silicon) | `.dmg`                |
+| macOS (Intel)         | `.dmg`                |
+| Linux                 | `.AppImage` / `.deb`  |
+| Windows               | `.msi` / `.exe`       |
+
+To build from source:
+
+```sh
+cargo tauri build
+```
+
+(requires the [Tauri CLI](https://tauri.app/start/prerequisites/) and a Rust toolchain)
+
+---
+
+## GUI overview
+
+![crumbs GUI](images/crumbs-gui.png)
+
+The GUI provides a full item management interface:
+
+- **Sidebar** — manage multiple stores; click to switch, double-click or right-click to rename
+- **Item table** — sortable columns, customisable visibility (click **Columns ▾**), resizable
+- **Filters** — status buttons + priority, type, and tag dropdowns (AND logic)
+- **Detail pane** — edit title (double-click), body text (autosaves on blur), all metadata fields
+- **Markdown preview** — click **Preview** in the detail pane to render the body as HTML
+- **Priority badges** — colour-coded P0 Critical … P4 Backlog labels
+- **Actions** — Start, Block, Defer, Close, Delete, Clean closed
+
+Column visibility and sidebar state persist across sessions via `localStorage`.
+
+---
 
 ## Store resolution
 
 crumbs locates its store in this order:
 
 1. `--dir <path>` — explicit override
-2. `--global` — global store at `~/.local/share/crumbs`
-3. `.crumbs/` under the current directory (auto-detected)
+2. `--global` — platform global store (see table above)
+3. `.crumbs/` under the current directory (auto-detected, walks up)
 4. Global store as fallback
 
-## Usage
+---
+
+## CLI usage
 
 ### Initialize a store
 
 ```sh
 crumbs init                    # local store in .crumbs/
-crumbs init --global           # global store at ~/.local/share/crumbs
+crumbs init --global           # global store
 crumbs init --prefix myp       # skip interactive prompt, set prefix directly
 ```
 
-`crumbs init` prompts for an ID prefix (e.g. `cr`, `ma`), pre-filled from the directory name. Press Enter to accept or type your own. The prefix is saved to `.crumbs/config.toml` and used for all new item IDs in that store.
+`crumbs init` prompts for an ID prefix (e.g. `cr`, `ma`), pre-filled from the directory name. The prefix is saved to `.crumbs/config.toml` and used for all new item IDs in that store.
 
 ### Create an item
 
@@ -44,43 +99,36 @@ crumbs create 'Fix the login bug' --item-type bug --priority 1 --tags project/au
 crumbs create 'Auth redesign' --message 'Covers login, OAuth, and session handling'
 crumbs create 'Ship it' --due 2026-04-01
 crumbs c 'Quick idea'          # shorthand
-# Tip: use single quotes to avoid shell expansion of special characters (!, $, etc.)
+# Tip: use single quotes to avoid shell expansion of !, $, etc.
 ```
 
-| Flag | Default | Values |
-|------|---------|--------|
-| `-t, --item-type` | `task` | `task`, `bug`, `feature`, `epic`, `idea` |
-| `-p, --priority` | `2` | `0` (critical) … `4` (backlog) |
-| `--tags` | — | comma-separated, e.g. `project/foo,needs-review` |
-| `-m, --message` | — | freeform text stored in the markdown body |
-| `--depends` | — | comma-separated dependency IDs, e.g. `cr-abc,cr-xyz` |
-| `--due` | — | due date in `YYYY-MM-DD` format |
+| Flag              | Default | Values                                           |
+| ----------------- | ------- | ------------------------------------------------ |
+| `-t, --item-type` | `task`  | `task`, `bug`, `feature`, `epic`, `idea`         |
+| `-p, --priority`  | `2`     | `0` (critical) … `4` (backlog)                   |
+| `--tags`          | —       | comma-separated, e.g. `project/foo,needs-review` |
+| `-m, --message`   | —       | freeform text stored in the markdown body        |
+| `--depends`       | —       | comma-separated dependency IDs                   |
+| `--due`           | —       | `YYYY-MM-DD`                                     |
 
 ### List items
 
 ```sh
-crumbs list                    # open and in-progress only
+crumbs list                    # open, in-progress, blocked, deferred
 crumbs list --all              # include closed
-crumbs list --status open
+crumbs list --status blocked
 crumbs list --tag project/auth
-crumbs list --priority 0       # show only P0 items
+crumbs list --priority 0       # P0 items only
+crumbs next                    # highest-priority open item
 ```
 
-Overdue items are flagged with `!due` in bold red. Items with a future due date show `due:YYYY-MM-DD`.
-
-### Show an item
+### Inspect
 
 ```sh
 crumbs show bc-x7q
+crumbs stats
+crumbs search "login"
 ```
-
-### Show next item
-
-```sh
-crumbs next
-```
-
-Shows the highest-priority open item (sorted by priority, then age). Useful for a quick "what should I work on?" answer.
 
 ### Update an item
 
@@ -95,24 +143,25 @@ crumbs update bc-x7q --clear-due
 crumbs update bc-x7q --message 'Now includes OAuth flow'
 ```
 
+`--tags` and `--depends` **replace** the existing list.
+
 ### Block and defer
 
 ```sh
-crumbs block bc-x7q bc-y8r,bc-z9s   # bc-x7q blocks bc-y8r and bc-z9s;
-                                     # targets are automatically set to blocked status
-crumbs block bc-x7q bc-y8r --remove # unlink; targets reopen if nothing else blocks them
+crumbs block bc-x7q bc-y8r,bc-z9s   # bc-x7q blocks targets; targets → blocked status
+crumbs block bc-x7q bc-y8r --remove  # unlink; targets reopen if nothing else blocks them
 crumbs block bc-x7q                  # mark bc-x7q itself as blocked (no link)
-crumbs defer bc-x7q                  # defer an item
+crumbs defer bc-x7q                  # set status to deferred
 crumbs defer bc-x7q --reopen         # reopen a deferred item
 ```
 
 ### Move and import between stores
 
 ```sh
-crumbs move bc-x7q --to /path/to/other/.crumbs   # move to another store
-crumbs move bc-x7q --to global                    # move to the global store
-crumbs import glob-x7q --from global              # import from global into current store
-crumbs import glob-x7q --from /path/to/.crumbs   # import from a specific store
+crumbs move bc-x7q --to /path/to/other/.crumbs
+crumbs move bc-x7q --to global
+crumbs import glob-x7q --from global
+crumbs import glob-x7q --from /path/to/.crumbs
 ```
 
 Moved and imported items get a new ID using the destination store's prefix.
@@ -120,111 +169,54 @@ Moved and imported items get a new ID using the destination store's prefix.
 ### Link items
 
 ```sh
-crumbs link bc-x7q blocks bc-y8r             # bc-x7q blocks bc-y8r (bidirectional)
-crumbs link bc-x7q blocks bc-y8r,bc-z9s      # link multiple targets at once
-crumbs link bc-x7q blocked-by bc-z9s         # bc-x7q is blocked by bc-z9s
-crumbs link bc-x7q blocks bc-y8r --remove    # remove the link
+crumbs link bc-x7q blocks bc-y8r             # bidirectional; sets bc-y8r to blocked
+crumbs link bc-x7q blocks bc-y8r,bc-z9s
+crumbs link bc-x7q blocked-by bc-z9s
+crumbs link bc-x7q blocks bc-y8r --remove    # unlink; restores open if unblocked
 ```
 
-Targets are comma-separated so you can link to multiple items in one command. Both sides are updated atomically. `link blocks` also sets the target's status to `blocked`; unlinking restores `open` when no other blockers remain. `show` displays `Blocks:` and `Blocked:` rows when non-empty.
-
-### Edit an item
-
-```sh
-crumbs edit bc-x7q
-```
-
-Opens the item's `.md` file in `$EDITOR` (falls back to `$VISUAL`, then `vi`). The index is rebuilt automatically after the editor exits.
-
-### Close an item
+### Close / delete
 
 ```sh
 crumbs close bc-x7q
 crumbs close bc-x7q --reason "fixed in PR #42"
+crumbs delete cr-x7q
+crumbs delete --closed            # purge all closed items
 ```
-
-### Delete an item
-
-```sh
-crumbs delete cr-x7q              # delete a specific item
-crumbs delete --closed            # delete all closed items at once
-```
-
-### Statistics
-
-```sh
-crumbs stats
-```
-
-Prints a summary of items by status, type, and priority with color coding.
-
-### Search
-
-```sh
-crumbs search "login"
-```
-
-Full-text search across all `.md` file contents and titles.
 
 ### Export
 
 ```sh
-crumbs export                        # JSON to stdout (default)
-crumbs export --format csv           # CSV to stdout
-crumbs export --format toon          # TOON to stdout
+crumbs export                        # JSON to stdout
+crumbs export --format csv
+crumbs export --format toon          # compact, token-efficient for LLMs
 crumbs export --format json --output items.json
 ```
 
-Exports all items. TOON (Token-Oriented Object Notation) is a compact, token-efficient format suited for feeding into LLMs.
+### Edit raw file
+
+```sh
+crumbs edit bc-x7q                   # opens in $EDITOR; reindexes on exit
+crumbs reindex                       # rebuild index.csv manually
+```
 
 ### Shell completions
 
-Generate and install a completion script once, then enjoy tab-completion for all subcommands and flags.
-
-#### zsh
-
 ```sh
-crumbs completions zsh > ~/.zfunc/_crumbs
-# Add to ~/.zshrc if not already present:
-#   fpath=(~/.zfunc $fpath)
-#   autoload -U compinit && compinit
-```
-
-#### bash
-
-```sh
+crumbs completions zsh  > ~/.zfunc/_crumbs
 crumbs completions bash > ~/.local/share/bash-completion/completions/crumbs
-```
-
-#### fish
-
-```sh
 crumbs completions fish > ~/.config/fish/completions/crumbs.fish
-```
-
-#### PowerShell
-
-```powershell
 crumbs completions powershell >> $PROFILE
 ```
 
-Or save to a file and dot-source it from your profile:
+### Global flags
 
-```powershell
-crumbs completions powershell > ~/crumbs_completion.ps1
-# Add to $PROFILE:
-#   . ~/crumbs_completion.ps1
-```
+| Flag               | Description              |
+| ------------------ | ------------------------ |
+| `-d, --dir <path>` | Use a specific directory |
+| `-g, --global`     | Use the global store     |
 
-After reinstalling crumbs, regenerate the file with the same command.
-
-### Reindex
-
-```sh
-crumbs reindex
-```
-
-Rebuilds `index.csv` from all `.md` files. Useful if files were edited manually or the cache is stale.
+---
 
 ## Frontmatter schema
 
@@ -241,19 +233,17 @@ created: 2026-03-05
 updated: 2026-03-05
 closed_reason: ""
 dependencies: []
-blocks: []          # set via link/block command
-blocked_by: []      # set via link/block command
+blocks: []
+blocked_by: []
 due: 2026-04-01     # optional
+story_points: ~     # optional integer; conventional values: 1, 2, 3, 5, 8, 13, 21 (Fibonacci)
 ---
+
+# Example item
+
+Body text in Markdown.
 ```
 
 ## File naming
 
 Files are named after a slug of the title (max 60 chars). On collision the item ID suffix is appended, e.g. `my-task-x7q.md`.
-
-## Global flags
-
-| Flag | Description |
-|------|-------------|
-| `-d, --dir <path>` | Use a specific directory |
-| `-g, --global` | Use the global store |
