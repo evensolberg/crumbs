@@ -201,6 +201,7 @@ fn update_changes_status() {
         None,
         None,
         false,
+        None,
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -224,6 +225,7 @@ fn update_changes_priority() {
         None,
         None,
         false,
+        None,
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -247,6 +249,7 @@ fn update_replaces_tags() {
         None,
         None,
         false,
+        None,
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -270,6 +273,7 @@ fn update_changes_type() {
         None,
         None,
         false,
+        None,
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -292,6 +296,7 @@ fn update_unknown_id_errors() {
         None,
         None,
         false,
+        None,
     );
     assert!(result.is_err());
 }
@@ -471,6 +476,7 @@ fn update_replaces_dependencies() {
         None,
         None,
         false,
+        None,
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -583,6 +589,7 @@ fn update_message_replaces_description() {
         Some("New description text.".to_string()),
         None,
         false,
+        None,
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
