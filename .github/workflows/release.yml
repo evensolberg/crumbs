@@ -116,9 +116,9 @@ jobs:
           releaseDraft: false
           prerelease: false
 
-  # ── Collect CLI artifacts into the release ───────────────────────────────
+  # ── Collect CLI artifacts and skill into the release ─────────────────────
   release:
-    name: Attach CLI binaries
+    name: Publish release
     needs: [cli, gui]
     runs-on: ubuntu-latest
     steps:
@@ -131,7 +131,10 @@ jobs:
           path: artifacts
           merge-multiple: true
 
-      - name: Upload CLI binaries to release
+      - name: Copy skill file into artifacts
+        run: cp skills/crumbs.skill artifacts/crumbs.skill
+
+      - name: Upload CLI binaries and skill to release
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/*
