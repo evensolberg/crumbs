@@ -7,12 +7,15 @@ description: Use the crumbs CLI to manage tasks, bugs, features, and ideas track
 
 Flat-folder Markdown task tracker. Each item is a `.md` file with YAML frontmatter. A `index.csv` is the read cache, rebuilt after every write. No daemon, no database.
 
-Store lives in `.crumbs/` (local, auto-detected from cwd) or `~/.local/share/crumbs` (global).
+Store lives in `.crumbs/` (local, auto-detected from cwd) or the platform global store:
+- macOS: `~/Library/Application Support/crumbs`
+- Linux: `~/.local/share/crumbs`
+- Windows: `%APPDATA%\crumbs`
 
 ## Store resolution
 
 1. `--dir <path>` explicit override
-2. `--global` → `~/.local/share/crumbs`
+2. `--global` → platform global store (see above)
 3. `.crumbs/` under cwd (auto-detected)
 4. Global store as fallback
 
@@ -118,6 +121,7 @@ crumbs reindex                   # rebuild index.csv manually
 | `due` | `YYYY-MM-DD` |
 | `dependencies` | comma-separated IDs |
 | `blocks` / `blocked_by` | set via `link` or `block` command |
+| `story_points` | optional integer; conventional Fibonacci values: 1, 2, 3, 5, 8, 13, 21 |
 
 ## Key behaviors
 
