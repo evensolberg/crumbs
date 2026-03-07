@@ -11,6 +11,7 @@ let filterType     = 'any';
 let filterTag      = '';
 let previewMode = false;
 let pendingCloseId = '';
+let autosaveTimer = null;
 let sortCol = 'priority';
 let sortDir = 'asc';
 
@@ -73,6 +74,11 @@ const closeItemBtn  = document.getElementById('close-item-btn');
 const deleteBtn     = document.getElementById('delete-btn');
 const cleanBtn      = document.getElementById('clean-btn');
 
+// Delete modal
+const deleteModal      = document.getElementById('delete-modal');
+const deleteCancelBtn  = document.getElementById('delete-cancel-btn');
+const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
+
 // Close modal
 const closeModal      = document.getElementById('close-modal');
 const closeReason     = document.getElementById('close-reason');
@@ -84,6 +90,14 @@ const newModal      = document.getElementById('new-modal');
 const newTitle      = document.getElementById('new-title');
 const newCancelBtn  = document.getElementById('new-cancel-btn');
 const newConfirmBtn = document.getElementById('new-confirm-btn');
+
+// Blocked-by modal
+const blockedByModal     = document.getElementById('blocked-by-modal');
+const blockerTargetTitle = document.getElementById('blocker-target-title');
+const blockerSearch      = document.getElementById('blocker-search');
+const blockerList        = document.getElementById('blocker-list');
+const blockerCancelBtn   = document.getElementById('blocker-cancel-btn');
+const blockerConfirmBtn  = document.getElementById('blocker-confirm-btn');
 
 // Open Dir modal
 const openDirModal      = document.getElementById('open-dir-modal');
@@ -148,7 +162,7 @@ function updateToolbarButtons() {
   const isClosed = item?.status === 'closed';
 
   startBtn.disabled    = !hasSelection || isClosed || item?.status === 'in_progress';
-  blockBtn.disabled    = !hasSelection || isClosed || item?.status === 'blocked';
+  blockBtn.disabled    = !hasSelection || isClosed;
   deferBtn.disabled    = !hasSelection || isClosed || item?.status === 'deferred';
   closeItemBtn.disabled = !hasSelection || isClosed;
   deleteBtn.disabled   = !hasSelection;
@@ -159,12 +173,12 @@ function updateToolbarButtons() {
 (function initResize() {
   let dragging = false;
   let startY = 0;
-  let startListH = 0;
+  let startDetailH = 0;
 
   resizeHandle.addEventListener('mousedown', e => {
     dragging = true;
     startY = e.clientY;
-    startListH = listPane.getBoundingClientRect().height;
+    startDetailH = detailPane.getBoundingClientRect().height;
     resizeHandle.classList.add('dragging');
     document.body.style.userSelect = 'none';
     document.body.style.cursor = 'row-resize';
@@ -173,9 +187,8 @@ function updateToolbarButtons() {
   document.addEventListener('mousemove', e => {
     if (!dragging) return;
     const delta = e.clientY - startY;
-    const newH = Math.max(80, startListH + delta);
-    listPane.style.flex = 'none';
-    listPane.style.height = `${newH}px`;
+    const newH = Math.max(80, startDetailH - delta);
+    detailPane.style.flex = `0 0 ${newH}px`;
   });
 
   document.addEventListener('mouseup', () => {
@@ -532,6 +545,25 @@ async function doSaveText(id, text) {
   }
 }
 
+// ── Delete modal ──────────────────────────────────────────────────────────
+
+function openDeleteModal() {
+  deleteModal.classList.remove('hidden');
+  deleteConfirmBtn.focus();
+}
+
+async function confirmDelete() {
+  deleteModal.classList.add('hidden');
+  clearError();
+  try {
+    await invoke('delete_item', { dir: storeDir, id: selectedId });
+    selectedId = null;
+    await loadItems();
+  } catch (e) {
+    showError(`Delete failed: ${e}`);
+  }
+}
+
 // ── Close modal ───────────────────────────────────────────────────────────
 
 function openCloseModal(id) {
@@ -555,6 +587,73 @@ async function confirmClose() {
   }
   pendingCloseId = '';
 }
+
+// ── Blocked-by modal ──────────────────────────────────────────────────────
+
+function renderBlockerList(filterText) {
+  const item = selectedItem();
+  if (!item) return;
+  const currentBlockers = item.blocked_by ?? [];
+  const candidates = allItems.filter(i =>
+    i.id !== selectedId &&
+    i.status !== 'closed' &&
+    (!filterText || i.title.toLowerCase().includes(filterText.toLowerCase()) ||
+      i.id.toLowerCase().includes(filterText.toLowerCase()))
+  );
+  blockerList.innerHTML = candidates.map(i => `
+    <label>
+      <input type="checkbox" data-id="${escHtml(i.id)}"${currentBlockers.includes(i.id) ? ' checked' : ''}>
+      <span class="item-id">${escHtml(i.id)}</span> ${escHtml(i.title)}
+    </label>
+  `).join('');
+}
+
+function openBlockedByModal() {
+  const item = selectedItem();
+  if (!item) return;
+  blockerTargetTitle.textContent = item.title;
+  blockerSearch.value = '';
+  renderBlockerList('');
+  blockedByModal.classList.remove('hidden');
+  blockerSearch.focus();
+}
+
+async function confirmBlockedBy() {
+  blockedByModal.classList.add('hidden');
+  const item = selectedItem();
+  if (!item) return;
+
+  const oldBlockers = item.blocked_by ?? [];
+  const checked = [...blockerList.querySelectorAll('input[type="checkbox"]')];
+  const newBlockers = checked.filter(cb => cb.checked).map(cb => cb.dataset.id);
+
+  const toAdd    = newBlockers.filter(id => !oldBlockers.includes(id));
+  const toRemove = oldBlockers.filter(id => !newBlockers.includes(id));
+
+  clearError();
+  try {
+    if (toAdd.length > 0) {
+      await invoke('link_items', { dir: storeDir, id: selectedId, relation: 'blocked-by', targets: toAdd, remove: false });
+    }
+    if (toRemove.length > 0) {
+      await invoke('link_items', { dir: storeDir, id: selectedId, relation: 'blocked-by', targets: toRemove, remove: true });
+    }
+    await loadItems();
+  } catch (e) {
+    showError(`Block failed: ${e}`);
+  }
+}
+
+blockerSearch.addEventListener('input', () => renderBlockerList(blockerSearch.value));
+blockerCancelBtn.addEventListener('click', () => { blockedByModal.classList.add('hidden'); });
+blockerConfirmBtn.addEventListener('click', confirmBlockedBy);
+blockedByModal.addEventListener('keydown', e => {
+  if (e.key === 'Enter') confirmBlockedBy();
+  if (e.key === 'Escape') blockedByModal.classList.add('hidden');
+});
+blockedByModal.addEventListener('click', e => {
+  if (e.target === blockedByModal) blockedByModal.classList.add('hidden');
+});
 
 // ── New item modal ────────────────────────────────────────────────────────
 
@@ -915,29 +1014,38 @@ detailTitleLabel.addEventListener('dblclick', () => {
   });
 });
 
-// Body text autosave on blur
-detailText.addEventListener('blur', () => {
-  if (selectedId) doSaveText(selectedId, detailText.value);
+// Body text autosave: debounced on input (2s), immediate on blur or Cmd/Ctrl-S
+function scheduleAutosave() {
+  if (!selectedId) return;
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(() => doSaveText(selectedId, detailText.value), 2000);
+}
+function flushAutosave() {
+  if (!selectedId) return;
+  clearTimeout(autosaveTimer);
+  autosaveTimer = null;
+  doSaveText(selectedId, detailText.value);
+}
+detailText.addEventListener('input', scheduleAutosave);
+detailText.addEventListener('blur', flushAutosave);
+detailText.addEventListener('keydown', e => {
+  if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault();
+    flushAutosave();
+  }
 });
 
 previewBtn.addEventListener('click', () => setPreviewMode(!previewMode));
 
 // Toolbar action buttons
 startBtn.addEventListener('click',    () => { if (selectedId) doUpdateStatus(selectedId, 'in_progress'); });
-blockBtn.addEventListener('click',    () => { if (selectedId) doUpdateStatus(selectedId, 'blocked'); });
+blockBtn.addEventListener('click',    () => { if (selectedId) openBlockedByModal(); });
 deferBtn.addEventListener('click',    () => { if (selectedId) doUpdateStatus(selectedId, 'deferred'); });
 closeItemBtn.addEventListener('click', () => { if (selectedId) openCloseModal(selectedId); });
 
-deleteBtn.addEventListener('click', async () => {
+deleteBtn.addEventListener('click', () => {
   if (!selectedId) return;
-  clearError();
-  try {
-    await invoke('delete_item', { dir: storeDir, id: selectedId });
-    selectedId = null;
-    await loadItems();
-  } catch (e) {
-    showError(`Delete failed: ${e}`);
-  }
+  openDeleteModal();
 });
 
 cleanBtn.addEventListener('click', async () => {
@@ -953,6 +1061,17 @@ cleanBtn.addEventListener('click', async () => {
 
 newBtn.addEventListener('click', openNewModal);
 openDirBtn.addEventListener('click', openOpenDirModal);
+
+// Delete modal events
+deleteCancelBtn.addEventListener('click', () => { deleteModal.classList.add('hidden'); });
+deleteConfirmBtn.addEventListener('click', confirmDelete);
+deleteModal.addEventListener('keydown', e => {
+  if (e.key === 'Enter') confirmDelete();
+  if (e.key === 'Escape') deleteModal.classList.add('hidden');
+});
+deleteModal.addEventListener('click', e => {
+  if (e.target === deleteModal) deleteModal.classList.add('hidden');
+});
 
 // Close modal events
 closeCancelBtn.addEventListener('click', () => {

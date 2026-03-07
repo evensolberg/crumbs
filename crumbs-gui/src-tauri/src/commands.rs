@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crumbs::{
-    commands::{clean, close, create, delete, update},
+    commands::{clean, close, create, delete, link, update},
     config::global_dir,
     item::{Item, ItemType},
     store, store_config,
@@ -301,4 +301,18 @@ pub fn delete_item(dir: String, id: String) -> Result<(), String> {
 pub fn clean_closed(dir: String) -> Result<(), String> {
     let path = to_path(&dir);
     clean::run(&path).map_err(|e| e.to_string())
+}
+
+/// Link or unlink items. relation is "blocks" or "blocked-by".
+/// Sets/clears blocked_by and blocks on both sides atomically.
+#[tauri::command]
+pub fn link_items(
+    dir: String,
+    id: String,
+    relation: String,
+    targets: Vec<String>,
+    remove: bool,
+) -> Result<(), String> {
+    let path = to_path(&dir);
+    link::run(&path, &id, &relation, &targets, remove).map_err(|e| e.to_string())
 }

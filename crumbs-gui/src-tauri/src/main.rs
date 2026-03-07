@@ -23,6 +23,7 @@ fn main() {
             commands::create_item,
             commands::delete_item,
             commands::clean_closed,
+            commands::link_items,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

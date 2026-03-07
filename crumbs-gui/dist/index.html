@@ -125,6 +125,31 @@
     </div>
   </div>
 
+  <!-- Blocked-by selector modal -->
+  <div id="blocked-by-modal" class="modal hidden">
+    <div class="modal-box" style="width:400px">
+      <h2>Select blockers for <span id="blocker-target-title"></span></h2>
+      <input id="blocker-search" type="text" placeholder="Filter items…" autocomplete="off">
+      <div id="blocker-list" class="blocker-list"></div>
+      <div class="modal-actions">
+        <button type="button" id="blocker-cancel-btn" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="blocker-confirm-btn" class="btn btn-warn">Set blockers</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete confirmation modal -->
+  <div id="delete-modal" class="modal hidden">
+    <div class="modal-box">
+      <h2>Delete item</h2>
+      <p class="modal-msg">Permanently delete this item? This cannot be undone.</p>
+      <div class="modal-actions">
+        <button type="button" id="delete-cancel-btn" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="delete-confirm-btn" class="btn btn-danger-solid">Delete</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Close modal -->
   <div id="close-modal" class="modal hidden">
     <div class="modal-box">
