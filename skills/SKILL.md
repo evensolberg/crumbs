@@ -1,6 +1,6 @@
 ---
 name: crumbs
-description: Use the crumbs CLI to manage tasks, bugs, features, and ideas tracked as plain Markdown files in a .crumbs/ store. Use this skill when the user asks to create, list, show, update, close, delete, link, search, or export crumbs items — or asks what to work on next. Also use when asked to initialize a crumbs store in a project. crumbs is already installed; run it directly, no cargo run needed.
+description: Use the crumbs CLI to manage tasks, bugs, features, and ideas tracked as plain Markdown files in a .crumbs/ store. Use this skill when the user asks to create, list, show, update, close, delete, link, search, export, or time-track crumbs items — or asks what to work on next. Also use when asked to initialize a crumbs store in a project. crumbs is already installed; run it directly, no cargo run needed.
 ---
 
 # crumbs
@@ -95,6 +95,27 @@ crumbs link cr-x7q blocked-by cr-z9s
 crumbs link cr-x7q blocks cr-y8r --remove  # unlink; restores open if unblocked
 ```
 
+### Time tracking
+
+```sh
+crumbs start cr-x7q                              # append [start] entry, set status to in_progress
+crumbs start cr-x7q -m 'Investigating root cause'
+crumbs stop  cr-x7q                              # append [stop] with elapsed time
+crumbs stop  cr-x7q -m 'Fixed, needs review'
+crumbs show  cr-x7q                              # shows "Total tracked: Xh Ym Zs" when stops exist
+```
+
+Start/stop entries are plain lines in the markdown body, interleaved with any notes added via `--append`. A typical item body looks like:
+
+```
+[2026-03-08] Reproduced locally.
+[start] 2026-03-08 09:00:00  Investigating root cause
+[2026-03-08] Found the bug in main.js line 401.
+[stop]  2026-03-08 09:47:12  47m 12s  Fixed, needs review
+```
+
+`crumbs start` errors with "Already started at HH:MM:SS" if an unmatched `[start]` exists.
+
 ### Close / delete
 ```sh
 crumbs close cr-x7q --reason "fixed in PR #42"
@@ -129,6 +150,17 @@ crumbs reindex                   # rebuild index.csv manually
 | `blocks` / `blocked_by` | set via `link` or `block` command |
 | `story_points` | optional integer; conventional Fibonacci values: 1, 2, 3, 5, 8, 13, 21 |
 
+## Time tracking format
+
+Timer entries live in the markdown body alongside other notes:
+
+| Line | Format |
+|------|--------|
+| Start | `[start] YYYY-MM-DD HH:MM:SS  [optional comment]` |
+| Stop  | `[stop]  YYYY-MM-DD HH:MM:SS  Xh Ym Zs  [optional comment]` |
+
+`crumbs show` sums all matched pairs and prints `Total tracked: Xh Ym Zs`.
+
 ## Key behaviors
 
 - IDs are **case-insensitive**: `CR-X7Q` == `cr-x7q`
@@ -139,6 +171,7 @@ crumbs reindex                   # rebuild index.csv manually
 - `--tags` and `--depends` on update **replace** the existing list (not append)
 - `--append 'text'` adds to the body with a `[YYYY-MM-DD]` timestamp prefix; `--message 'text'` replaces it
 - `crumbs defer --until <date>` sets the due date; `crumbs next` skips deferred items with a future until date
+- `crumbs start` / `crumbs stop` append timer entries to the body; `crumbs show` sums elapsed time as "Total tracked"
 - File names are title slugs; collisions get the ID suffix appended
 - `.crumbs/` can be committed to git for full history
 - `move`/`import` reassign a new ID using the destination store's prefix

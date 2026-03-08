@@ -64,7 +64,7 @@ The GUI provides a full item management interface:
 - **Detail pane** — edit title (double-click), body (autosaves on blur/⌘S), tags, dependencies, due date, type, priority, and story points
 - **Markdown preview** — click **Preview** in the detail pane to render the body as HTML
 - **Priority badges** — colour-coded P0 Critical … P4 Backlog labels
-- **Actions** — Start, Block (with inline new-blocker creation), Defer (with optional until date), Close, Delete, Clean closed
+- **Actions** — Start, Block (with inline new-blocker creation), Defer (with optional until date), Timer (start/stop with optional comment), Close, Delete, Clean closed
 - **Next** — selects the highest-priority actionable item
 - **Export** — saves all items as JSON, CSV, or TOON via a save dialog
 - **Reindex** — rebuilds `index.csv` from `.md` files on disk
@@ -203,6 +203,29 @@ crumbs export --format csv
 crumbs export --format toon          # compact, token-efficient for LLMs
 crumbs export --format json --output items.json
 ```
+
+### Time tracking
+
+```sh
+crumbs start bc-x7q                               # append [start] entry, set status to in_progress
+crumbs start bc-x7q -m 'Investigating root cause'
+crumbs stop  bc-x7q                               # append [stop] with elapsed time
+crumbs stop  bc-x7q -m 'Fixed, opening PR'
+crumbs show  bc-x7q                               # shows "Total tracked: Xh Ym Zs"
+```
+
+Timer entries are plain lines written into the markdown body, interleaved naturally with notes added via `--append`. Multiple start/stop cycles accumulate:
+
+```markdown
+[2026-03-08] Reproduced locally.
+[start] 2026-03-08 09:00:00  Investigating root cause
+[2026-03-08] Found the bug.
+[stop]  2026-03-08 09:47:12  47m 12s  Fixed, needs review
+[start] 2026-03-08 14:30:00
+[stop]  2026-03-08 15:05:33  35m 33s  Addressed review comments
+```
+
+`crumbs show` sums matched pairs: `Total tracked: 1h 22m 45s`. Running `crumbs start` when a timer is already active prints "Already started at HH:MM:SS" and exits without modifying the file.
 
 ### Edit raw file
 
