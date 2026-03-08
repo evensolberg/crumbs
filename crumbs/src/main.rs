@@ -156,14 +156,14 @@ enum Command {
     Start {
         id: String,
         /// Optional comment to record with the start entry
-        #[arg(allow_hyphen_values = true)]
+        #[arg(short = 'm', long, allow_hyphen_values = true)]
         comment: Option<String>,
     },
     /// Stop the active timer for an item (appends [stop] entry with elapsed time)
     Stop {
         id: String,
         /// Optional comment to record with the stop entry
-        #[arg(allow_hyphen_values = true)]
+        #[arg(short = 'm', long, allow_hyphen_values = true)]
         comment: Option<String>,
     },
     /// Move an item to a different store (assigns a new ID)

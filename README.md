@@ -207,10 +207,10 @@ crumbs export --format json --output items.json
 ### Time tracking
 
 ```sh
-crumbs start bc-x7q                               # append [start] entry, set status to in_progress
-crumbs start bc-x7q 'Investigating root cause'    # with optional comment
-crumbs stop  bc-x7q                               # append [stop] with elapsed time
-crumbs stop  bc-x7q 'Fixed, opening PR'           # with optional comment
+crumbs start bc-x7q                                   # append [start] entry, set in_progress
+crumbs start -m 'Investigating root cause' bc-x7q     # -m comment; ID can go anywhere
+crumbs stop  bc-x7q                                   # append [stop] with elapsed time
+crumbs stop  -m 'Fixed, opening PR' bc-x7q
 crumbs show  bc-x7q                               # shows "Total tracked: Xh Ym Zs"
 ```
 

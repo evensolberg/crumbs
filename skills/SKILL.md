@@ -98,11 +98,11 @@ crumbs link cr-x7q blocks cr-y8r --remove  # unlink; restores open if unblocked
 ### Time tracking
 
 ```sh
-crumbs start cr-x7q                              # append [start] entry, set status to in_progress
-crumbs start cr-x7q 'Investigating root cause'   # with optional comment
-crumbs stop  cr-x7q                              # append [stop] with elapsed time
-crumbs stop  cr-x7q 'Fixed, needs review'        # with optional comment
-crumbs show  cr-x7q                              # shows "Total tracked: Xh Ym Zs" when stops exist
+crumbs start cr-x7q                                        # append [start] entry, set in_progress
+crumbs start -m 'Investigating root cause' cr-x7q          # comment before ID is fine
+crumbs stop  cr-x7q                                        # append [stop] with elapsed time
+crumbs stop  -m 'Fixed, needs review' cr-x7q
+crumbs show  cr-x7q                                        # shows "Total tracked: Xh Ym Zs"
 ```
 
 Start/stop entries are plain lines in the markdown body, interleaved with any notes added via `--append`. A typical item body looks like:
