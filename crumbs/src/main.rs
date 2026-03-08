@@ -194,8 +194,8 @@ enum Command {
         /// Output format: csv, json, or toon
         #[arg(short, long, default_value = "json")]
         format: String,
-        /// Write output to a file (default: stdout)
-        #[arg(short, long)]
+        /// Write output to a file; omit value for crumbs_export.<ext> (default: stdout)
+        #[arg(short, long, num_args = 0..=1, default_missing_value = "crumbs_export")]
         output: Option<PathBuf>,
     },
     /// Print shell completion script to stdout
@@ -397,6 +397,13 @@ fn main() -> Result<()> {
             commands::search::run(&dir, &query)?;
         }
         Command::Export { format, output } => {
+            let output = output.map(|p| {
+                if p.as_os_str() == "crumbs_export" {
+                    PathBuf::from(format!("crumbs_export.{format}"))
+                } else {
+                    p
+                }
+            });
             commands::export::run(&dir, &format, output.as_deref())?;
         }
         Command::Completions { .. } => unreachable!(),

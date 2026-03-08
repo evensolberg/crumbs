@@ -129,6 +129,8 @@ crumbs export                          # JSON to stdout
 crumbs export --format csv
 crumbs export --format toon            # token-efficient for LLMs
 crumbs export --format json --output items.json
+crumbs export --output                 # → crumbs_export.json (default filename)
+crumbs export --format csv --output    # → crumbs_export.csv
 ```
 
 ### Edit raw file
