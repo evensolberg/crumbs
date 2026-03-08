@@ -2,46 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.12.0] - 2026-03-08
-
-### Feat
-
-- `crumbs start <id> [-m comment]` — append `[start]` entry, set status to `in_progress`
-- `crumbs stop <id> [-m comment]` — append `[stop]` entry with elapsed time
-- `crumbs show` now prints `Total tracked: Xh Ym Zs` when stop entries exist
-- GUI: ▶ Timer / ■ Stop toolbar button with comment modal
-
-### Fix
-
-- Description field was leaking into YAML frontmatter on `close`, `defer`,
-  `block`, `link`, and `update`; cleared before serialization at all write sites
+## [unreleased]
 
 ### Docs
 
-- README, SKILL.md, CLAUDE.md updated with time-tracking docs and workflow note
+- Update README, SKILL.md, CLAUDE.md for time tracking (v0.12.0)
+
+### Feat
+
+- Start/stop timer + fix description in frontmatter (v0.11.6)
 
 ## [0.11.5] - 2026-03-08
 
 ### Feat
 
-- `show` accepts multiple IDs; blank line between each (`crumbs show id1 id2`)
-- `list --verbose` prints first two body lines beneath each item
-- `update --append 'text'` appends to body with `[YYYY-MM-DD]` prefix
-- `defer --until <date>` sets wake-up date; `next` skips future-deferred items
-- `--message` now allows values starting with `-` (allow_hyphen_values)
-- GUI: status strip with live item counts and colored status badges
-- GUI: full-text search bar (debounced, hits backend)
-- GUI: drag-and-drop rows to move items between stores
-- GUI: defer modal with optional "until" date picker
-- GUI: export modal (JSON / CSV / TOON via save dialog)
-- GUI: edit dependencies inline in detail pane
-- GUI: Next and Reindex buttons
-
-### Fix
-
-- GUI: column resize now moves only the dragged column; others stay fixed
-- GUI: no text selection when dragging a column divider vertically
-- `update::run` refactored to `UpdateArgs` struct (replaces 14 positional args)
+- Multi-show, list --verbose, --append, defer --until (v0.11.5)
 
 ## [0.9.1] - 2026-03-08
 

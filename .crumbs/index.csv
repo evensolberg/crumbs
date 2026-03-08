@@ -16,7 +16,7 @@ cr-hf9,Marking things as blocked in the GUI should open a selector to picked ite
 cr-ho3,GUI table column resize is wonky. Dragging one divider moves all the other ones too.,closed,bug,2,,2026-03-07,2026-03-08,,
 cr-i4i,Markdown editor autosave after delay,closed,task,2,,2026-03-07,2026-03-07,"Implemented debounced autosave (2s) on input, immediate flush on blur and Cmd/Ctrl-S.",
 cr-j90,GUI: autosave fires on blur even when body is unchanged,closed,bug,1,gui|autosave,2026-03-07,2026-03-07,Fixed: introduced loadedBody tracking in main.js; flushAutosave and scheduleAutosave now skip the save if detailText.value matches the last-loaded value,
-cr-jaj,Time tracking per item,open,idea,4,idea|future,2026-03-07,2026-03-07,,
+cr-jaj,Time tracking per item,in_progress,idea,4,idea|future,2026-03-07,2026-03-08,,
 cr-kan,Crumbs marked as blocked by other crumbs should have blocked status. Updating one with blocking should mark the other as blocked_by,closed,task,2,,2026-03-06,2026-03-06,link/block commands auto-set blocked status in v0.6.0,
 cr-mhl,CLI: verbose list with body snippets,closed,feature,3,cli|list,2026-03-07,2026-03-07,Implemented: --verbose / -v flag on crumbs list prints first two body lines dimmed beneath each row,
 cr-mya,"Using the --dir parameter should append /.crumbs to the path if it is absent, otherwise things get created in the target directory and not the .crumbs subdirectory.",closed,task,2,,2026-03-07,2026-03-07,Fixed: resolve_dir now appends .crumbs unless path already ends with .crumbs or contains store markers,

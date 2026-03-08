@@ -49,7 +49,7 @@ CLI and GUI should have equivalent functionality wherever it makes sense. When a
 
 ## Workflow
 
-When starting work on a crumbs item, run `crumbs start <id>` (with an optional `-m` comment describing what you're about to do). When the work is done, run `crumbs stop <id>` (with an optional `-m` comment summarising what was done). This keeps an accurate time log and change history in the item body — useful for traceability and retrospectives.
+When starting work on a crumbs item, run `crumbs start <id> ['optional comment']`. When the work is done, run `crumbs stop <id> ['optional comment']`. The comment is a bare positional arg — no flag needed. This keeps an accurate time log and change history in the item body — useful for traceability and retrospectives.
 
 ## Commit style
 
