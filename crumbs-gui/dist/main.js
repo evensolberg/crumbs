@@ -831,7 +831,7 @@ async function confirmExport() {
     const content = await invoke('export_items', { dir: storeDir, format });
     const ext = format === 'toon' ? 'toon' : format;
     const savePath = await invoke('plugin:dialog|save', {
-      options: { defaultPath: `export.${ext}`, title: 'Save export' },
+      options: { defaultPath: `crumbs_export.${ext}`, title: 'Save export' },
     });
     if (!savePath) return;
     await invoke('write_text_file', { path: savePath, content });
