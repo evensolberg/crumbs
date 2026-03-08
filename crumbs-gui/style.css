@@ -572,7 +572,6 @@ thead th {
 }
 
 /* Column widths are set via <colgroup> in HTML */
-#items-table td:nth-child(5) { text-align: center; }
 
 /* ── Sortable / resizable column headers ─────────────────────────────────── */
 

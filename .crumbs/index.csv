@@ -2,7 +2,7 @@ id,title,status,type,priority,tags,created,updated,closed_reason,story_points
 cr-0uy,Markdown field is cut off at the bottom of the properties field,closed,bug,2,,2026-03-07,2026-03-07,Fixed resize handler to update detail pane flex-basis instead of list pane height; added min-height:0 to prop-grid for scrolling,
 cr-1f0,"What happens if I try to create a crumb in a non-initialized drectory? It should go to global then, so at least it is caputred and can potentially be moved later.",closed,task,2,,2026-03-05,2026-03-05,,
 cr-2pa,Ask for confirmation in the GUI when deleting crumbs,closed,task,2,,2026-03-07,2026-03-07,Implemented delete-modal with Cancel/Delete buttons; deleteBtn now opens modal instead of invoking directly.,
-cr-4ys,GUI Priority column  should be left justified,open,task,2,,2026-03-08,2026-03-08,,1
+cr-4ys,GUI Priority column  should be left justified,closed,task,2,,2026-03-08,2026-03-08,Removed td:nth-child(5) center-align rule from style.css,1
 cr-4zg,GUI: full-text search,closed,feature,2,gui|search,2026-03-07,2026-03-07,"Search bar in filter row: full-text backend search (title + body), debounced 350ms, clears on store switch, search mode shown in status strip",
 cr-6qc,CLI: duplicate an item,open,feature,3,cli,2026-03-07,2026-03-07,,
 cr-73q,Need more statuses than just open and closed. Need blocked and deferred at least.,closed,task,2,,2026-03-05,2026-03-06,Added blocked and deferred status variants in v0.6.0,
@@ -31,7 +31,7 @@ cr-r8q,Consider the option to add emoji to the body of a crumb. Maybe using :emo
 cr-rlf,Recurring tasks,open,idea,4,idea|future,2026-03-07,2026-03-07,,
 cr-t2c,crumbs show can take multiple entries: crumbs show ca7 an3 q7c,closed,task,2,,2026-03-07,2026-03-07,show accepts Vec<String> with num_args=1..; blank line separator between items; next.rs call site updated,
 cr-tib,GUI: edit tags in the detail pane,closed,bug,1,gui|tags,2026-03-07,2026-03-07,Tags row in detail pane is now an editable comma-separated text input; saves on blur/Enter,
-cr-tmd,Export from the GUI doesn’t work.,open,bug,1,,2026-03-08,2026-03-08,,2
+cr-tmd,Export from the GUI doesn’t work.,closed,bug,1,,2026-03-08,2026-03-08,Added dialog:allow-save to default.json capability,2
 cr-uh7,CLI: story_points on create,closed,bug,2,cli,2026-03-07,2026-03-07,Not a bug: --points is already supported on create. Filed in error.,
 cr-uhz,Epic rollup: aggregate child item stats under an epic,open,idea,4,idea|future|epic,2026-03-07,2026-03-07,,
 cr-v64,Investigate building a GUI app to manage crumbs. Rust with Tauri.,closed,epic,2,,2026-03-06,2026-03-06,Done.,8
