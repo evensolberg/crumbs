@@ -208,9 +208,9 @@ crumbs export --format json --output items.json
 
 ```sh
 crumbs start bc-x7q                                   # append [start] entry, set in_progress
-crumbs start -m 'Investigating root cause' bc-x7q     # -m comment; ID can go anywhere
+crumbs start bc-x7q -m 'Investigating root cause'
 crumbs stop  bc-x7q                                   # append [stop] with elapsed time
-crumbs stop  -m 'Fixed, opening PR' bc-x7q
+crumbs stop  bc-x7q -m 'Fixed, opening PR'
 crumbs show  bc-x7q                               # shows "Total tracked: Xh Ym Zs"
 ```
 

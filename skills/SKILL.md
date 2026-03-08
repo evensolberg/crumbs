@@ -99,9 +99,9 @@ crumbs link cr-x7q blocks cr-y8r --remove  # unlink; restores open if unblocked
 
 ```sh
 crumbs start cr-x7q                                        # append [start] entry, set in_progress
-crumbs start -m 'Investigating root cause' cr-x7q          # comment before ID is fine
+crumbs start cr-x7q -m 'Investigating root cause'
 crumbs stop  cr-x7q                                        # append [stop] with elapsed time
-crumbs stop  -m 'Fixed, needs review' cr-x7q
+crumbs stop  cr-x7q -m 'Fixed, needs review'
 crumbs show  cr-x7q                                        # shows "Total tracked: Xh Ym Zs"
 ```
 
