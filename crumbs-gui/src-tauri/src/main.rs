@@ -32,6 +32,8 @@ fn main() {
             commands::export_items,
             commands::write_text_file,
             commands::reindex_store,
+            commands::start_timer,
+            commands::stop_timer,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

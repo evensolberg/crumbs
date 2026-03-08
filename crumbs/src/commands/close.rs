@@ -12,6 +12,7 @@ pub fn run(dir: &Path, id: &str, reason: Option<String>) -> Result<()> {
             item.status = Status::Closed;
             item.closed_reason = reason.unwrap_or_default();
             item.updated = Local::now().date_naive();
+            item.description.clear(); // description lives in the body, not frontmatter
 
             let frontmatter = serde_yaml_ng::to_string(&item)?;
             let raw = std::fs::read_to_string(&path)?;

@@ -6,7 +6,9 @@ use chrono::Local;
 use crate::{item::Status, store};
 
 fn update_item_file(path: &std::path::PathBuf, item: &crate::item::Item) -> Result<()> {
-    let frontmatter = serde_yaml_ng::to_string(item)?;
+    let mut fm = item.clone();
+    fm.description.clear(); // description lives in the body, not frontmatter
+    let frontmatter = serde_yaml_ng::to_string(&fm)?;
     let raw = std::fs::read_to_string(path)?;
     let body = raw
         .strip_prefix("---\n")

@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
 use crumbs::{
-    commands::{clean, close, create, delete, export, link, update, update::UpdateArgs},
+    commands::{
+        clean, close, create, delete, export, link, start, stop, update, update::UpdateArgs,
+    },
     config::global_dir,
     item::{Item, ItemType, Status},
     store, store_config,
@@ -379,4 +381,26 @@ pub fn link_items(
 ) -> Result<(), String> {
     let path = to_path(&dir);
     link::run(&path, &id, &relation, &targets, remove).map_err(|e| e.to_string())
+}
+
+/// Start a timer for an item (appends [start] entry, sets status to in_progress).
+#[tauri::command]
+pub fn start_timer(dir: String, id: String, comment: String) -> Result<(), String> {
+    let c = if comment.is_empty() {
+        None
+    } else {
+        Some(comment.as_str())
+    };
+    start::run(&to_path(&dir), &id, c).map_err(|e| e.to_string())
+}
+
+/// Stop the active timer for an item (appends [stop] entry with elapsed time).
+#[tauri::command]
+pub fn stop_timer(dir: String, id: String, comment: String) -> Result<(), String> {
+    let c = if comment.is_empty() {
+        None
+    } else {
+        Some(comment.as_str())
+    };
+    stop::run(&to_path(&dir), &id, c).map_err(|e| e.to_string())
 }

@@ -14,5 +14,7 @@ pub mod next;
 pub mod reindex;
 pub mod search;
 pub mod show;
+pub mod start;
 pub mod stats;
+pub mod stop;
 pub mod update;

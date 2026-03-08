@@ -103,6 +103,7 @@ pub fn run(dir: &Path, id: &str, args: UpdateArgs) -> Result<()> {
             } else {
                 format!("\n# {}\n\n{}\n", item.title, desc)
             };
+            item.description.clear(); // description lives in the body, not frontmatter
             let frontmatter = serde_yaml_ng::to_string(&item)?;
             let new_content = format!("---\n{frontmatter}---\n{new_body}");
             store::atomic_write(&path, &new_content)?;

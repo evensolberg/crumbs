@@ -152,6 +152,20 @@ enum Command {
         #[arg(long)]
         until: Option<NaiveDate>,
     },
+    /// Start a timer for an item (appends [start] entry, sets status to in_progress)
+    Start {
+        id: String,
+        /// Optional comment to record with the start entry
+        #[arg(short = 'm', long, allow_hyphen_values = true)]
+        comment: Option<String>,
+    },
+    /// Stop the active timer for an item (appends [stop] entry with elapsed time)
+    Stop {
+        id: String,
+        /// Optional comment to record with the stop entry
+        #[arg(short = 'm', long, allow_hyphen_values = true)]
+        comment: Option<String>,
+    },
     /// Move an item to a different store (assigns a new ID)
     Move {
         /// ID of the item to move
@@ -370,6 +384,12 @@ fn main() -> Result<()> {
         }
         Command::Defer { id, reopen, until } => {
             commands::defer::run(&dir, &id, reopen, until)?;
+        }
+        Command::Start { id, comment } => {
+            commands::start::run(&dir, &id, comment.as_deref())?;
+        }
+        Command::Stop { id, comment } => {
+            commands::stop::run(&dir, &id, comment.as_deref())?;
         }
         Command::Move { id, to } => {
             let dst = if to == "global" {

@@ -79,6 +79,7 @@ const nextBtn       = document.getElementById('next-btn');
 const startBtn      = document.getElementById('start-btn');
 const blockBtn      = document.getElementById('block-btn');
 const deferBtn      = document.getElementById('defer-btn');
+const timerBtn      = document.getElementById('timer-btn');
 const closeItemBtn  = document.getElementById('close-item-btn');
 const deleteBtn     = document.getElementById('delete-btn');
 const cleanBtn      = document.getElementById('clean-btn');
@@ -123,6 +124,13 @@ const deferModal      = document.getElementById('defer-modal');
 const deferUntil      = document.getElementById('defer-until');
 const deferCancelBtn  = document.getElementById('defer-cancel-btn');
 const deferConfirmBtn = document.getElementById('defer-confirm-btn');
+
+// Timer modal
+const timerModal        = document.getElementById('timer-modal');
+const timerModalTitle   = document.getElementById('timer-modal-title');
+const timerComment      = document.getElementById('timer-comment');
+const timerCancelBtn    = document.getElementById('timer-cancel-btn');
+const timerConfirmBtn   = document.getElementById('timer-confirm-btn');
 
 // Open Dir modal
 const openDirModal      = document.getElementById('open-dir-modal');
@@ -181,14 +189,29 @@ function selectedItem() {
 
 // ── Toolbar contextual button state ──────────────────────────────────────
 
+function hasActiveTimer(description) {
+  if (!description) return false;
+  let active = false;
+  for (const line of description.split('\n')) {
+    const t = line.trim();
+    if (t.startsWith('[start]')) active = true;
+    else if (t.startsWith('[stop]')) active = false;
+  }
+  return active;
+}
+
 function updateToolbarButtons() {
   const item = selectedItem();
   const hasSelection = item !== null;
   const isClosed = item?.status === 'closed';
+  const timerActive = hasActiveTimer(item?.description);
 
   startBtn.disabled    = !hasSelection || isClosed || item?.status === 'in_progress';
   blockBtn.disabled    = !hasSelection || isClosed;
   deferBtn.disabled    = !hasSelection || isClosed || item?.status === 'deferred';
+  timerBtn.disabled    = !hasSelection || isClosed;
+  timerBtn.textContent = timerActive ? '■ Stop' : '▶ Timer';
+  timerBtn.title       = timerActive ? 'Stop the active timer' : 'Start a time-tracking timer';
   closeItemBtn.disabled = !hasSelection || isClosed;
   deleteBtn.disabled   = !hasSelection;
 }
@@ -943,6 +966,48 @@ deferModal.addEventListener('click', e => {
   if (e.target === deferModal) deferModal.classList.add('hidden');
 });
 
+// ── Timer modal ───────────────────────────────────────────────────────────
+
+function openTimerModal() {
+  if (!selectedId) return;
+  const item = selectedItem();
+  const starting = !hasActiveTimer(item?.description);
+  timerModalTitle.textContent = starting ? 'Start timer' : 'Stop timer';
+  timerConfirmBtn.textContent = starting ? 'Start' : 'Stop';
+  timerComment.value = '';
+  timerModal.classList.remove('hidden');
+  timerComment.focus();
+}
+
+async function confirmTimer() {
+  timerModal.classList.add('hidden');
+  if (!selectedId) return;
+  const item = selectedItem();
+  const starting = !hasActiveTimer(item?.description);
+  const comment = timerComment.value.trim();
+  clearError();
+  try {
+    if (starting) {
+      await invoke('start_timer', { dir: storeDir, id: selectedId, comment });
+    } else {
+      await invoke('stop_timer', { dir: storeDir, id: selectedId, comment });
+    }
+    await loadItems();
+  } catch (e) {
+    showError(`Timer failed: ${e}`);
+  }
+}
+
+timerCancelBtn.addEventListener('click', () => { timerModal.classList.add('hidden'); });
+timerConfirmBtn.addEventListener('click', confirmTimer);
+timerModal.addEventListener('keydown', e => {
+  if (e.key === 'Enter') confirmTimer();
+  if (e.key === 'Escape') timerModal.classList.add('hidden');
+});
+timerModal.addEventListener('click', e => {
+  if (e.target === timerModal) timerModal.classList.add('hidden');
+});
+
 // ── New item modal ────────────────────────────────────────────────────────
 
 function openNewModal() {
@@ -1390,6 +1455,7 @@ previewBtn.addEventListener('click', () => setPreviewMode(!previewMode));
 startBtn.addEventListener('click',    () => { if (selectedId) doUpdateStatus(selectedId, 'in_progress'); });
 blockBtn.addEventListener('click',    () => { if (selectedId) openBlockedByModal(); });
 deferBtn.addEventListener('click',    () => { if (selectedId) openDeferModal(); });
+timerBtn.addEventListener('click',    () => { if (selectedId) openTimerModal(); });
 closeItemBtn.addEventListener('click', () => { if (selectedId) openCloseModal(selectedId); });
 
 deleteBtn.addEventListener('click', () => {

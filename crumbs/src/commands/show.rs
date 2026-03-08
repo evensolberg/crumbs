@@ -1,10 +1,37 @@
 use std::path::Path;
 
 use anyhow::{Result, bail};
-use chrono::Local;
+use chrono::{Local, NaiveDateTime};
 use console::Style;
 
 use crate::{color, store};
+
+/// Sum elapsed seconds across all matched `[start]`/`[stop]` pairs in a description.
+fn total_tracked_secs(description: &str) -> i64 {
+    let mut total: i64 = 0;
+    let mut current_start: Option<NaiveDateTime> = None;
+    for line in description.lines() {
+        let t = line.trim();
+        if t.starts_with("[start]") {
+            let rest = t.trim_start_matches("[start]").trim();
+            if let Ok(dt) =
+                NaiveDateTime::parse_from_str(&rest[..rest.len().min(19)], "%Y-%m-%d %H:%M:%S")
+            {
+                current_start = Some(dt);
+            }
+        } else if t.starts_with("[stop]") {
+            if let Some(start_dt) = current_start.take() {
+                let rest = t.trim_start_matches("[stop]").trim();
+                if let Ok(stop_dt) =
+                    NaiveDateTime::parse_from_str(&rest[..rest.len().min(19)], "%Y-%m-%d %H:%M:%S")
+                {
+                    total += (stop_dt - start_dt).num_seconds().max(0);
+                }
+            }
+        }
+    }
+    total
+}
 
 fn show_one(dir: &Path, id: &str) -> Result<()> {
     match store::find_by_id(dir, id)? {
@@ -68,6 +95,14 @@ fn show_one(dir: &Path, id: &str) -> Result<()> {
             if !item.description.is_empty() {
                 println!();
                 println!("{}", item.description);
+                let tracked = total_tracked_secs(&item.description);
+                if tracked > 0 {
+                    println!();
+                    println!(
+                        "  Tracked:  {}",
+                        dim.apply_to(super::stop::format_elapsed(tracked))
+                    );
+                }
                 println!();
             }
             println!("  File:     {}", dim.apply_to(path.display()));

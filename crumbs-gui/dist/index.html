@@ -25,6 +25,7 @@
         <button type="button" id="start-btn"  class="btn btn-action btn-small"    disabled title="Mark selected item as In Progress">Start</button>
         <button type="button" id="block-btn"  class="btn btn-warn btn-small"      disabled title="Mark selected item as Blocked">Block</button>
         <button type="button" id="defer-btn"  class="btn btn-secondary btn-small" disabled title="Mark selected item as Deferred">Defer</button>
+        <button type="button" id="timer-btn"  class="btn btn-secondary btn-small" disabled title="Start or stop a time-tracking timer">▶ Timer</button>
         <button type="button" id="close-item-btn" class="btn btn-danger btn-small" disabled title="Close selected item">Close</button>
         <button type="button" id="delete-btn" class="btn btn-danger-solid btn-small" disabled title="Delete selected item permanently">Delete</button>
         <div class="toolbar-sep"></div>
@@ -165,6 +166,19 @@
       <div class="modal-actions">
         <button type="button" id="defer-cancel-btn" class="btn btn-secondary">Cancel</button>
         <button type="button" id="defer-confirm-btn" class="btn btn-secondary">Defer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timer comment modal -->
+  <div id="timer-modal" class="modal hidden">
+    <div class="modal-box">
+      <h2 id="timer-modal-title">Start timer</h2>
+      <p class="modal-msg">Optional comment to record with this entry.</p>
+      <input id="timer-comment" type="text" placeholder="Comment (optional)" autocomplete="off" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:7px 10px;font-size:13px;outline:none;box-sizing:border-box;">
+      <div class="modal-actions">
+        <button type="button" id="timer-cancel-btn" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="timer-confirm-btn" class="btn btn-action">Start</button>
       </div>
     </div>
   </div>
