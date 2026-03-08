@@ -16,6 +16,8 @@ fn main() {
             commands::update_due,
             commands::update_body,
             commands::update_points,
+            commands::update_dependencies,
+            commands::update_tags,
             commands::update_title,
             commands::close_item,
             commands::has_store,
@@ -24,6 +26,12 @@ fn main() {
             commands::delete_item,
             commands::clean_closed,
             commands::link_items,
+            commands::move_item,
+            commands::defer_item,
+            commands::search_items,
+            commands::export_items,
+            commands::write_text_file,
+            commands::reindex_store,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -6,7 +6,7 @@ use console::Style;
 
 use crate::{color, store};
 
-pub fn run(dir: &Path, id: &str) -> Result<()> {
+fn show_one(dir: &Path, id: &str) -> Result<()> {
     match store::find_by_id(dir, id)? {
         None => bail!("no item found with id: {id}"),
         Some((path, item)) => {
@@ -72,6 +72,16 @@ pub fn run(dir: &Path, id: &str) -> Result<()> {
             }
             println!("  File:     {}", dim.apply_to(path.display()));
         }
+    }
+    Ok(())
+}
+
+pub fn run(dir: &Path, ids: &[String]) -> Result<()> {
+    for (i, id) in ids.iter().enumerate() {
+        if i > 0 {
+            println!();
+        }
+        show_one(dir, id)?;
     }
     Ok(())
 }

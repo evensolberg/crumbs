@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use anyhow::{Result, bail};
-use chrono::Local;
+use chrono::{Local, NaiveDate};
 
 use crate::{item::Status, store};
 
@@ -16,9 +16,9 @@ fn update_item_file(path: &std::path::PathBuf, item: &crate::item::Item) -> Resu
     Ok(())
 }
 
-/// `crumbs defer <id>` — set status to deferred.
+/// `crumbs defer <id> [--until <date>]` — set status to deferred, optionally setting a wake-up date.
 /// `crumbs defer <id> --reopen` — set status back to open.
-pub fn run(dir: &Path, id: &str, reopen: bool) -> Result<()> {
+pub fn run(dir: &Path, id: &str, reopen: bool, until: Option<NaiveDate>) -> Result<()> {
     let (path, mut item) = store::find_by_id(dir, id)?
         .ok_or_else(|| anyhow::anyhow!("no item found with id: {id}"))?;
 
@@ -36,6 +36,9 @@ pub fn run(dir: &Path, id: &str, reopen: bool) -> Result<()> {
             bail!("{} is already deferred", item.id);
         }
         item.status = Status::Deferred;
+        if let Some(date) = until {
+            item.due = Some(date);
+        }
         item.updated = Local::now().date_naive();
         update_item_file(&path, &item)?;
         store::reindex(dir)?;

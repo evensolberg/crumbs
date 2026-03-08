@@ -2,6 +2,7 @@ use tempfile::tempdir;
 
 use crumbs::{
     commands,
+    commands::update::UpdateArgs,
     item::{ItemType, Status},
     store,
 };
@@ -223,17 +224,10 @@ fn update_changes_status() {
     commands::update::run(
         dir.path(),
         &id,
-        Some("in_progress".to_string()),
-        None,
-        None,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        false,
-        None,
+        UpdateArgs {
+            status: Some("in_progress".to_string()),
+            ..Default::default()
+        },
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -247,17 +241,10 @@ fn update_changes_priority() {
     commands::update::run(
         dir.path(),
         &id,
-        None,
-        Some(0),
-        None,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        false,
-        None,
+        UpdateArgs {
+            priority: Some(0),
+            ..Default::default()
+        },
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -271,17 +258,10 @@ fn update_replaces_tags() {
     commands::update::run(
         dir.path(),
         &id,
-        None,
-        None,
-        Some(vec!["new-tag".to_string()]),
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        false,
-        None,
+        UpdateArgs {
+            tags: Some(vec!["new-tag".to_string()]),
+            ..Default::default()
+        },
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -295,17 +275,10 @@ fn update_changes_type() {
     commands::update::run(
         dir.path(),
         &id,
-        None,
-        None,
-        None,
-        Some("bug".to_string()),
-        None,
-        None,
-        false,
-        None,
-        None,
-        false,
-        None,
+        UpdateArgs {
+            item_type: Some("bug".to_string()),
+            ..Default::default()
+        },
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -315,21 +288,7 @@ fn update_changes_type() {
 #[test]
 fn update_unknown_id_errors() {
     let dir = tempdir().unwrap();
-    let result = commands::update::run(
-        dir.path(),
-        "bc-zzz",
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        false,
-        None,
-    );
+    let result = commands::update::run(dir.path(), "bc-zzz", UpdateArgs::default());
     assert!(result.is_err());
 }
 
@@ -367,7 +326,7 @@ fn list_no_filter_does_not_error() {
     let dir = tempdir().unwrap();
     create_task(dir.path(), "List Task 1");
     create_task(dir.path(), "List Task 2");
-    commands::list::run(dir.path(), None, None, None, false).unwrap();
+    commands::list::run(dir.path(), None, None, None, false, false).unwrap();
 }
 
 #[test]
@@ -498,17 +457,10 @@ fn update_replaces_dependencies() {
     commands::update::run(
         dir.path(),
         &id,
-        None,
-        None,
-        None,
-        None,
-        Some(vec![dep_id.clone()]),
-        None,
-        false,
-        None,
-        None,
-        false,
-        None,
+        UpdateArgs {
+            dependencies: Some(vec![dep_id.clone()]),
+            ..Default::default()
+        },
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -611,17 +563,10 @@ fn update_message_replaces_description() {
     commands::update::run(
         dir.path(),
         &id,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        false,
-        Some("New description text.".to_string()),
-        None,
-        false,
-        None,
+        UpdateArgs {
+            message: Some("New description text.".to_string()),
+            ..Default::default()
+        },
     )
     .unwrap();
     let (path, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -636,4 +581,61 @@ fn update_message_replaces_description() {
         !fm.contains("description:"),
         "description must not appear in YAML frontmatter after update; got:\n{fm}"
     );
+}
+
+#[test]
+fn update_title_rewrites_body_heading() {
+    let dir = tempdir().unwrap();
+    let id = create_task(dir.path(), "Old Title");
+    commands::update::run(
+        dir.path(),
+        &id,
+        UpdateArgs {
+            title: Some("New Title".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (path, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    assert_eq!(item.title, "New Title");
+    let content = std::fs::read_to_string(&path).unwrap();
+    assert!(
+        content.contains("# New Title"),
+        "body heading must reflect new title"
+    );
+    assert!(
+        !content.contains("# Old Title"),
+        "old heading must be replaced"
+    );
+}
+
+#[test]
+fn update_title_preserves_existing_description() {
+    let dir = tempdir().unwrap();
+    commands::create::run(
+        dir.path(),
+        "Old Title".to_string(),
+        ItemType::Task,
+        2,
+        vec![],
+        "Body text to keep.".to_string(),
+        vec![],
+        None,
+        None,
+    )
+    .unwrap();
+    let items = store::load_all(dir.path()).unwrap();
+    let id = items[0].1.id.clone();
+    commands::update::run(
+        dir.path(),
+        &id,
+        UpdateArgs {
+            title: Some("New Title".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    assert_eq!(item.title, "New Title");
+    assert_eq!(item.description, "Body text to keep.");
 }

@@ -2,14 +2,13 @@ use std::path::Path;
 
 use anyhow::Result;
 
-use crate::store;
+use crate::{item::Item, store};
 
-pub fn run(dir: &Path, format: &str, output: Option<&Path>) -> Result<()> {
-    let items: Vec<_> = store::load_all(dir)?.into_iter().map(|(_, i)| i).collect();
-
-    let content = match format {
-        "json" => serde_json::to_string_pretty(&items)?,
-        "toon" => serde_toon::to_string(&items)?,
+/// Serialize `items` to the requested format string without any I/O.
+pub fn items_to_string(items: &Vec<Item>, format: &str) -> Result<String> {
+    match format {
+        "json" => Ok(serde_json::to_string_pretty(items)?),
+        "toon" => Ok(serde_toon::to_string(items)?),
         "csv" => {
             let mut wtr = csv::WriterBuilder::new().from_writer(vec![]);
             wtr.write_record([
@@ -26,7 +25,7 @@ pub fn run(dir: &Path, format: &str, output: Option<&Path>) -> Result<()> {
                 "due",
                 "story_points",
             ])?;
-            for item in &items {
+            for item in items {
                 wtr.write_record([
                     &item.id,
                     &item.title,
@@ -45,15 +44,23 @@ pub fn run(dir: &Path, format: &str, output: Option<&Path>) -> Result<()> {
                         .unwrap_or_default(),
                 ])?;
             }
-            String::from_utf8(wtr.into_inner()?)?
+            Ok(String::from_utf8(wtr.into_inner()?)?)
         }
         other => anyhow::bail!("unknown format: {other} (expected csv, json, or toon)"),
-    };
+    }
+}
 
+/// Load all items from `dir` and serialize them to the requested format.
+pub fn to_string(dir: &Path, format: &str) -> Result<String> {
+    let items: Vec<_> = store::load_all(dir)?.into_iter().map(|(_, i)| i).collect();
+    items_to_string(&items, format)
+}
+
+pub fn run(dir: &Path, format: &str, output: Option<&Path>) -> Result<()> {
+    let content = to_string(dir, format)?;
     match output {
         Some(path) => std::fs::write(path, content)?,
         None => print!("{content}"),
     }
-
     Ok(())
 }

@@ -280,6 +280,7 @@ button:disabled {
 }
 .store-item:hover { background: var(--row-hover); }
 .store-item.active { background: var(--row-selected); }
+.store-item.drop-target { outline: 2px dashed var(--accent); outline-offset: -2px; background: var(--row-hover); }
 
 .store-name {
   display: block;
@@ -358,12 +359,52 @@ button:disabled {
   overflow: hidden;
 }
 
+/* ── Status strip ────────────────────────────────────────────────────────── */
+
+#status-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  height: 24px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-dim);
+  gap: 12px;
+}
+
+#status-strip-count { flex-shrink: 0; }
+
+#status-strip-badges {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.strip-stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.strip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 /* ── List pane (top) ─────────────────────────────────────────────────────── */
 
 #list-pane {
   flex: 1 1 0;
   min-height: 80px;
   overflow-y: auto;
+  overflow-x: auto;
   position: relative;
 }
 
@@ -394,11 +435,20 @@ button:disabled {
   width: 220px;
   min-width: 140px;
   flex-shrink: 0;
-  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
+
+#detail-resizer {
+  width: 4px;
+  background: var(--border);
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+#detail-resizer:hover,
+#detail-resizer.resizing { background: var(--accent); }
 
 #detail-right {
   flex: 1;
@@ -495,7 +545,8 @@ button:disabled {
 /* ── Table ───────────────────────────────────────────────────────────────── */
 
 #items-table {
-  width: 100%;
+  width: min-content;
+  min-width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -556,6 +607,7 @@ tbody tr {
 }
 tbody tr:hover { background: var(--row-hover); }
 tbody tr.selected { background: var(--row-selected); }
+tbody tr.dragging { opacity: 0.4; }
 
 tbody td {
   padding: 6px 10px;
@@ -756,6 +808,28 @@ tbody td {
 .modal-box input[type="text"]:focus { border-color: var(--accent); }
 
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+.new-blocker-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.new-blocker-row input { flex: 1; }
+
+.search-wrap { display: flex; align-items: center; }
+.search-input { width: 160px; }
+
+.export-format-group {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+}
+.export-format-group label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
 
 .open-dir-row {
   display: flex;

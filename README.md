@@ -57,13 +57,17 @@ cargo tauri build
 
 The GUI provides a full item management interface:
 
-- **Sidebar** — manage multiple stores; click to switch, double-click or right-click to rename
+- **Sidebar** — manage multiple stores; click to switch, double-click or right-click to rename; drag rows onto another store to move items
 - **Item table** — sortable columns, customisable visibility (click **Columns ▾**), resizable
-- **Filters** — status buttons + priority, type, and tag dropdowns (AND logic)
-- **Detail pane** — edit title (double-click), body text (autosaves on blur), all metadata fields
+- **Status strip** — live count of items in the current view with coloured status dots
+- **Filters** — status buttons + priority, type, tag dropdowns, and a full-text **Search** bar (searches title and body)
+- **Detail pane** — edit title (double-click), body (autosaves on blur/⌘S), tags, dependencies, due date, type, priority, and story points
 - **Markdown preview** — click **Preview** in the detail pane to render the body as HTML
 - **Priority badges** — colour-coded P0 Critical … P4 Backlog labels
-- **Actions** — Start, Block, Defer, Close, Delete, Clean closed
+- **Actions** — Start, Block (with inline new-blocker creation), Defer (with optional until date), Close, Delete, Clean closed
+- **Next** — selects the highest-priority actionable item
+- **Export** — saves all items as JSON, CSV, or TOON via a save dialog
+- **Reindex** — rebuilds `index.csv` from `.md` files on disk
 
 Column visibility and sidebar state persist across sessions via `localStorage`.
 
@@ -97,7 +101,7 @@ crumbs init --prefix myp       # skip interactive prompt, set prefix directly
 ```sh
 crumbs create 'Fix the login bug' --item-type bug --priority 1 --tags project/auth
 crumbs create 'Auth redesign' --message 'Covers login, OAuth, and session handling'
-crumbs create 'Ship it' --due 2026-04-01
+crumbs create 'Ship it' --due 2026-04-01 --points 5
 crumbs c 'Quick idea'          # shorthand
 # Tip: use single quotes to avoid shell expansion of !, $, etc.
 ```
@@ -110,6 +114,7 @@ crumbs c 'Quick idea'          # shorthand
 | `-m, --message`   | —       | freeform text stored in the markdown body        |
 | `--depends`       | —       | comma-separated dependency IDs                   |
 | `--due`           | —       | `YYYY-MM-DD`                                     |
+| `--points`        | —       | story points (Fibonacci: 1 2 3 5 8 13 21)        |
 
 ### List items
 
@@ -119,13 +124,15 @@ crumbs list --all              # include closed
 crumbs list --status blocked
 crumbs list --tag project/auth
 crumbs list --priority 0       # P0 items only
-crumbs next                    # highest-priority open item
+crumbs list --verbose          # show first two body lines beneath each item
+crumbs next                    # highest-priority actionable item (skips deferred with future until date)
 ```
 
 ### Inspect
 
 ```sh
 crumbs show bc-x7q
+crumbs show bc-x7q bc-y8r bc-z9s   # show multiple items
 crumbs stats
 crumbs search "login"
 ```
@@ -141,9 +148,12 @@ crumbs update bc-x7q --depends cr-abc,cr-xyz
 crumbs update bc-x7q --due 2026-04-01
 crumbs update bc-x7q --clear-due
 crumbs update bc-x7q --message 'Now includes OAuth flow'
+crumbs update bc-x7q --append 'See also PR #99'             # appends with [date] prefix
+crumbs update bc-x7q --points 8
+crumbs update bc-x7q --clear-points
 ```
 
-`--tags` and `--depends` **replace** the existing list.
+`--tags` and `--depends` **replace** the existing list. `--append 'text'` adds to the body (with a `[YYYY-MM-DD]` prefix) instead of replacing it; `--message 'text'` replaces the body.
 
 ### Block and defer
 
@@ -151,8 +161,9 @@ crumbs update bc-x7q --message 'Now includes OAuth flow'
 crumbs block bc-x7q bc-y8r,bc-z9s   # bc-x7q blocks targets; targets → blocked status
 crumbs block bc-x7q bc-y8r --remove  # unlink; targets reopen if nothing else blocks them
 crumbs block bc-x7q                  # mark bc-x7q itself as blocked (no link)
-crumbs defer bc-x7q                  # set status to deferred
-crumbs defer bc-x7q --reopen         # reopen a deferred item
+crumbs defer bc-x7q                          # set status to deferred
+crumbs defer bc-x7q --until 2026-04-01       # defer with a wake-up date
+crumbs defer bc-x7q --reopen                 # reopen a deferred item
 ```
 
 ### Move and import between stores

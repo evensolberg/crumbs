@@ -12,6 +12,7 @@ pub fn run(
     tag_filter: Option<&str>,
     priority_filter: Option<u8>,
     all: bool,
+    verbose: bool,
 ) -> Result<()> {
     // Validate the status filter up front so a typo surfaces as an error
     // rather than silently returning "No items found."
@@ -85,6 +86,15 @@ pub fn run(
             t_style.apply_to(format!("[{}]", item.item_type)),
             item.title
         );
+        if verbose && !item.description.is_empty() {
+            let snippet = item
+                .description
+                .lines()
+                .take(2)
+                .collect::<Vec<_>>()
+                .join(" ");
+            println!("  {}", Style::new().dim().apply_to(snippet));
+        }
     }
     Ok(())
 }

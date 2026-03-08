@@ -12,8 +12,11 @@ let filterTag      = '';
 let previewMode = false;
 let pendingCloseId = '';
 let autosaveTimer = null;
+let loadedBody = '';
 let sortCol = 'priority';
 let sortDir = 'asc';
+let searchResults = null;   // null = normal mode; Item[] = search mode
+let searchTimer = null;
 
 // ── Column definitions ─────────────────────────────────────────────────────
 
@@ -40,6 +43,9 @@ let visibleCols = getVisibleColumns();
 
 // ── DOM refs ──────────────────────────────────────────────────────────────
 
+const statusStripCount  = document.getElementById('status-strip-count');
+const statusStripBadges = document.getElementById('status-strip-badges');
+
 const sidebarEl        = document.getElementById('sidebar');
 const sidebarResizer   = document.getElementById('sidebar-resizer');
 const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
@@ -56,6 +62,8 @@ const itemsTable       = document.getElementById('items-table');
 const itemsBody        = document.getElementById('items-body');
 const listPane         = document.getElementById('list-pane');
 const detailPane       = document.getElementById('detail-pane');
+const detailLeft       = document.getElementById('detail-left');
+const detailResizer    = document.getElementById('detail-resizer');
 const resizeHandle     = document.getElementById('resize-handle');
 const propGrid         = document.getElementById('prop-grid');
 const detailActions    = document.getElementById('detail-actions');
@@ -67,12 +75,21 @@ const previewBtn       = document.getElementById('preview-btn');
 // Toolbar action buttons
 const openDirBtn    = document.getElementById('open-dir-btn');
 const newBtn        = document.getElementById('new-btn');
+const nextBtn       = document.getElementById('next-btn');
 const startBtn      = document.getElementById('start-btn');
 const blockBtn      = document.getElementById('block-btn');
 const deferBtn      = document.getElementById('defer-btn');
 const closeItemBtn  = document.getElementById('close-item-btn');
 const deleteBtn     = document.getElementById('delete-btn');
 const cleanBtn      = document.getElementById('clean-btn');
+const exportBtn     = document.getElementById('export-btn');
+const reindexBtn    = document.getElementById('reindex-btn');
+const searchInput   = document.getElementById('search-input');
+
+// Export modal
+const exportModal      = document.getElementById('export-modal');
+const exportCancelBtn  = document.getElementById('export-cancel-btn');
+const exportConfirmBtn = document.getElementById('export-confirm-btn');
 
 // Delete modal
 const deleteModal      = document.getElementById('delete-modal');
@@ -94,10 +111,18 @@ const newConfirmBtn = document.getElementById('new-confirm-btn');
 // Blocked-by modal
 const blockedByModal     = document.getElementById('blocked-by-modal');
 const blockerTargetTitle = document.getElementById('blocker-target-title');
+const newBlockerTitle    = document.getElementById('new-blocker-title');
+const newBlockerBtn      = document.getElementById('new-blocker-btn');
 const blockerSearch      = document.getElementById('blocker-search');
 const blockerList        = document.getElementById('blocker-list');
 const blockerCancelBtn   = document.getElementById('blocker-cancel-btn');
 const blockerConfirmBtn  = document.getElementById('blocker-confirm-btn');
+
+// Defer modal
+const deferModal      = document.getElementById('defer-modal');
+const deferUntil      = document.getElementById('defer-until');
+const deferCancelBtn  = document.getElementById('defer-cancel-btn');
+const deferConfirmBtn = document.getElementById('defer-confirm-btn');
 
 // Open Dir modal
 const openDirModal      = document.getElementById('open-dir-modal');
@@ -213,7 +238,7 @@ function filteredItems() {
 }
 
 function sortedItems() {
-  const items = filteredItems();
+  const items = searchResults !== null ? searchResults : filteredItems();
   const dir = sortDir === 'asc' ? 1 : -1;
   return items.slice().sort((a, b) => {
     let av, bv;
@@ -285,8 +310,40 @@ function updateSortHeaders() {
   }
 }
 
+const STRIP_STATS = [
+  { key: 'open',        label: 'open',        color: 'var(--status-open)' },
+  { key: 'in_progress', label: 'in progress',  color: 'var(--status-in-progress)' },
+  { key: 'blocked',     label: 'blocked',      color: 'var(--status-blocked)' },
+  { key: 'deferred',    label: 'deferred',     color: 'var(--status-deferred)' },
+  { key: 'closed',      label: 'closed',       color: 'var(--status-closed)' },
+];
+
+function updateStatusStrip(filtered) {
+  const total = allItems.length;
+  if (searchResults !== null) {
+    const q = searchInput.value.trim();
+    statusStripCount.textContent = `${filtered.length} result${filtered.length !== 1 ? 's' : ''} for "${q}"`;
+  } else {
+    statusStripCount.textContent = filtered.length === total
+      ? `${total} item${total !== 1 ? 's' : ''}`
+      : `Showing ${filtered.length} of ${total}`;
+  }
+
+  const counts = {};
+  for (const item of filtered) counts[item.status] = (counts[item.status] ?? 0) + 1;
+
+  statusStripBadges.innerHTML = STRIP_STATS
+    .filter(s => counts[s.key])
+    .map(s => `<span class="strip-stat">
+      <span class="strip-dot" style="background:${s.color}"></span>
+      ${counts[s.key]} ${s.label}
+    </span>`)
+    .join('');
+}
+
 function renderTable() {
   const items = sortedItems();
+  updateStatusStrip(items);
   itemsBody.innerHTML = '';
 
   if (items.length === 0) {
@@ -303,6 +360,13 @@ function renderTable() {
     if (item.id === selectedId) tr.classList.add('selected');
     tr.innerHTML = visibleCols.map(key => cellFor(item, key)).join('');
     tr.dataset.id = item.id;
+    tr.draggable = true;
+    tr.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', item.id);
+      e.dataTransfer.effectAllowed = 'move';
+      tr.classList.add('dragging');
+    });
+    tr.addEventListener('dragend', () => tr.classList.remove('dragging'));
     itemsBody.appendChild(tr);
   }
 }
@@ -322,21 +386,35 @@ function initColResizers() {
     let startW = 0;
 
     handle.addEventListener('mousedown', e => {
+      e.preventDefault();   // prevent text selection when dragging
       e.stopPropagation();
+      const table = document.getElementById('items-table');
+      // Snapshot all rendered widths first, then lock both <col> and <th>
+      // so table-layout: fixed has no freedom to redistribute.
+      // (<th> cell widths override <col> widths, so both must be pinned.)
+      const widths = Array.from(ths).map(t => t.getBoundingClientRect().width);
+      widths.forEach((w, j) => {
+        cols[j].style.width = `${w}px`;
+        ths[j].style.width  = `${w}px`;
+      });
+      const startTableW = table.getBoundingClientRect().width;
+      table.style.minWidth = '0';   // prevent CSS min-width:100% from fighting explicit width
+      table.style.width = `${startTableW}px`;
       startX = e.clientX;
-      startW = th.getBoundingClientRect().width;
+      startW = widths[i];
       handle.classList.add('resizing');
       document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
 
       function onMove(e) {
+        e.preventDefault();
         const w = Math.max(40, startW + e.clientX - startX);
-        cols[i].style.width = `${w}px`;
+        cols[i].style.width  = `${w}px`;
+        ths[i].style.width   = `${w}px`;
+        table.style.width    = `${startTableW + (w - startW)}px`;
       }
       function onUp() {
         handle.classList.remove('resizing');
         document.body.style.cursor = '';
-        document.body.style.userSelect = '';
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onUp);
       }
@@ -411,12 +489,45 @@ function renderProps(item) {
   dueInput.addEventListener('change', () => doUpdateDue(item.id, dueInput.value));
   propRow('Due', '').appendChild(dueInput);
 
-  if ((item.tags ?? []).length > 0) {
-    propRow('Tags', escHtml(item.tags.join(', ')));
-  }
-  if ((item.dependencies ?? []).length > 0) {
-    propRow('Depends', escHtml(item.dependencies.join(', ')));
-  }
+  const tagsInput = document.createElement('input');
+  tagsInput.type = 'text';
+  tagsInput.placeholder = 'comma, separated';
+  tagsInput.value = (item.tags ?? []).join(', ');
+  tagsInput.style.cssText = 'width:100%;font:inherit;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:2px 4px;outline:none;box-sizing:border-box;';
+  let loadedTags = tagsInput.value;
+  tagsInput.addEventListener('focus', () => { tagsInput.style.borderColor = 'var(--accent)'; });
+  tagsInput.addEventListener('blur', () => {
+    tagsInput.style.borderColor = 'var(--border)';
+    if (tagsInput.value !== loadedTags) {
+      loadedTags = tagsInput.value;
+      doUpdateTags(item.id, tagsInput.value);
+    }
+  });
+  tagsInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') tagsInput.blur();
+    if (e.key === 'Escape') { tagsInput.value = loadedTags; tagsInput.blur(); }
+  });
+  propRow('Tags', '').appendChild(tagsInput);
+
+  const depsInput = document.createElement('input');
+  depsInput.type = 'text';
+  depsInput.placeholder = 'id1, id2, …';
+  depsInput.value = (item.dependencies ?? []).join(', ');
+  depsInput.style.cssText = 'width:100%;font:inherit;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:2px 4px;outline:none;box-sizing:border-box;';
+  let loadedDeps = depsInput.value;
+  depsInput.addEventListener('focus', () => { depsInput.style.borderColor = 'var(--accent)'; });
+  depsInput.addEventListener('blur', () => {
+    depsInput.style.borderColor = 'var(--border)';
+    if (depsInput.value !== loadedDeps) {
+      loadedDeps = depsInput.value;
+      doUpdateDependencies(item.id, depsInput.value);
+    }
+  });
+  depsInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') depsInput.blur();
+    if (e.key === 'Escape') { depsInput.value = loadedDeps; depsInput.blur(); }
+  });
+  propRow('Depends', '').appendChild(depsInput);
   if ((item.blocks ?? []).length > 0) {
     propRow('Blocks', escHtml(item.blocks.join(', ')));
   }
@@ -452,7 +563,8 @@ function renderDetail(item) {
   detailTitleLabel.dataset.id = item.id;
   renderProps(item);
   detailActions.innerHTML = '';
-  detailText.value = item.description ?? '';
+  loadedBody = item.description ?? '';
+  detailText.value = loadedBody;
   setPreviewMode(false);
   updateToolbarButtons();
 }
@@ -525,6 +637,26 @@ async function doUpdateDue(id, due) {
   }
 }
 
+async function doUpdateDependencies(id, dependencies) {
+  clearError();
+  try {
+    await invoke('update_dependencies', { dir: storeDir, id, dependencies });
+    await loadItems();
+  } catch (e) {
+    showError(`Update failed: ${e}`);
+  }
+}
+
+async function doUpdateTags(id, tags) {
+  clearError();
+  try {
+    await invoke('update_tags', { dir: storeDir, id, tags });
+    await loadItems();
+  } catch (e) {
+    showError(`Update failed: ${e}`);
+  }
+}
+
 async function doUpdateTitle(id, title) {
   clearError();
   try {
@@ -539,11 +671,110 @@ async function doSaveText(id, text) {
   clearError();
   try {
     await invoke('update_body', { dir: storeDir, id, body: text });
+    loadedBody = text;
     await loadItems();
   } catch (e) {
     showError(`Save failed: ${e}`);
   }
 }
+
+// ── Search ────────────────────────────────────────────────────────────────
+
+async function doSearch(query) {
+  const q = query.trim();
+  if (!q) {
+    searchResults = null;
+    renderTable();
+    return;
+  }
+  clearError();
+  try {
+    searchResults = await invoke('search_items', {
+      dir: storeDir,
+      query: q,
+      includeClosed: showClosedEl.checked,
+    });
+    renderTable();
+  } catch (e) {
+    showError(`Search failed: ${e}`);
+  }
+}
+
+searchInput.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => doSearch(searchInput.value), 350);
+});
+searchInput.addEventListener('search', () => {
+  // fires when the × clear button is clicked on type="search"
+  clearTimeout(searchTimer);
+  doSearch(searchInput.value);
+});
+
+// ── Next ──────────────────────────────────────────────────────────────────
+
+function doNext() {
+  const today = new Date().toISOString().slice(0, 10);
+  const open = allItems
+    .filter(i => {
+      if (i.status === 'closed') return false;
+      if (i.status === 'deferred') return i.due ? i.due <= today : false;
+      return true;
+    })
+    .sort((a, b) => a.priority - b.priority || a.created.localeCompare(b.created));
+  if (!open.length) return;
+  selectedId = open[0].id;
+  renderTable();
+  renderDetail(selectedItem());
+  document.querySelector(`#items-body tr[data-id="${CSS.escape(selectedId)}"]`)
+    ?.scrollIntoView({ block: 'nearest' });
+}
+
+// ── Export modal ──────────────────────────────────────────────────────────
+
+function openExportModal() {
+  exportModal.classList.remove('hidden');
+  exportConfirmBtn.focus();
+}
+
+async function confirmExport() {
+  const format = document.querySelector('input[name="export-fmt"]:checked')?.value ?? 'json';
+  exportModal.classList.add('hidden');
+  clearError();
+  try {
+    const content = await invoke('export_items', { dir: storeDir, format });
+    const ext = format === 'toon' ? 'toon' : format;
+    const savePath = await invoke('plugin:dialog|save', {
+      options: { defaultPath: `export.${ext}`, title: 'Save export' },
+    });
+    if (!savePath) return;
+    await invoke('write_text_file', { path: savePath, content });
+  } catch (e) {
+    showError(`Export failed: ${e}`);
+  }
+}
+
+exportBtn.addEventListener('click', openExportModal);
+exportCancelBtn.addEventListener('click', () => { exportModal.classList.add('hidden'); });
+exportConfirmBtn.addEventListener('click', confirmExport);
+exportModal.addEventListener('keydown', e => {
+  if (e.key === 'Enter') confirmExport();
+  if (e.key === 'Escape') exportModal.classList.add('hidden');
+});
+exportModal.addEventListener('click', e => {
+  if (e.target === exportModal) exportModal.classList.add('hidden');
+});
+
+// ── Reindex ───────────────────────────────────────────────────────────────
+
+reindexBtn.addEventListener('click', async () => {
+  clearError();
+  try {
+    await invoke('reindex_store', { dir: storeDir });
+    await loadItems();
+  } catch (e) {
+    showError(`Reindex failed: ${e}`);
+  }
+});
 
 // ── Delete modal ──────────────────────────────────────────────────────────
 
@@ -644,15 +875,72 @@ async function confirmBlockedBy() {
   }
 }
 
+async function createNewBlocker() {
+  const title = newBlockerTitle.value.trim();
+  if (!title) return;
+  clearError();
+  try {
+    await invoke('create_item', { dir: storeDir, title });
+    newBlockerTitle.value = '';
+    // Reload so the new item appears in the list, pre-checked.
+    allItems = await invoke('list_items', { dir: storeDir, includeClosed: showClosedEl.checked });
+    // Find the newly created item by title (most recently created match).
+    const newItem = allItems
+      .filter(i => i.title === title)
+      .sort((a, b) => b.created.localeCompare(a.created))[0];
+    renderBlockerList(blockerSearch.value);
+    if (newItem) {
+      const cb = blockerList.querySelector(`input[data-id="${CSS.escape(newItem.id)}"]`);
+      if (cb) cb.checked = true;
+    }
+  } catch (e) {
+    showError(`Create failed: ${e}`);
+  }
+}
+
+newBlockerBtn.addEventListener('click', createNewBlocker);
+newBlockerTitle.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); createNewBlocker(); }
+});
+
 blockerSearch.addEventListener('input', () => renderBlockerList(blockerSearch.value));
 blockerCancelBtn.addEventListener('click', () => { blockedByModal.classList.add('hidden'); });
 blockerConfirmBtn.addEventListener('click', confirmBlockedBy);
 blockedByModal.addEventListener('keydown', e => {
-  if (e.key === 'Enter') confirmBlockedBy();
   if (e.key === 'Escape') blockedByModal.classList.add('hidden');
 });
 blockedByModal.addEventListener('click', e => {
   if (e.target === blockedByModal) blockedByModal.classList.add('hidden');
+});
+
+// ── Defer modal ───────────────────────────────────────────────────────────
+
+function openDeferModal() {
+  deferUntil.value = '';
+  deferModal.classList.remove('hidden');
+  deferUntil.focus();
+}
+
+async function confirmDefer() {
+  deferModal.classList.add('hidden');
+  if (!selectedId) return;
+  clearError();
+  try {
+    await invoke('defer_item', { dir: storeDir, id: selectedId, until: deferUntil.value });
+    await loadItems();
+  } catch (e) {
+    showError(`Defer failed: ${e}`);
+  }
+}
+
+deferCancelBtn.addEventListener('click', () => { deferModal.classList.add('hidden'); });
+deferConfirmBtn.addEventListener('click', confirmDefer);
+deferModal.addEventListener('keydown', e => {
+  if (e.key === 'Enter') confirmDefer();
+  if (e.key === 'Escape') deferModal.classList.add('hidden');
+});
+deferModal.addEventListener('click', e => {
+  if (e.target === deferModal) deferModal.classList.add('hidden');
 });
 
 // ── New item modal ────────────────────────────────────────────────────────
@@ -707,6 +995,8 @@ async function switchStore(crumbsDir) {
   storeDir = crumbsDir;
   storePathEl.textContent = storeDir;
   selectedId = null;
+  searchResults = null;
+  searchInput.value = '';
   addRecentStore(storeDir);
   renderSidebar();
   await loadItems();
@@ -772,6 +1062,32 @@ function renderSidebar() {
       <span class="store-item-path">${escHtml(p)}</span>
     </div>
   `).join('');
+
+  // Wire up drag-over / drop on each sidebar store entry.
+  for (const el of storeListEl.querySelectorAll('.store-item[data-path]')) {
+    const dstPath = el.dataset.path;
+    if (dstPath === storeDir) continue; // no-op drop onto the active store
+    el.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      el.classList.add('drop-target');
+    });
+    el.addEventListener('dragleave', () => el.classList.remove('drop-target'));
+    el.addEventListener('drop', async e => {
+      e.preventDefault();
+      el.classList.remove('drop-target');
+      const id = e.dataTransfer.getData('text/plain');
+      if (!id) return;
+      clearError();
+      try {
+        await invoke('move_item', { srcDir: storeDir, id, dstDir: dstPath });
+        if (selectedId === id) selectedId = null;
+        await loadItems();
+      } catch (err) {
+        showError(`Move failed: ${err}`);
+      }
+    });
+  }
 }
 
 storeListEl.addEventListener('click', async e => {
@@ -879,6 +1195,37 @@ sidebarRemoveBtn.addEventListener('click', () => {
     if (!dragging) return;
     dragging = false;
     sidebarResizer.classList.remove('resizing');
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
+  });
+})();
+
+// ── Detail pane left/right resizer ────────────────────────────────────────
+
+(function initDetailResizer() {
+  let dragging = false;
+  let startX = 0;
+  let startW = 0;
+
+  detailResizer.addEventListener('mousedown', e => {
+    dragging = true;
+    startX = e.clientX;
+    startW = detailLeft.getBoundingClientRect().width;
+    detailResizer.classList.add('resizing');
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const w = Math.max(140, Math.min(480, startW + e.clientX - startX));
+    detailLeft.style.width = `${w}px`;
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    detailResizer.classList.remove('resizing');
     document.body.style.userSelect = '';
     document.body.style.cursor = '';
   });
@@ -1018,13 +1365,15 @@ detailTitleLabel.addEventListener('dblclick', () => {
 function scheduleAutosave() {
   if (!selectedId) return;
   clearTimeout(autosaveTimer);
-  autosaveTimer = setTimeout(() => doSaveText(selectedId, detailText.value), 2000);
+  autosaveTimer = setTimeout(() => {
+    if (detailText.value !== loadedBody) doSaveText(selectedId, detailText.value);
+  }, 2000);
 }
 function flushAutosave() {
   if (!selectedId) return;
   clearTimeout(autosaveTimer);
   autosaveTimer = null;
-  doSaveText(selectedId, detailText.value);
+  if (detailText.value !== loadedBody) doSaveText(selectedId, detailText.value);
 }
 detailText.addEventListener('input', scheduleAutosave);
 detailText.addEventListener('blur', flushAutosave);
@@ -1040,7 +1389,7 @@ previewBtn.addEventListener('click', () => setPreviewMode(!previewMode));
 // Toolbar action buttons
 startBtn.addEventListener('click',    () => { if (selectedId) doUpdateStatus(selectedId, 'in_progress'); });
 blockBtn.addEventListener('click',    () => { if (selectedId) openBlockedByModal(); });
-deferBtn.addEventListener('click',    () => { if (selectedId) doUpdateStatus(selectedId, 'deferred'); });
+deferBtn.addEventListener('click',    () => { if (selectedId) openDeferModal(); });
 closeItemBtn.addEventListener('click', () => { if (selectedId) openCloseModal(selectedId); });
 
 deleteBtn.addEventListener('click', () => {
@@ -1060,6 +1409,7 @@ cleanBtn.addEventListener('click', async () => {
 });
 
 newBtn.addEventListener('click', openNewModal);
+nextBtn.addEventListener('click', doNext);
 openDirBtn.addEventListener('click', openOpenDirModal);
 
 // Delete modal events

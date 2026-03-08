@@ -28,7 +28,10 @@
         <button type="button" id="close-item-btn" class="btn btn-danger btn-small" disabled title="Close selected item">Close</button>
         <button type="button" id="delete-btn" class="btn btn-danger-solid btn-small" disabled title="Delete selected item permanently">Delete</button>
         <div class="toolbar-sep"></div>
+        <button type="button" id="next-btn"  class="btn btn-secondary btn-small" title="Select the highest-priority open item">Next</button>
+        <div class="toolbar-sep"></div>
         <button type="button" id="clean-btn"  class="btn btn-secondary btn-small" title="Delete all closed items">Clean closed</button>
+        <button type="button" id="export-btn" class="btn btn-secondary btn-small" title="Export items to JSON, CSV, or TOON">Export…</button>
       </div>
     </div>
     <!-- Row 2: filters + toggles -->
@@ -59,6 +62,9 @@
           <option value="idea">Idea</option>
         </select>
         <input id="filter-tag" type="text" class="filter-tag-input" placeholder="Tag…" title="Filter by tag (substring match)" autocomplete="off">
+        <div class="search-wrap">
+          <input id="search-input" type="search" class="filter-tag-input search-input" placeholder="Search…" title="Full-text search (title + body)" autocomplete="off">
+        </div>
       </div>
       <div class="toolbar-right-controls">
         <label class="toggle-label">
@@ -67,6 +73,7 @@
         <button type="button" id="col-picker-btn" class="btn btn-secondary btn-small" title="Show/hide columns">Columns &#9660;</button>
         <div id="col-picker-menu" class="col-picker-menu hidden"></div>
         <button type="button" id="theme-btn" class="btn btn-secondary btn-small" title="Toggle light/dark theme">&#9788;</button>
+        <button type="button" id="reindex-btn" class="btn btn-secondary btn-small" title="Rebuild index.csv from .md files">Reindex</button>
         <button type="button" id="refresh-btn" class="btn btn-secondary btn-small" title="Reload items from disk">Refresh</button>
       </div>
     </div>
@@ -91,6 +98,12 @@
     <!-- Right content -->
     <div id="content">
 
+      <!-- Status strip -->
+      <div id="status-strip">
+        <span id="status-strip-count"></span>
+        <span id="status-strip-badges"></span>
+      </div>
+
       <!-- Item list (top) -->
       <section id="list-pane">
         <div id="error-banner" class="error-banner hidden"></div>
@@ -112,6 +125,7 @@
           <div class="prop-grid" id="prop-grid"></div>
           <div class="detail-actions" id="detail-actions"></div>
         </div>
+        <div id="detail-resizer"></div>
         <div id="detail-right">
           <div class="panel-title">
             <span id="detail-title-label"></span>
@@ -129,11 +143,28 @@
   <div id="blocked-by-modal" class="modal hidden">
     <div class="modal-box" style="width:400px">
       <h2>Select blockers for <span id="blocker-target-title"></span></h2>
-      <input id="blocker-search" type="text" placeholder="Filter items…" autocomplete="off">
+      <div class="new-blocker-row">
+        <input id="new-blocker-title" type="text" placeholder="Create new blocker…" autocomplete="off">
+        <button type="button" id="new-blocker-btn" class="btn btn-action btn-small">Create</button>
+      </div>
+      <input id="blocker-search" type="text" placeholder="Filter existing items…" autocomplete="off">
       <div id="blocker-list" class="blocker-list"></div>
       <div class="modal-actions">
         <button type="button" id="blocker-cancel-btn" class="btn btn-secondary">Cancel</button>
         <button type="button" id="blocker-confirm-btn" class="btn btn-warn">Set blockers</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Defer modal -->
+  <div id="defer-modal" class="modal hidden">
+    <div class="modal-box">
+      <h2>Defer item</h2>
+      <p class="modal-msg">Optionally set a date when this item should resurface.</p>
+      <input id="defer-until" type="date" autocomplete="off" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:7px 10px;font-size:13px;outline:none;">
+      <div class="modal-actions">
+        <button type="button" id="defer-cancel-btn" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="defer-confirm-btn" class="btn btn-secondary">Defer</button>
       </div>
     </div>
   </div>
@@ -192,6 +223,22 @@
       <div class="modal-actions" id="open-dir-actions">
         <button type="button" id="open-dir-cancel-btn" class="btn btn-secondary">Cancel</button>
         <button type="button" id="open-dir-ok-btn" class="btn btn-action">Open</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export modal -->
+  <div id="export-modal" class="modal hidden">
+    <div class="modal-box" style="width:300px">
+      <h2>Export items</h2>
+      <div class="export-format-group">
+        <label><input type="radio" name="export-fmt" value="json" checked> JSON</label>
+        <label><input type="radio" name="export-fmt" value="csv"> CSV</label>
+        <label><input type="radio" name="export-fmt" value="toon"> TOON</label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="export-cancel-btn" class="btn btn-secondary">Cancel</button>
+        <button type="button" id="export-confirm-btn" class="btn btn-action">Save…</button>
       </div>
     </div>
   </div>

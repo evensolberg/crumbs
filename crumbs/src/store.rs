@@ -35,7 +35,11 @@ fn fallback_path(dir: &Path, item: &Item) -> PathBuf {
 }
 
 pub fn write_item(dir: &Path, item: &Item) -> Result<PathBuf> {
-    let frontmatter = serde_yaml_ng::to_string(item).context("serialize frontmatter")?;
+    // description lives in the markdown body, not the frontmatter.
+    // Clear it before YAML serialization so it never leaks into the front matter.
+    let mut fm = item.clone();
+    fm.description = String::new();
+    let frontmatter = serde_yaml_ng::to_string(&fm).context("serialize frontmatter")?;
     let body = if item.description.is_empty() {
         format!("# {}\n", item.title)
     } else {

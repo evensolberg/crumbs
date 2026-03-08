@@ -2,6 +2,67 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.11.5] - 2026-03-08
+
+### Feat
+
+- `show` accepts multiple IDs; blank line between each (`crumbs show id1 id2`)
+- `list --verbose` prints first two body lines beneath each item
+- `update --append 'text'` appends to body with `[YYYY-MM-DD]` prefix
+- `defer --until <date>` sets wake-up date; `next` skips future-deferred items
+- `--message` now allows values starting with `-` (allow_hyphen_values)
+- GUI: status strip with live item counts and colored status badges
+- GUI: full-text search bar (debounced, hits backend)
+- GUI: drag-and-drop rows to move items between stores
+- GUI: defer modal with optional "until" date picker
+- GUI: export modal (JSON / CSV / TOON via save dialog)
+- GUI: edit dependencies inline in detail pane
+- GUI: Next and Reindex buttons
+
+### Fix
+
+- GUI: column resize now moves only the dragged column; others stay fixed
+- GUI: no text selection when dragging a column divider vertically
+- `update::run` refactored to `UpdateArgs` struct (replaces 14 positional args)
+
+## [0.9.1] - 2026-03-08
+
+### Chore
+
+- Add recent crumbs task items
+
+### Feat
+
+- Blocked-by selector modal in GUI (v0.9.0)
+
+### Fix
+
+- Description leaks into frontmatter; --dir ignores .crumbs (v0.9.1)
+
+## [0.8.2] - 2026-03-07
+
+### Chore
+
+- Rename release job to 'Publish release'; attach crumbs.skill
+- Update publish recipe; add dist recipe for local builds
+
+### Docs
+
+- Update README with GUI overview, screenshot, and table fixes
+- Update SKILL.md with platform global store paths and story_points
+
+### Feat
+
+- Add Tauri GUI, restructure as workspace (v0.8.2)
+
+### Fix
+
+- Add missing title arg to update::run test calls
+- Install cargo-tauri in GUI CI job before building
+- Install correct Rust target per GUI matrix entry
+- Add icon.ico required for Windows GUI build
+- Add icon.ico to tauri.conf.json bundle icons for Windows build
+
 ## [0.6.3] - 2026-03-06
 
 ### Fix

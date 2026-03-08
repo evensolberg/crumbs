@@ -43,12 +43,14 @@ crumbs list --all
 crumbs list --status blocked
 crumbs list --status open --priority 0
 crumbs list --tag project/auth
-crumbs next                      # highest-priority open item
+crumbs list --verbose            # show first two body lines beneath each item
+crumbs next                      # highest-priority actionable item (skips deferred with future until date)
 ```
 
 ### Inspect
 ```sh
 crumbs show cr-x7q               # IDs are case-insensitive
+crumbs show cr-x7q cr-y8r cr-z9s # show multiple items
 crumbs stats
 crumbs search "login"
 ```
@@ -58,10 +60,13 @@ crumbs search "login"
 crumbs update cr-x7q --status in_progress
 crumbs update cr-x7q --priority 0 --tags auth,urgent
 crumbs update cr-x7q --message 'Now includes OAuth flow'
+crumbs update cr-x7q --append 'See PR #99'             # appends with [date] prefix
 crumbs update cr-x7q --due 2026-04-01
 crumbs update cr-x7q --clear-due
 crumbs update cr-x7q --depends cr-abc,cr-xyz
 crumbs update cr-x7q --type bug
+crumbs update cr-x7q --points 5
+crumbs update cr-x7q --clear-points
 ```
 
 ### Block and defer
@@ -69,8 +74,9 @@ crumbs update cr-x7q --type bug
 crumbs block cr-x7q cr-y8r,cr-z9s   # cr-x7q blocks targets; targets get blocked status
 crumbs block cr-x7q cr-y8r --remove  # unlink; targets reopen if nothing else blocks them
 crumbs block cr-x7q                   # mark cr-x7q itself as blocked (no link)
-crumbs defer cr-x7q                   # set status to deferred
-crumbs defer cr-x7q --reopen          # reopen a deferred item
+crumbs defer cr-x7q                          # set status to deferred
+crumbs defer cr-x7q --until 2026-04-01       # defer with a wake-up date; resurfaces in next
+crumbs defer cr-x7q --reopen                 # reopen a deferred item
 ```
 
 ### Move and import between stores
@@ -127,9 +133,12 @@ crumbs reindex                   # rebuild index.csv manually
 
 - IDs are **case-insensitive**: `CR-X7Q` == `cr-x7q`
 - Bare suffix works: `crumbs show x7q` expands to `{prefix}-x7q`
+- `crumbs show` accepts multiple IDs: `crumbs show x7q y8r z9s`
 - `link blocks` and `block` update **both** items atomically and set blocked status on targets
 - Unlinking restores `open` on targets when no other blockers remain
 - `--tags` and `--depends` on update **replace** the existing list (not append)
+- `--append 'text'` adds to the body with a `[YYYY-MM-DD]` timestamp prefix; `--message 'text'` replaces it
+- `crumbs defer --until <date>` sets the due date; `crumbs next` skips deferred items with a future until date
 - File names are title slugs; collisions get the ID suffix appended
 - `.crumbs/` can be committed to git for full history
 - `move`/`import` reassign a new ID using the destination store's prefix

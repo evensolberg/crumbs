@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
 use crumbs::{
-    commands::{clean, close, create, delete, link, update},
+    commands::{clean, close, create, delete, export, link, update, update::UpdateArgs},
     config::global_dir,
-    item::{Item, ItemType},
+    item::{Item, ItemType, Status},
     store, store_config,
 };
 
@@ -70,21 +70,13 @@ pub fn get_item(dir: String, id: String) -> Result<Option<Item>, String> {
 /// Update an item's status.
 #[tauri::command]
 pub fn update_status(dir: String, id: String, status: String) -> Result<(), String> {
-    let path = to_path(&dir);
     update::run(
-        &path,
+        &to_path(&dir),
         &id,
-        Some(status),
-        None,
-        None,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        false,
-        None,
+        UpdateArgs {
+            status: Some(status),
+            ..Default::default()
+        },
     )
     .map_err(|e| e.to_string())
 }
@@ -92,21 +84,13 @@ pub fn update_status(dir: String, id: String, status: String) -> Result<(), Stri
 /// Update an item's priority (0–4).
 #[tauri::command]
 pub fn update_priority(dir: String, id: String, priority: u8) -> Result<(), String> {
-    let path = to_path(&dir);
     update::run(
-        &path,
+        &to_path(&dir),
         &id,
-        None,
-        Some(priority),
-        None,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        false,
-        None,
+        UpdateArgs {
+            priority: Some(priority),
+            ..Default::default()
+        },
     )
     .map_err(|e| e.to_string())
 }
@@ -114,21 +98,13 @@ pub fn update_priority(dir: String, id: String, priority: u8) -> Result<(), Stri
 /// Update an item's type.
 #[tauri::command]
 pub fn update_type(dir: String, id: String, item_type: String) -> Result<(), String> {
-    let path = to_path(&dir);
     update::run(
-        &path,
+        &to_path(&dir),
         &id,
-        None,
-        None,
-        None,
-        Some(item_type),
-        None,
-        None,
-        false,
-        None,
-        None,
-        false,
-        None,
+        UpdateArgs {
+            item_type: Some(item_type),
+            ..Default::default()
+        },
     )
     .map_err(|e| e.to_string())
 }
@@ -136,10 +112,14 @@ pub fn update_type(dir: String, id: String, item_type: String) -> Result<(), Str
 /// Update an item's due date. Empty string clears the due date.
 #[tauri::command]
 pub fn update_due(dir: String, id: String, due: String) -> Result<(), String> {
-    let path = to_path(&dir);
     if due.is_empty() {
         update::run(
-            &path, &id, None, None, None, None, None, None, true, None, None, false, None,
+            &to_path(&dir),
+            &id,
+            UpdateArgs {
+                clear_due: true,
+                ..Default::default()
+            },
         )
         .map_err(|e| e.to_string())
     } else {
@@ -147,19 +127,12 @@ pub fn update_due(dir: String, id: String, due: String) -> Result<(), String> {
             .parse::<chrono::NaiveDate>()
             .map_err(|e| e.to_string())?;
         update::run(
-            &path,
+            &to_path(&dir),
             &id,
-            None,
-            None,
-            None,
-            None,
-            None,
-            Some(date),
-            false,
-            None,
-            None,
-            false,
-            None,
+            UpdateArgs {
+                due: Some(date),
+                ..Default::default()
+            },
         )
         .map_err(|e| e.to_string())
     }
@@ -168,21 +141,13 @@ pub fn update_due(dir: String, id: String, due: String) -> Result<(), String> {
 /// Update the markdown body text of an item.
 #[tauri::command]
 pub fn update_body(dir: String, id: String, body: String) -> Result<(), String> {
-    let path = to_path(&dir);
     update::run(
-        &path,
+        &to_path(&dir),
         &id,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        false,
-        Some(body),
-        None,
-        false,
-        None,
+        UpdateArgs {
+            message: Some(body),
+            ..Default::default()
+        },
     )
     .map_err(|e| e.to_string())
 }
@@ -190,50 +155,84 @@ pub fn update_body(dir: String, id: String, body: String) -> Result<(), String> 
 /// Update an item's story points. Value 0 clears the points.
 #[tauri::command]
 pub fn update_points(dir: String, id: String, points: u8) -> Result<(), String> {
-    let path = to_path(&dir);
     if points == 0 {
         update::run(
-            &path, &id, None, None, None, None, None, None, false, None, None, true, None,
+            &to_path(&dir),
+            &id,
+            UpdateArgs {
+                clear_points: true,
+                ..Default::default()
+            },
         )
         .map_err(|e| e.to_string())
     } else {
         update::run(
-            &path,
+            &to_path(&dir),
             &id,
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-            false,
-            None,
-            Some(points),
-            false,
-            None,
+            UpdateArgs {
+                story_points: Some(points),
+                ..Default::default()
+            },
         )
         .map_err(|e| e.to_string())
     }
 }
 
+/// Update an item's dependencies. Empty string clears all dependencies.
+#[tauri::command]
+pub fn update_dependencies(dir: String, id: String, dependencies: String) -> Result<(), String> {
+    let dep_list: Vec<String> = if dependencies.is_empty() {
+        vec![]
+    } else {
+        dependencies
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect()
+    };
+    update::run(
+        &to_path(&dir),
+        &id,
+        UpdateArgs {
+            dependencies: Some(dep_list),
+            ..Default::default()
+        },
+    )
+    .map_err(|e| e.to_string())
+}
+
+/// Update an item's tags. Empty string clears all tags.
+#[tauri::command]
+pub fn update_tags(dir: String, id: String, tags: String) -> Result<(), String> {
+    let tag_list: Vec<String> = if tags.is_empty() {
+        vec![]
+    } else {
+        tags.split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect()
+    };
+    update::run(
+        &to_path(&dir),
+        &id,
+        UpdateArgs {
+            tags: Some(tag_list),
+            ..Default::default()
+        },
+    )
+    .map_err(|e| e.to_string())
+}
+
 /// Update an item's title.
 #[tauri::command]
 pub fn update_title(dir: String, id: String, title: String) -> Result<(), String> {
-    let path = to_path(&dir);
     update::run(
-        &path,
+        &to_path(&dir),
         &id,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        false,
-        None,
-        None,
-        false,
-        Some(title),
+        UpdateArgs {
+            title: Some(title),
+            ..Default::default()
+        },
     )
     .map_err(|e| e.to_string())
 }
@@ -301,6 +300,71 @@ pub fn delete_item(dir: String, id: String) -> Result<(), String> {
 pub fn clean_closed(dir: String) -> Result<(), String> {
     let path = to_path(&dir);
     clean::run(&path).map_err(|e| e.to_string())
+}
+
+/// Move an item from the current store to a different store.
+/// Returns the new ID assigned in the destination store.
+#[tauri::command]
+pub fn move_item(src_dir: String, id: String, dst_dir: String) -> Result<(), String> {
+    let src = to_path(&src_dir);
+    let dst = to_path(&dst_dir);
+    crumbs::commands::move_::run(&src, &id, &dst).map_err(|e| e.to_string())
+}
+
+/// Defer an item, optionally with a wake-up date (YYYY-MM-DD). Empty string = no date.
+#[tauri::command]
+pub fn defer_item(dir: String, id: String, until: String) -> Result<(), String> {
+    let until_date = if until.is_empty() {
+        None
+    } else {
+        Some(
+            until
+                .parse::<chrono::NaiveDate>()
+                .map_err(|e| e.to_string())?,
+        )
+    };
+    crumbs::commands::defer::run(&to_path(&dir), &id, false, until_date).map_err(|e| e.to_string())
+}
+
+/// Full-text search across item titles and raw file content.
+#[tauri::command]
+pub fn search_items(dir: String, query: String, include_closed: bool) -> Result<Vec<Item>, String> {
+    let path = to_path(&dir);
+    let items = store::load_all(&path).map_err(|e| e.to_string())?;
+    let q = query.to_lowercase();
+    let results = items
+        .into_iter()
+        .filter_map(|(file_path, item)| {
+            if !include_closed && matches!(item.status, Status::Closed) {
+                return None;
+            }
+            let raw = std::fs::read_to_string(&file_path).unwrap_or_default();
+            if raw.to_lowercase().contains(&q) {
+                Some(item)
+            } else {
+                None
+            }
+        })
+        .collect();
+    Ok(results)
+}
+
+/// Export all items to the given format (json, csv, toon) and return content as a string.
+#[tauri::command]
+pub fn export_items(dir: String, format: String) -> Result<String, String> {
+    export::to_string(&to_path(&dir), &format).map_err(|e| e.to_string())
+}
+
+/// Write text content to a file at the given absolute path.
+#[tauri::command]
+pub fn write_text_file(path: String, content: String) -> Result<(), String> {
+    std::fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+/// Rebuild the CSV index from .md files on disk.
+#[tauri::command]
+pub fn reindex_store(dir: String) -> Result<(), String> {
+    store::reindex(&to_path(&dir)).map_err(|e| e.to_string())
 }
 
 /// Link or unlink items. relation is "blocks" or "blocked-by".

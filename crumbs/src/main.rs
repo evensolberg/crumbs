@@ -38,7 +38,7 @@ enum Command {
         priority: u8,
         #[arg(long)]
         tags: Option<String>,
-        #[arg(short = 'm', long)]
+        #[arg(short = 'm', long, allow_hyphen_values = true)]
         message: Option<String>,
         /// Comma-separated dependency IDs
         #[arg(long)]
@@ -60,7 +60,7 @@ enum Command {
         priority: u8,
         #[arg(long)]
         tags: Option<String>,
-        #[arg(short = 'm', long)]
+        #[arg(short = 'm', long, allow_hyphen_values = true)]
         message: Option<String>,
         /// Comma-separated dependency IDs
         #[arg(long)]
@@ -84,9 +84,15 @@ enum Command {
         /// Show all items including closed
         #[arg(short, long)]
         all: bool,
+        /// Show first two lines of body text beneath each item
+        #[arg(short, long)]
+        verbose: bool,
     },
-    /// Show a single item
-    Show { id: String },
+    /// Show one or more items
+    Show {
+        #[arg(num_args = 1..)]
+        ids: Vec<String>,
+    },
     /// Open an item in $EDITOR
     Edit { id: String },
     /// Show summary statistics
@@ -114,8 +120,11 @@ enum Command {
         #[arg(long)]
         clear_due: bool,
         /// Replace the item description
-        #[arg(short = 'm', long)]
+        #[arg(short = 'm', long, allow_hyphen_values = true)]
         message: Option<String>,
+        /// Append text to the existing body with a [date] prefix
+        #[arg(long, allow_hyphen_values = true)]
+        append: Option<String>,
         /// Story points (Fibonacci: 1 2 3 5 8 13 21)
         #[arg(long)]
         points: Option<u8>,
@@ -139,6 +148,9 @@ enum Command {
         /// Reopen a deferred item (set status back to open)
         #[arg(long)]
         reopen: bool,
+        /// Wake-up date: item resurfaces in `next` on or after this date (YYYY-MM-DD)
+        #[arg(long)]
+        until: Option<NaiveDate>,
     },
     /// Move an item to a different store (assigns a new ID)
     Move {
@@ -280,11 +292,19 @@ fn main() -> Result<()> {
             tag,
             priority,
             all,
+            verbose,
         } => {
-            commands::list::run(&dir, status.as_deref(), tag.as_deref(), priority, all)?;
+            commands::list::run(
+                &dir,
+                status.as_deref(),
+                tag.as_deref(),
+                priority,
+                all,
+                verbose,
+            )?;
         }
-        Command::Show { id } => {
-            commands::show::run(&dir, &id)?;
+        Command::Show { ids } => {
+            commands::show::run(&dir, &ids)?;
         }
         Command::Edit { id } => {
             commands::edit::run(&dir, &id)?;
@@ -305,26 +325,34 @@ fn main() -> Result<()> {
             due,
             clear_due,
             message,
+            append,
             points,
             clear_points,
         } => {
-            let tags = tags.map(|t| t.split(',').map(|s| s.trim().to_string()).collect());
-            let dependencies =
-                depends.map(|d| d.split(',').map(|s| s.trim().to_string()).collect());
+            // --append 'text' sets append mode; --message 'text' sets replace mode.
+            // If both are given, --append wins.
+            let (final_message, final_append) = match (message, append) {
+                (_, Some(a)) => (Some(a), true),
+                (m, None) => (m, false),
+            };
             commands::update::run(
                 &dir,
                 &id,
-                status,
-                priority,
-                tags,
-                item_type,
-                dependencies,
-                due,
-                clear_due,
-                message,
-                points,
-                clear_points,
-                None,
+                commands::update::UpdateArgs {
+                    status,
+                    priority,
+                    tags: tags.map(|t| t.split(',').map(|s| s.trim().to_string()).collect()),
+                    item_type,
+                    dependencies: depends
+                        .map(|d| d.split(',').map(|s| s.trim().to_string()).collect()),
+                    due,
+                    clear_due,
+                    message: final_message,
+                    append: final_append,
+                    story_points: points,
+                    clear_points,
+                    title: None,
+                },
             )?;
         }
         Command::Block {
@@ -340,8 +368,8 @@ fn main() -> Result<()> {
                 commands::block::run_set(&dir, &id)?;
             }
         }
-        Command::Defer { id, reopen } => {
-            commands::defer::run(&dir, &id, reopen)?;
+        Command::Defer { id, reopen, until } => {
+            commands::defer::run(&dir, &id, reopen, until)?;
         }
         Command::Move { id, to } => {
             let dst = if to == "global" {

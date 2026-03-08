@@ -1,64 +1,64 @@
 use std::path::Path;
 
 use anyhow::{Result, bail};
-use chrono::Local;
-
-use chrono::NaiveDate;
+use chrono::{Local, NaiveDate};
 
 use crate::{
     item::{ItemType, is_fibonacci},
     store,
 };
 
-pub fn run(
-    dir: &Path,
-    id: &str,
-    status: Option<String>,
-    priority: Option<u8>,
-    tags: Option<Vec<String>>,
-    item_type: Option<String>,
-    dependencies: Option<Vec<String>>,
-    due: Option<NaiveDate>,
-    clear_due: bool,
-    message: Option<String>,
-    story_points: Option<u8>,
-    clear_points: bool,
-    title: Option<String>,
-) -> Result<()> {
+#[derive(Default)]
+pub struct UpdateArgs {
+    pub status: Option<String>,
+    pub priority: Option<u8>,
+    pub tags: Option<Vec<String>>,
+    pub item_type: Option<String>,
+    pub dependencies: Option<Vec<String>>,
+    pub due: Option<NaiveDate>,
+    pub clear_due: bool,
+    pub message: Option<String>,
+    pub append: bool,
+    pub story_points: Option<u8>,
+    pub clear_points: bool,
+    pub title: Option<String>,
+}
+
+pub fn run(dir: &Path, id: &str, args: UpdateArgs) -> Result<()> {
     match store::find_by_id(dir, id)? {
         None => bail!("no item found with id: {id}"),
         Some((path, mut item)) => {
-            if let Some(s) = status {
+            if let Some(s) = args.status {
                 item.status = s.parse().map_err(|e: String| anyhow::anyhow!(e))?;
             }
-            if let Some(p) = priority {
+            if let Some(p) = args.priority {
                 item.priority = p;
             }
-            if let Some(t) = tags {
+            if let Some(t) = args.tags {
                 item.tags = t;
             }
-            if let Some(t) = item_type {
+            if let Some(t) = args.item_type {
                 item.item_type = t
                     .parse::<ItemType>()
                     .map_err(|e: String| anyhow::anyhow!(e))?;
             }
-            if let Some(d) = dependencies {
+            if let Some(d) = args.dependencies {
                 item.dependencies = d;
             }
-            if let Some(t) = title {
+            if let Some(t) = args.title {
                 let t = t.trim().to_string();
                 if !t.is_empty() {
                     item.title = t;
                 }
             }
-            if clear_due {
+            if args.clear_due {
                 item.due = None;
-            } else if due.is_some() {
-                item.due = due;
+            } else if args.due.is_some() {
+                item.due = args.due;
             }
-            if clear_points {
+            if args.clear_points {
                 item.story_points = None;
-            } else if let Some(sp) = story_points {
+            } else if let Some(sp) = args.story_points {
                 if !is_fibonacci(sp) {
                     anyhow::bail!(
                         "story_points must be a Fibonacci number (1, 2, 3, 5, 8, 13, 21); got {sp}"
@@ -73,14 +73,35 @@ pub fn run(
                 .strip_prefix("---\n")
                 .and_then(|s| s.split_once("\n---\n").map(|(_, body)| body))
                 .unwrap_or("");
-            let new_body = if let Some(ref msg) = message {
-                if msg.is_empty() {
-                    format!("\n# {}\n", item.title)
-                } else {
-                    format!("\n# {}\n\n{}\n", item.title, msg.trim())
+            // Extract the existing description (everything after the heading line).
+            let existing_desc = {
+                let trimmed = body.trim_start_matches('\n');
+                trimmed
+                    .split_once('\n')
+                    .map(|(_, rest)| rest.trim_matches('\n'))
+                    .unwrap_or("")
+                    .to_string()
+            };
+            // Build the new description:
+            // - append mode: timestamp + new text appended after existing content
+            // - replace mode: new message replaces existing content
+            // - no message: preserve existing content (heading still updated for title renames)
+            let desc = match &args.message {
+                Some(msg) if args.append => {
+                    let timestamp = Local::now().format("%Y-%m-%d");
+                    if existing_desc.is_empty() {
+                        format!("[{timestamp}] {}", msg.trim())
+                    } else {
+                        format!("{}\n\n[{timestamp}] {}", existing_desc, msg.trim())
+                    }
                 }
+                Some(msg) => msg.trim().to_string(),
+                None => existing_desc,
+            };
+            let new_body = if desc.is_empty() {
+                format!("\n# {}\n", item.title)
             } else {
-                body.to_string()
+                format!("\n# {}\n\n{}\n", item.title, desc)
             };
             let frontmatter = serde_yaml_ng::to_string(&item)?;
             let new_content = format!("---\n{frontmatter}---\n{new_body}");
