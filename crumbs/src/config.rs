@@ -16,7 +16,16 @@ pub fn global_dir() -> PathBuf {
 /// 4. Global data dir as fallback
 pub fn resolve_dir(dir: Option<PathBuf>, global: bool) -> PathBuf {
     if let Some(d) = dir {
-        return d;
+        // If the path already ends with `.crumbs` or contains store markers,
+        // use it directly; otherwise append `.crumbs` so that
+        // `--dir /some/project` behaves the same as `--dir /some/project/.crumbs`.
+        if d.ends_with(".crumbs")
+            || d.join("index.csv").is_file()
+            || d.join("config.toml").is_file()
+        {
+            return d;
+        }
+        return d.join(".crumbs");
     }
     if global {
         return global_dir();
@@ -37,8 +46,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn explicit_dir_wins() {
+    fn explicit_dir_appends_crumbs_suffix() {
         let dir = tempdir().unwrap();
+        let result = resolve_dir(Some(dir.path().to_path_buf()), false);
+        assert_eq!(result, dir.path().join(".crumbs"));
+    }
+
+    #[test]
+    fn explicit_dir_with_crumbs_suffix_unchanged() {
+        let dir = tempdir().unwrap();
+        let crumbs = dir.path().join(".crumbs");
+        let result = resolve_dir(Some(crumbs.clone()), false);
+        assert_eq!(result, crumbs);
+    }
+
+    #[test]
+    fn explicit_dir_with_store_markers_unchanged() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("config.toml"), "").unwrap();
         let result = resolve_dir(Some(dir.path().to_path_buf()), false);
         assert_eq!(result, dir.path());
     }
@@ -52,8 +77,9 @@ mod tests {
     #[test]
     fn explicit_dir_beats_global_flag() {
         let dir = tempdir().unwrap();
-        let result = resolve_dir(Some(dir.path().to_path_buf()), true);
-        assert_eq!(result, dir.path());
+        let crumbs = dir.path().join(".crumbs");
+        let result = resolve_dir(Some(crumbs.clone()), true);
+        assert_eq!(result, crumbs);
     }
 
     #[test]

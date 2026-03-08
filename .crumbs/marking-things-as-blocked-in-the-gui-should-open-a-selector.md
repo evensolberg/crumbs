@@ -1,13 +1,13 @@
 ---
 id: cr-hf9
 title: Marking things as blocked in the GUI should open a selector to picked item(s) it’s blocked by
-status: open
+status: closed
 type: task
 priority: 2
 tags: []
 created: 2026-03-07
 updated: 2026-03-07
-closed_reason: ''
+closed_reason: Implemented 2026-03-07
 dependencies: []
 description: Although it could also be that we’re blocked by something external. Allow the user to also create a new crumb (just the headline) when selecting “blocked_by”.
 ---

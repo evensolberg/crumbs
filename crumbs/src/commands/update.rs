@@ -74,7 +74,6 @@ pub fn run(
                 .and_then(|s| s.split_once("\n---\n").map(|(_, body)| body))
                 .unwrap_or("");
             let new_body = if let Some(ref msg) = message {
-                item.description = msg.clone();
                 if msg.is_empty() {
                     format!("\n# {}\n", item.title)
                 } else {

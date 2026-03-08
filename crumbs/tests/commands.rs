@@ -164,6 +164,38 @@ fn create_with_description_appears_in_md_body() {
 }
 
 #[test]
+fn description_not_in_frontmatter() {
+    let dir = tempdir().unwrap();
+    commands::create::run(
+        dir.path(),
+        "Frontmatter Check".to_string(),
+        ItemType::Task,
+        2,
+        vec![],
+        "Should be body only.".to_string(),
+        vec![],
+        None,
+        None,
+    )
+    .unwrap();
+    let md: Vec<_> = std::fs::read_dir(dir.path())
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().extension().is_some_and(|x| x == "md"))
+        .collect();
+    let content = std::fs::read_to_string(md[0].path()).unwrap();
+    // Extract YAML frontmatter (between the two --- delimiters)
+    let fm = content
+        .strip_prefix("---\n")
+        .and_then(|s| s.split_once("\n---\n").map(|(fm, _)| fm))
+        .expect("frontmatter delimiters not found");
+    assert!(
+        !fm.contains("description:"),
+        "description field must not appear in YAML frontmatter; got:\n{fm}"
+    );
+}
+
+#[test]
 fn create_without_description_has_empty_description() {
     let dir = tempdir().unwrap();
     commands::create::run(
@@ -592,6 +624,16 @@ fn update_message_replaces_description() {
         None,
     )
     .unwrap();
-    let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    let (path, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
     assert_eq!(item.description, "New description text.");
+    // Verify the description lives in the body, not the YAML frontmatter.
+    let content = std::fs::read_to_string(&path).unwrap();
+    let fm = content
+        .strip_prefix("---\n")
+        .and_then(|s| s.split_once("\n---\n").map(|(fm, _)| fm))
+        .expect("frontmatter delimiters not found");
+    assert!(
+        !fm.contains("description:"),
+        "description must not appear in YAML frontmatter after update; got:\n{fm}"
+    );
 }

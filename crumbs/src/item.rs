@@ -96,7 +96,7 @@ pub struct Item {
     pub blocked_by: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub due: Option<NaiveDate>,
-    #[serde(default, skip_serializing_if = "String::is_empty")]
+    #[serde(default, skip_serializing)]
     pub description: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub story_points: Option<u8>,
