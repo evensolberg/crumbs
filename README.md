@@ -62,7 +62,8 @@ The GUI provides a full item management interface:
 - **Status strip** — live count of items in the current view with coloured status dots
 - **Filters** — status buttons + priority, type, tag dropdowns, and a full-text **Search** bar (searches title and body)
 - **Detail pane** — edit title (double-click), body (autosaves on blur/⌘S), tags, dependencies, due date, type, priority, and story points
-- **Markdown preview** — click **Preview** in the detail pane to render the body as HTML
+- **Markdown preview** — click **Preview** in the detail pane to render the body as HTML; shortcodes (`:tada:` → 🎉) are expanded in the preview
+- **Emoji picker** — click 😀 (next to Preview) to open a tabbed picker; click any emoji to insert it at the cursor
 - **Priority badges** — colour-coded P0 Critical … P4 Backlog labels
 - **Actions** — Start, Block (with inline new-blocker creation), Defer (with optional until date), Timer (start/stop with optional comment), Close, Delete, Clean closed
 - **Next** — selects the highest-priority actionable item
@@ -154,6 +155,8 @@ crumbs update bc-x7q --clear-points
 ```
 
 `--tags` and `--depends` **replace** the existing list. `--append 'text'` adds to the body (with a `[YYYY-MM-DD]` prefix) instead of replacing it; `--message 'text'` replaces the body.
+
+Body text (in `--message`, `--append`, and timer comments) supports **`:shortcode:`** emoji syntax — e.g. `:tada:` → 🎉, `:bug:` → 🐛, `:white_check_mark:` → ✅. Shortcodes are expanded to real Unicode at write time, so the stored `.md` file always contains the actual emoji character. Unknown shortcodes are left unchanged. In the GUI, the 😀 button next to **Preview** opens a tabbed emoji picker as an alternative to typing shortcodes by hand. For a full list of supported names see the [GitHub emoji cheat sheet](https://github.com/ikatyang/emoji-cheat-sheet).
 
 ### Block and defer
 

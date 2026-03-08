@@ -2,23 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.12.0] - 2026-03-08
+## [0.13.2] - 2026-03-08
 
-### Feat
+### Chore
 
-- `crumbs start <id> [-m comment]` — append `[start]` entry, set status to `in_progress`
-- `crumbs stop <id> [-m comment]` — append `[stop]` entry with elapsed time
-- `crumbs show` prints `Total tracked: Xh Ym Zs` when stop entries exist
-- GUI: ▶ Timer / ■ Stop toolbar button with comment modal
-
-### Fix
-
-- Description field was leaking into YAML frontmatter on `close`, `defer`,
-  `block`, `link`, and `update`; cleared before serialization at all write sites
+- Finalize CHANGELOG for v0.12.0
 
 ### Docs
 
-- README, SKILL.md, CLAUDE.md updated with time-tracking docs and workflow note
+- Update README, SKILL.md, CLAUDE.md for time tracking (v0.12.0)
+- Show ID before -m comment in start/stop examples
+
+### Feat
+
+- Start/stop timer + fix description in frontmatter (v0.11.6)
+
+### Fix
+
+- Make start/stop comment a positional arg (no -m flag needed)
+- Restore -m flag for start/stop comment so ID can go last
 
 ## [0.11.5] - 2026-03-08
 

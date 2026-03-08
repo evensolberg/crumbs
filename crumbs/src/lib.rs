@@ -1,6 +1,7 @@
 pub mod color;
 pub mod commands;
 pub mod config;
+pub mod emoji;
 pub mod id;
 pub mod item;
 pub mod store;

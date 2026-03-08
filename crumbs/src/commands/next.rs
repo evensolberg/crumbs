@@ -26,9 +26,8 @@ pub fn run(dir: &Path) -> Result<()> {
 
     match candidate {
         None => println!("No open items."),
-        Some((path, _)) => {
-            let id = store::read_item(&path)?.id;
-            super::show::run(dir, &[id])?;
+        Some((_, item)) => {
+            super::show::run(dir, &[item.id])?;
         }
     }
     Ok(())

@@ -848,7 +848,17 @@ tbody td {
 #detail-right .panel-title {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 6px;
+}
+#detail-right .panel-title #detail-title-label {
+  flex: 1;
+}
+.panel-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 #detail-preview {
@@ -898,3 +908,26 @@ tbody td {
 }
 .markdown-body a { color: var(--accent); }
 .markdown-body hr { border: none; border-top: 1px solid var(--border); margin: 0.8em 0; }
+
+/* ── Emoji picker ─────────────────────────────────────────────────────────── */
+
+.emoji-picker {
+  position: fixed;
+  z-index: 200;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px;
+  width: 320px;
+  max-height: 260px;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+.emoji-picker .ep-tabs  { display: flex; gap: 2px; flex-wrap: wrap; margin-bottom: 4px; }
+.emoji-picker .ep-tab   { font-size: 16px; background: none; border: none;
+                          cursor: pointer; padding: 2px 5px; border-radius: 3px; }
+.emoji-picker .ep-tab:hover, .emoji-picker .ep-tab.active { background: var(--surface2); }
+.emoji-picker .ep-grid  { display: flex; flex-wrap: wrap; gap: 2px; }
+.emoji-picker .ep-emoji { font-size: 20px; background: none; border: none;
+                          cursor: pointer; padding: 3px; border-radius: 3px; }
+.emoji-picker .ep-emoji:hover { background: var(--surface2); }

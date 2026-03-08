@@ -22,6 +22,7 @@ pub fn run(
     due: Option<NaiveDate>,
     story_points: Option<u8>,
 ) -> Result<()> {
+    let description = crate::emoji::expand_shortcodes(&description).into_owned();
     if let Some(sp) = story_points {
         if !is_fibonacci(sp) {
             anyhow::bail!(

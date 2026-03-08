@@ -1,7 +1,7 @@
 ---
 id: cr-jaj
 title: Time tracking per item
-status: in_progress
+status: closed
 type: idea
 priority: 4
 tags:
@@ -9,7 +9,7 @@ tags:
 - future
 created: 2026-03-07
 updated: 2026-03-08
-closed_reason: ''
+closed_reason: Implemented 2026-03-08
 dependencies: []
 ---
 

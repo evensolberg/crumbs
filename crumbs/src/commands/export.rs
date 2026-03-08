@@ -5,10 +5,10 @@ use anyhow::Result;
 use crate::{item::Item, store};
 
 /// Serialize `items` to the requested format string without any I/O.
-pub fn items_to_string(items: &Vec<Item>, format: &str) -> Result<String> {
+pub fn items_to_string(items: &[Item], format: &str) -> Result<String> {
     match format {
         "json" => Ok(serde_json::to_string_pretty(items)?),
-        "toon" => Ok(serde_toon::to_string(items)?),
+        "toon" => Ok(serde_toon::to_string(&items.to_vec())?),
         "csv" => {
             let mut wtr = csv::WriterBuilder::new().from_writer(vec![]);
             wtr.write_record([

@@ -22,6 +22,19 @@ pub fn atomic_write(path: &Path, content: &str) -> Result<()> {
     Ok(())
 }
 
+/// Rewrite the YAML frontmatter of an existing item file, preserving the body verbatim.
+pub fn rewrite_frontmatter(path: &Path, item: &Item) -> Result<()> {
+    let mut fm = item.clone();
+    fm.description.clear();
+    let frontmatter = serde_yaml_ng::to_string(&fm)?;
+    let raw = std::fs::read_to_string(path)?;
+    let body = raw
+        .strip_prefix("---\n")
+        .and_then(|s| s.split_once("\n---\n").map(|(_, b)| b))
+        .unwrap_or("");
+    atomic_write(path, &format!("---\n{frontmatter}---\n{body}"))
+}
+
 pub fn item_path(dir: &Path, item: &Item) -> PathBuf {
     let slug = slugify!(&item.title, max_length = 60);
     dir.join(format!("{slug}.md"))

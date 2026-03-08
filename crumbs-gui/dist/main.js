@@ -12,6 +12,7 @@ let filterTag      = '';
 let previewMode = false;
 let pendingCloseId = '';
 let autosaveTimer = null;
+let timerInterval = null;
 let loadedBody = '';
 let sortCol = 'priority';
 let sortDir = 'asc';
@@ -71,9 +72,10 @@ const detailTitleLabel = document.getElementById('detail-title-label');
 const detailText       = document.getElementById('detail-text');
 const detailPreview    = document.getElementById('detail-preview');
 const previewBtn       = document.getElementById('preview-btn');
+const emojiBtn         = document.getElementById('emoji-btn');
+const emojiPicker      = document.getElementById('emoji-picker');
 
 // Toolbar action buttons
-const openDirBtn    = document.getElementById('open-dir-btn');
 const newBtn        = document.getElementById('new-btn');
 const nextBtn       = document.getElementById('next-btn');
 const startBtn      = document.getElementById('start-btn');
@@ -214,6 +216,7 @@ function updateToolbarButtons() {
   timerBtn.title       = timerActive ? 'Stop the active timer' : 'Start a time-tracking timer';
   closeItemBtn.disabled = !hasSelection || isClosed;
   deleteBtn.disabled   = !hasSelection;
+  emojiBtn.disabled    = !hasSelection;
 }
 
 // ── Vertical resize ───────────────────────────────────────────────────────
@@ -282,10 +285,51 @@ function sortedItems() {
   });
 }
 
+function activeTimerStart(desc) {
+  if (!desc) return null;
+  let ts = null;
+  for (const line of desc.split('\n')) {
+    const t = line.trim();
+    if (t.startsWith('[start]')) ts = t.slice(7).trim().slice(0, 19);
+    else if (t.startsWith('[stop]')) ts = null;
+  }
+  return ts;
+}
+
+function totalTrackedSecs(desc) {
+  if (!desc) return 0;
+  let total = 0;
+  let startMs = null;
+  for (const line of desc.split('\n')) {
+    const t = line.trim();
+    if (t.startsWith('[start]')) {
+      const ts = t.slice(7).trim().slice(0, 19).replace(' ', 'T');
+      startMs = new Date(ts).getTime();
+    } else if (t.startsWith('[stop]') && startMs !== null) {
+      const ts = t.slice(6).trim().slice(0, 19).replace(' ', 'T');
+      total += Math.max(0, (new Date(ts).getTime() - startMs) / 1000);
+      startMs = null;
+    }
+  }
+  return total;
+}
+
+function formatElapsed(secs) {
+  secs = Math.max(0, Math.floor(secs));
+  if (secs < 60)   return `${secs}s`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ${secs % 60}s`;
+  return `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m ${secs % 60}s`;
+}
+
 function cellFor(item, colKey) {
   switch (colKey) {
     case 'id':           return `<td class="item-id">${escHtml(item.id)}</td>`;
-    case 'title':        return `<td class="item-title">${escHtml(item.title)}</td>`;
+    case 'title': {
+      const prefix = hasActiveTimer(item.description)
+        ? '<span style="color:var(--accent)" title="Timer running">▶</span> '
+        : '';
+      return `<td class="item-title">${prefix}${escHtml(item.title)}</td>`;
+    }
     case 'status':       return `<td>${statusBadge(item.status)}</td>`;
     case 'type':         return `<td style="font-size:11px;color:var(--text-dim)">${escHtml(item.type ?? '')}</td>`;
     case 'priority':     return `<td>${priorityBadge(item.priority)}</td>`;
@@ -475,6 +519,7 @@ function makeSelect(options, current, onChange) {
 }
 
 function renderProps(item) {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
   propGrid.innerHTML = '';
 
   propRow('ID', escHtml(item.id));
@@ -505,6 +550,24 @@ function renderProps(item) {
 
   propRow('Created', escHtml(item.created ?? ''));
   propRow('Updated', escHtml(item.updated ?? ''));
+
+  const completedSecs = totalTrackedSecs(item.description ?? '');
+  const startTs = activeTimerStart(item.description ?? '');
+  if (startTs || completedSecs > 0) {
+    const el = document.createElement('span');
+    if (startTs) {
+      const startMs = new Date(startTs.replace(' ', 'T')).getTime();
+      const tick = () => {
+        const liveSecs = Math.max(0, (Date.now() - startMs) / 1000);
+        el.textContent = formatElapsed(completedSecs + liveSecs) + '  ▶';
+      };
+      tick();
+      timerInterval = setInterval(tick, 1000);
+    } else {
+      el.textContent = formatElapsed(completedSecs);
+    }
+    propRow('Tracked', '').appendChild(el);
+  }
 
   const dueInput = document.createElement('input');
   dueInput.type = 'date';
@@ -568,11 +631,12 @@ function setPreviewMode(on) {
   detailText.classList.toggle('hidden', on);
   detailPreview.classList.toggle('hidden', !on);
   if (on) {
-    detailPreview.innerHTML = marked.parse(detailText.value || '');
+    detailPreview.innerHTML = marked.parse(expandEmoji(detailText.value || ''));
   }
 }
 
 function renderDetail(item) {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
   if (!item) {
     detailPane.classList.add('hidden');
     detailActions.innerHTML = '';
@@ -1451,6 +1515,266 @@ detailText.addEventListener('keydown', e => {
 
 previewBtn.addEventListener('click', () => setPreviewMode(!previewMode));
 
+// ── Emoji picker ──────────────────────────────────────────────────────────────
+
+const EMOJI_DATA = [
+  { cat: '😀', label: 'Smileys', emoji: [
+    ['+1','👍'],['smile','😄'],['laughing','😆'],['joy','😂'],['rofl','🤣'],
+    ['blush','😊'],['slightly_smiling_face','🙂'],['wink','😉'],['heart_eyes','😍'],
+    ['kissing_heart','😘'],['stuck_out_tongue','😛'],['stuck_out_tongue_winking_eye','😜'],
+    ['thinking','🤔'],['zipper_mouth_face','🤐'],['raised_eyebrow','🤨'],
+    ['neutral_face','😐'],['expressionless','😑'],['smirk','😏'],['unamused','😒'],
+    ['roll_eyes','🙄'],['grimacing','😬'],['lying_face','🤥'],['relieved','😌'],
+    ['pensive','😔'],['sleepy','😪'],['drooling_face','🤤'],['sleeping','😴'],
+    ['mask','😷'],['face_with_thermometer','🤒'],['nauseated_face','🤢'],
+    ['sneezing_face','🤧'],['hot_face','🥵'],['cold_face','🥶'],['woozy_face','🥴'],
+    ['dizzy_face','😵'],['exploding_head','🤯'],['cowboy_hat_face','🤠'],
+    ['partying_face','🥳'],['sunglasses','😎'],['nerd_face','🤓'],['monocle_face','🧐'],
+    ['confused','😕'],['worried','😟'],['slightly_frowning_face','🙁'],
+    ['frowning_face','☹️'],['open_mouth','😮'],['hushed','😯'],['astonished','😲'],
+    ['flushed','😳'],['pleading_face','🥺'],['anguished','😧'],['fearful','😨'],
+    ['cold_sweat','😰'],['disappointed_relieved','😥'],['cry','😢'],['sob','😭'],
+    ['scream','😱'],['confounded','😖'],['persevere','😣'],['disappointed','😞'],
+    ['sweat','😓'],['weary','😩'],['tired_face','😫'],['yawning_face','🥱'],
+    ['triumph','😤'],['rage','😡'],['angry','😠'],['skull','💀'],
+    ['poop','💩'],['clown_face','🤡'],['japanese_ogre','👹'],['japanese_goblin','👺'],
+    ['ghost','👻'],['alien','👽'],['space_invader','👾'],['robot','🤖'],
+  ]},
+  { cat: '👋', label: 'People', emoji: [
+    ['wave','👋'],['raised_hand','✋'],['ok_hand','👌'],['v','✌️'],['crossed_fingers','🤞'],
+    ['metal','🤘'],['point_up_2','👆'],['point_down','👇'],['point_left','👈'],
+    ['point_right','👉'],['fu','🖕'],['raised_hands','🙌'],['clap','👏'],
+    ['handshake','🤝'],['pray','🙏'],['writing_hand','✍️'],['nail_care','💅'],
+    ['ear','👂'],['nose','👃'],['eyes','👀'],['eye','👁️'],['tongue','👅'],
+    ['lips','👄'],['baby','👶'],['boy','👦'],['girl','👧'],['man','👨'],['woman','👩'],
+    ['man_with_blond_hair','👱'],['man_in_tuxedo','🤵'],['bride_with_veil','👰'],
+    ['pregnant_woman','🤰'],['person_fencing','🤺'],['horse_racing','🏇'],
+    ['snowboarder','🏂'],['surfer','🏄'],['rowboat','🚣'],['swimmer','🏊'],
+    ['bicyclist','🚴'],['busts_in_silhouette','👥'],['walking','🚶'],
+    ['runner','🏃'],['dancer','💃'],['man_dancing','🕺'],
+    ['family','👪'],['couple','👫'],['two_women_holding_hands','👭'],
+    ['two_men_holding_hands','👬'],['couplekiss','💏'],['couple_with_heart','💑'],
+    ['cop','👮'],['construction_worker','👷'],['guardsman','💂'],
+    ['sleuth_or_spy','🕵️'],['santa','🎅'],['angel','👼'],
+    ['princess','👸'],['prince','🤴'],['older_woman','👵'],['older_man','👴'],
+    ['man_with_turban','👳'],['man_with_gua_pi_mao','👲'],
+  ]},
+  { cat: '🐶', label: 'Animals', emoji: [
+    ['dog','🐶'],['cat','🐱'],['mouse','🐭'],['hamster','🐹'],['rabbit','🐰'],
+    ['fox_face','🦊'],['bear','🐻'],['panda_face','🐼'],['koala','🐨'],['tiger','🐯'],
+    ['lion','🦁'],['cow','🐮'],['pig','🐷'],['frog','🐸'],['monkey','🐵'],
+    ['chicken','🐔'],['penguin','🐧'],['bird','🐦'],['baby_chick','🐤'],
+    ['hatching_chick','🐣'],['duck','🦆'],['eagle','🦅'],['owl','🦉'],['bat','🦇'],
+    ['wolf','🐺'],['boar','🐗'],['horse','🐴'],['unicorn','🦄'],['bee','🐝'],
+    ['bug','🐛'],['butterfly','🦋'],['snail','🐌'],['shell','🐚'],['beetle','🐞'],
+    ['ant','🐜'],['mosquito','🦟'],['cricket','🦗'],['spider','🕷️'],['scorpion','🦂'],
+    ['turtle','🐢'],['snake','🐍'],['lizard','🦎'],['dragon_face','🐲'],['dragon','🐉'],
+    ['sauropod','🦕'],['t-rex','🦖'],['whale','🐳'],['whale2','🐋'],['dolphin','🐬'],
+    ['fish','🐟'],['tropical_fish','🐠'],['blowfish','🐡'],['shark','🦈'],
+    ['octopus','🐙'],['crab','🦀'],['lobster','🦞'],['shrimp','🦐'],['squid','🦑'],
+  ]},
+  { cat: '🍎', label: 'Food', emoji: [
+    ['apple','🍎'],['green_apple','🍏'],['pear','🍐'],['tangerine','🍊'],['lemon','🍋'],
+    ['banana','🍌'],['watermelon','🍉'],['grapes','🍇'],['strawberry','🍓'],
+    ['melon','🍈'],['cherries','🍒'],['peach','🍑'],['mango','🥭'],['pineapple','🍍'],
+    ['coconut','🥥'],['kiwi_fruit','🥝'],['tomato','🍅'],['eggplant','🍆'],
+    ['avocado','🥑'],['broccoli','🥦'],['leafy_green','🥬'],['cucumber','🥒'],
+    ['hot_pepper','🌶️'],['corn','🌽'],['carrot','🥕'],['garlic','🧄'],['onion','🧅'],
+    ['potato','🥔'],['sweet_potato','🍠'],['croissant','🥐'],['bagel','🥯'],
+    ['bread','🍞'],['baguette_bread','🥖'],['pretzel','🥨'],['cheese','🧀'],['egg','🥚'],
+    ['cooking','🍳'],['pancakes','🥞'],['waffle','🧇'],['bacon','🥓'],['cut_of_meat','🥩'],
+    ['poultry_leg','🍗'],['meat_on_bone','🍖'],['hotdog','🌭'],['hamburger','🍔'],
+    ['fries','🍟'],['pizza','🍕'],['sandwich','🥪'],['stuffed_flatbread','🥙'],
+    ['taco','🌮'],['burrito','🌯'],['salad','🥗'],['shallow_pan_of_food','🥘'],
+    ['spaghetti','🍝'],['ramen','🍜'],['stew','🍲'],['curry','🍛'],['sushi','🍣'],
+    ['bento','🍱'],['dumpling','🥟'],['fried_shrimp','🍤'],['rice_ball','🍙'],
+    ['rice','🍚'],['rice_cracker','🍘'],['fish_cake','🍥'],['fortune_cookie','🥠'],
+    ['moon_cake','🥮'],['oden','🍢'],['dango','🍡'],['shaved_ice','🍧'],
+    ['ice_cream','🍨'],['icecream','🍦'],['pie','🥧'],['cake','🎂'],['birthday','🎂'],
+    ['shortcake','🍰'],['cupcake','🧁'],['candy','🍬'],['lollipop','🍭'],
+    ['chocolate_bar','🍫'],['popcorn','🍿'],['doughnut','🍩'],['cookie','🍪'],
+    ['honey_pot','🍯'],['salt','🧂'],['coffee','☕'],['tea','🍵'],['boba','🧋'],
+    ['beer','🍺'],['beers','🍻'],['champagne','🍾'],['wine_glass','🍷'],
+    ['cocktail','🍸'],['tropical_drink','🍹'],['beverage_box','🧃'],
+    ['milk_glass','🥛'],['cup_with_straw','🥤'],
+  ]},
+  { cat: '✈️', label: 'Travel', emoji: [
+    ['car','🚗'],['taxi','🚕'],['bus','🚌'],['trolleybus','🚎'],['racing_car','🏎️'],
+    ['police_car','🚓'],['ambulance','🚑'],['fire_engine','🚒'],['minibus','🚐'],
+    ['truck','🚚'],['articulated_lorry','🚛'],['tractor','🚜'],['kick_scooter','🛴'],
+    ['bike','🚲'],['motor_scooter','🛵'],['motorcycle','🏍️'],['monorail','🚝'],
+    ['mountain_railway','🚞'],['train','🚋'],['train2','🚆'],['bullettrain_side','🚄'],
+    ['bullettrain_front','🚅'],['light_rail','🚈'],['steam_locomotive','🚂'],
+    ['railway_car','🚃'],['station','🚉'],['airplane','✈️'],['small_airplane','🛩️'],
+    ['flight_departure','🛫'],['flight_arrival','🛬'],['seat','💺'],['helicopter','🚁'],
+    ['suspension_railway','🚟'],['mountain_cableway','🚠'],['aerial_tramway','🚡'],
+    ['rocket','🚀'],['flying_saucer','🛸'],['boat','⛵'],['sailboat','⛵'],
+    ['canoe','🛶'],['speedboat','🚤'],['ship','🚢'],['ferry','⛴️'],
+    ['anchor','⚓'],['construction','🚧'],['fuelpump','⛽'],['busstop','🚏'],
+    ['vertical_traffic_light','🚦'],['traffic_light','🚥'],['rotating_light','🚨'],
+    ['passport_control','🛂'],['customs','🛃'],['baggage_claim','🛄'],
+    ['left_luggage','🛅'],['moyai','🗿'],['statue_of_liberty','🗽'],
+    ['tokyo_tower','🗼'],['european_castle','🏰'],['japanese_castle','🏯'],
+    ['stadium','🏟️'],['ferris_wheel','🎡'],['roller_coaster','🎢'],['carousel_horse','🎠'],
+    ['fountain','⛲'],['camping','🏕️'],['beach_umbrella','🏖️'],['desert_island','🏝️'],
+    ['national_park','🏞️'],['sunrise','🌅'],['sunrise_over_mountains','🌄'],
+    ['city_sunrise','🌇'],['city_sunset','🌆'],['cityscape_at_dusk','🌆'],
+    ['night_with_stars','🌃'],['milky_way','🌌'],['bridge_at_night','🌉'],
+    ['foggy','🌁'],
+  ]},
+  { cat: '💡', label: 'Objects', emoji: [
+    ['watch','⌚'],['iphone','📱'],['calling','📲'],['computer','💻'],
+    ['keyboard','⌨️'],['desktop_computer','🖥️'],['printer','🖨️'],['mouse_three_button','🖱️'],
+    ['trackball','🖲️'],['minidisc','💽'],['floppy_disk','💾'],['cd','💿'],['dvd','📀'],
+    ['abacus','🧮'],['movie_camera','🎥'],['film_strip','🎞️'],['film_projector','📽️'],
+    ['clapper','🎬'],['tv','📺'],['camera','📷'],['camera_flash','📸'],
+    ['video_camera','📹'],['vhs','📼'],['bulb','💡'],['flashlight','🔦'],
+    ['candle','🕯️'],['wastebasket','🗑️'],['oil_drum','🛢️'],['money_with_wings','💸'],
+    ['dollar','💵'],['euro','💶'],['pound','💷'],['yen','💴'],['credit_card','💳'],
+    ['gem','💎'],['chart','💹'],['briefcase','💼'],['file_folder','📁'],
+    ['open_file_folder','📂'],['card_index_dividers','🗂️'],['newspaper_roll','🗞️'],
+    ['newspaper','📰'],['notebook','📓'],['notebook_with_decorative_cover','📔'],
+    ['ledger','📒'],['books','📚'],['book','📖'],['link','🔗'],['paperclip','📎'],
+    ['paperclips','🖇️'],['scissors','✂️'],['triangular_ruler','📐'],['straight_ruler','📏'],
+    ['lock','🔒'],['unlock','🔓'],['key','🔑'],['old_key','🗝️'],['hammer','🔨'],
+    ['axe','🪓'],['pick','⛏️'],['hammer_and_pick','⚒️'],['hammer_and_wrench','🛠️'],
+    ['dagger','🗡️'],['sword','⚔️'],['gun','🔫'],['bow_and_arrow','🏹'],['shield','🛡️'],
+    ['wrench','🔧'],['nut_and_bolt','🔩'],['gear','⚙️'],['compression','🗜️'],
+    ['scales','⚖️'],['probing_cane','🦯'],['link','🔗'],['chains','⛓️'],['hook','🪝'],
+    ['toolbox','🧰'],['magnet','🧲'],['ladder','🪜'],['stethoscope','🩺'],
+    ['syringe','💉'],['pill','💊'],['bandage','🩹'],['adhesive_bandage','🩹'],
+    ['door','🚪'],['bed','🛏️'],['couch_and_lamp','🛋️'],['toilet','🚽'],
+    ['shower','🚿'],['bathtub','🛁'],['shopping_cart','🛒'],
+    ['smoking','🚬'],['coffin','⚰️'],['urn','⚱️'],['amphora','🏺'],
+    ['crystal_ball','🔮'],['compass','🧭'],['teddy_bear','🧸'],['puppet','🪆'],
+  ]},
+  { cat: '❤️', label: 'Symbols', emoji: [
+    ['heart','❤️'],['orange_heart','🧡'],['yellow_heart','💛'],['green_heart','💚'],
+    ['blue_heart','💙'],['purple_heart','💜'],['brown_heart','🤎'],
+    ['black_heart','🖤'],['white_heart','🤍'],['broken_heart','💔'],
+    ['heavy_heart_exclamation','❣️'],['two_hearts','💕'],['revolving_hearts','💞'],
+    ['heartbeat','💓'],['heartpulse','💗'],['sparkling_heart','💖'],
+    ['cupid','💘'],['gift_heart','💝'],['heart_decoration','💟'],
+    ['peace_symbol','☮️'],['cross','✝️'],['star_and_crescent','☪️'],['star_of_david','✡️'],
+    ['six_pointed_star','🔯'],['aries','♈'],['taurus','♉'],['gemini','♊'],
+    ['cancer','♋'],['leo','♌'],['virgo','♍'],['libra','♎'],['scorpius','♏'],
+    ['sagittarius','♐'],['capricorn','♑'],['aquarius','♒'],['pisces','♓'],
+    ['id','🆔'],['atom_symbol','⚛️'],['radioactive','☢️'],['biohazard','☣️'],
+    ['mobile_phone_off','📴'],['vibration_mode','📳'],['u6709','🈶'],
+    ['recycle','♻️'],['fleur_de_lis','⚜️'],['beginner','🔰'],['heavy_check_mark','✔️'],
+    ['ballot_box_with_check','☑️'],['radio_button','🔘'],['white_square_button','🔳'],
+    ['black_square_button','🔲'],['black_small_square','▪️'],['white_small_square','▫️'],
+    ['arrow_forward','▶️'],['arrow_backward','◀️'],['fast_forward','⏩'],
+    ['rewind','⏪'],['twisted_rightwards_arrows','🔀'],['repeat','🔁'],
+    ['repeat_one','🔂'],['arrow_right','➡️'],['arrow_left','⬅️'],['arrow_up','⬆️'],
+    ['arrow_down','⬇️'],['arrow_upper_right','↗️'],['arrow_lower_right','↘️'],
+    ['arrow_lower_left','↙️'],['arrow_upper_left','↖️'],['arrow_up_down','↕️'],
+    ['left_right_arrow','↔️'],['arrows_counterclockwise','🔄'],
+    ['arrow_right_hook','↪️'],['arrow_left_hook','↩️'],['arrow_heading_up','⤴️'],
+    ['arrow_heading_down','⤵️'],['hash','#️⃣'],['asterisk','*️⃣'],
+    ['zero','0️⃣'],['one','1️⃣'],['two','2️⃣'],['three','3️⃣'],['four','4️⃣'],
+    ['five','5️⃣'],['six','6️⃣'],['seven','7️⃣'],['eight','8️⃣'],['nine','9️⃣'],
+    ['keycap_ten','🔟'],['exclamation','❗'],['grey_exclamation','❕'],
+    ['question','❓'],['grey_question','❔'],['bangbang','‼️'],['interrobang','⁉️'],
+    ['100','💯'],['low_brightness','🔅'],['high_brightness','🔆'],
+    ['trident','🔱'],['fleur_de_lis','⚜️'],['warning','⚠️'],
+    ['zap','⚡'],['white_check_mark','✅'],['ballot_box_with_check','☑️'],
+    ['x','❌'],['negative_squared_cross_mark','❎'],
+    ['tada','🎉'],['sparkles','✨'],['star','⭐'],['star2','🌟'],['dizzy','💫'],
+    ['fire','🔥'],['boom','💥'],['anger','💢'],['speech_balloon','💬'],
+    ['thought_balloon','💭'],['zzz','💤'],['wave_dash','〰️'],
+  ]},
+  { cat: '🚩', label: 'Flags', emoji: [
+    ['checkered_flag','🏁'],['triangular_flag_on_post','🚩'],['crossed_flags','🎌'],
+    ['black_flag','🏴'],['white_flag','🏳️'],['rainbow_flag','🏳️‍🌈'],
+    ['pirate_flag','🏴‍☠️'],['us','🇺🇸'],['gb','🇬🇧'],['de','🇩🇪'],['fr','🇫🇷'],
+    ['es','🇪🇸'],['it','🇮🇹'],['jp','🇯🇵'],['cn','🇨🇳'],['kr','🇰🇷'],
+    ['ru','🇷🇺'],['ca','🇨🇦'],['au','🇦🇺'],['br','🇧🇷'],['in','🇮🇳'],
+    ['mx','🇲🇽'],['no','🇳🇴'],['se','🇸🇪'],['dk','🇩🇰'],['fi','🇫🇮'],
+    ['nl','🇳🇱'],['be','🇧🇪'],['ch','🇨🇭'],['at','🇦🇹'],['pt','🇵🇹'],
+    ['pl','🇵🇱'],['tr','🇹🇷'],['il','🇮🇱'],['sa','🇸🇦'],['za','🇿🇦'],
+    ['ng','🇳🇬'],['eg','🇪🇬'],['ar','🇦🇷'],['cl','🇨🇱'],['co','🇨🇴'],
+    ['eu','🇪🇺'],['un','🇺🇳'],
+  ]},
+];
+
+const EMOJI_LOOKUP = new Map(EMOJI_DATA.flatMap(cat => cat.emoji));
+
+function expandEmoji(text) {
+  return text.replace(/:([a-zA-Z0-9_+\-]+):/g, (m, n) => EMOJI_LOOKUP.get(n) ?? m);
+}
+
+function insertAtCursor(el, text) {
+  const s = el.selectionStart, e = el.selectionEnd;
+  el.value = el.value.slice(0, s) + text + el.value.slice(e);
+  el.selectionStart = el.selectionEnd = s + text.length;
+  el.dispatchEvent(new Event('input'));
+  el.focus();
+}
+
+let emojiPickerBuilt = false;
+let emojiActiveTab = 0;
+
+function buildEmojiPicker() {
+  if (emojiPickerBuilt) return;
+  emojiPickerBuilt = true;
+
+  const tabs = document.createElement('div');
+  tabs.className = 'ep-tabs';
+
+  const grid = document.createElement('div');
+  grid.className = 'ep-grid';
+
+  function showTab(idx) {
+    emojiActiveTab = idx;
+    tabs.querySelectorAll('.ep-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+    grid.innerHTML = '';
+    for (const [shortcode, char] of EMOJI_DATA[idx].emoji) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ep-emoji';
+      btn.textContent = char;
+      btn.title = `:${shortcode}:`;
+      btn.addEventListener('click', () => {
+        insertAtCursor(detailText, char);
+        emojiPicker.classList.add('hidden');
+      });
+      grid.appendChild(btn);
+    }
+  }
+
+  EMOJI_DATA.forEach((cat, idx) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'ep-tab';
+    btn.textContent = cat.cat;
+    btn.title = cat.label;
+    btn.addEventListener('click', () => showTab(idx));
+    tabs.appendChild(btn);
+  });
+
+  emojiPicker.appendChild(tabs);
+  emojiPicker.appendChild(grid);
+  showTab(0);
+}
+
+emojiBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  buildEmojiPicker();
+  const hidden = emojiPicker.classList.toggle('hidden');
+  if (!hidden) {
+    const r = emojiBtn.getBoundingClientRect();
+    emojiPicker.style.top  = `${r.bottom + 4}px`;
+    emojiPicker.style.right = `${document.documentElement.clientWidth - r.right}px`;
+  }
+});
+
+document.addEventListener('click', e => {
+  if (!emojiBtn.contains(e.target) && !emojiPicker.contains(e.target)) {
+    emojiPicker.classList.add('hidden');
+  }
+});
+
 // Toolbar action buttons
 startBtn.addEventListener('click',    () => { if (selectedId) doUpdateStatus(selectedId, 'in_progress'); });
 blockBtn.addEventListener('click',    () => { if (selectedId) openBlockedByModal(); });
@@ -1476,7 +1800,6 @@ cleanBtn.addEventListener('click', async () => {
 
 newBtn.addEventListener('click', openNewModal);
 nextBtn.addEventListener('click', doNext);
-openDirBtn.addEventListener('click', openOpenDirModal);
 
 // Delete modal events
 deleteCancelBtn.addEventListener('click', () => { deleteModal.classList.add('hidden'); });

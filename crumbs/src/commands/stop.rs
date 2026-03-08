@@ -46,7 +46,8 @@ pub fn run(dir: &Path, id: &str, comment: Option<&str>) -> Result<()> {
 
     let entry = match comment {
         Some(c) if !c.trim().is_empty() => {
-            format!("[stop]  {timestamp}  {elapsed}  {}", c.trim())
+            let c = crate::emoji::expand_shortcodes(c.trim());
+            format!("[stop]  {timestamp}  {elapsed}  {c}")
         }
         _ => format!("[stop]  {timestamp}  {elapsed}"),
     };

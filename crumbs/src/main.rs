@@ -30,29 +30,8 @@ enum Command {
         prefix: Option<String>,
     },
     /// Create a new item
+    #[command(alias = "c")]
     Create {
-        title: String,
-        #[arg(short = 't', long, default_value = "task")]
-        item_type: String,
-        #[arg(short, long, default_value = "2")]
-        priority: u8,
-        #[arg(long)]
-        tags: Option<String>,
-        #[arg(short = 'm', long, allow_hyphen_values = true)]
-        message: Option<String>,
-        /// Comma-separated dependency IDs
-        #[arg(long)]
-        depends: Option<String>,
-        /// Due date (YYYY-MM-DD)
-        #[arg(long)]
-        due: Option<NaiveDate>,
-        /// Story points (Fibonacci: 1 2 3 5 8 13 21)
-        #[arg(long)]
-        points: Option<u8>,
-    },
-    /// Shorthand for create
-    #[command(name = "c")]
-    C {
         title: String,
         #[arg(short = 't', long, default_value = "task")]
         item_type: String,
@@ -226,6 +205,10 @@ enum Command {
     },
 }
 
+fn split_csv(s: &str) -> Vec<String> {
+    s.split(',').map(|p| p.trim().to_string()).collect()
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -271,24 +254,10 @@ fn main() -> Result<()> {
             depends,
             due,
             points,
-        }
-        | Command::C {
-            title,
-            item_type,
-            priority,
-            tags,
-            message,
-            depends,
-            due,
-            points,
         } => {
             let item_type: ItemType = item_type.parse().map_err(|e: String| anyhow::anyhow!(e))?;
-            let tags = tags
-                .map(|t| t.split(',').map(|s| s.trim().to_string()).collect())
-                .unwrap_or_default();
-            let dependencies = depends
-                .map(|d| d.split(',').map(|s| s.trim().to_string()).collect())
-                .unwrap_or_default();
+            let tags = tags.map(|t| split_csv(&t)).unwrap_or_default();
+            let dependencies = depends.map(|d| split_csv(&d)).unwrap_or_default();
             commands::create::run(
                 &dir,
                 title,
@@ -355,10 +324,9 @@ fn main() -> Result<()> {
                 commands::update::UpdateArgs {
                     status,
                     priority,
-                    tags: tags.map(|t| t.split(',').map(|s| s.trim().to_string()).collect()),
+                    tags: tags.map(|t| split_csv(&t)),
                     item_type,
-                    dependencies: depends
-                        .map(|d| d.split(',').map(|s| s.trim().to_string()).collect()),
+                    dependencies: depends.map(|d| split_csv(&d)),
                     due,
                     clear_due,
                     message: final_message,
@@ -375,9 +343,7 @@ fn main() -> Result<()> {
             remove,
         } => {
             if let Some(targets) = targets {
-                let target_ids: Vec<String> =
-                    targets.split(',').map(|s| s.trim().to_string()).collect();
-                commands::block::run(&dir, &id, &target_ids, remove)?;
+                commands::block::run(&dir, &id, &split_csv(&targets), remove)?;
             } else {
                 commands::block::run_set(&dir, &id)?;
             }
@@ -413,9 +379,7 @@ fn main() -> Result<()> {
             targets,
             remove,
         } => {
-            let target_ids: Vec<String> =
-                targets.split(',').map(|s| s.trim().to_string()).collect();
-            commands::link::run(&dir, &id, &relation, &target_ids, remove)?;
+            commands::link::run(&dir, &id, &relation, &split_csv(&targets), remove)?;
         }
         Command::Close { id, reason } => {
             commands::close::run(&dir, &id, reason)?;

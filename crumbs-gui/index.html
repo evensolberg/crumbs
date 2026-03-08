@@ -19,8 +19,7 @@
       <div class="toolbar-actions">
         <button type="button" id="sidebar-toggle-btn" class="btn btn-secondary btn-small" title="Toggle store sidebar">&#9776;</button>
         <div class="toolbar-sep"></div>
-        <button type="button" id="open-dir-btn" class="btn btn-secondary btn-small" title="Open a directory as a crumbs store">Open Dir</button>
-        <button type="button" id="new-btn" class="btn btn-action btn-small" title="Create a new item">+ New</button>
+<button type="button" id="new-btn" class="btn btn-action btn-small" title="Create a new item">+ New</button>
         <div class="toolbar-sep"></div>
         <button type="button" id="start-btn"  class="btn btn-action btn-small"    disabled title="Mark selected item as In Progress">Start</button>
         <button type="button" id="block-btn"  class="btn btn-warn btn-small"      disabled title="Mark selected item as Blocked">Block</button>
@@ -130,7 +129,10 @@
         <div id="detail-right">
           <div class="panel-title">
             <span id="detail-title-label"></span>
-            <button type="button" id="preview-btn" class="btn btn-secondary btn-small" title="Toggle markdown preview">Preview</button>
+            <div class="panel-title-actions">
+              <button type="button" id="emoji-btn" class="btn btn-secondary btn-small" title="Insert emoji" disabled>😀</button>
+              <button type="button" id="preview-btn" class="btn btn-secondary btn-small" title="Toggle markdown preview">Preview</button>
+            </div>
           </div>
           <textarea id="detail-text" placeholder="No body text."></textarea>
           <div id="detail-preview" class="hidden markdown-body"></div>
@@ -262,6 +264,7 @@
     <button type="button" id="ctx-rename-btn">Rename</button>
   </div>
 
+  <div id="emoji-picker" class="emoji-picker hidden"></div>
   <script src="marked.min.js"></script>
   <script src="main.js" type="module"></script>
 </body>

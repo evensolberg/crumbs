@@ -639,3 +639,64 @@ fn update_title_preserves_existing_description() {
     assert_eq!(item.title, "New Title");
     assert_eq!(item.description, "Body text to keep.");
 }
+
+// ── Emoji shortcode expansion ─────────────────────────────────────────────────
+
+#[test]
+fn emoji_shortcodes_expanded_on_create() {
+    let dir = tempdir().unwrap();
+    commands::create::run(
+        dir.path(),
+        "Emoji test".to_string(),
+        ItemType::Task,
+        2,
+        vec![],
+        ":tada:".to_string(),
+        vec![],
+        None,
+        None,
+    )
+    .unwrap();
+    let items = store::load_all(dir.path()).unwrap();
+    let item = &items[0].1;
+    assert_eq!(item.description, "🎉");
+}
+
+#[test]
+fn emoji_shortcodes_expanded_on_update_message() {
+    let dir = tempdir().unwrap();
+    let id = create_task(dir.path(), "Update emoji");
+    commands::update::run(
+        dir.path(),
+        &id,
+        UpdateArgs {
+            message: Some(":bug: found".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    assert_eq!(item.description, "🐛 found");
+}
+
+#[test]
+fn emoji_shortcodes_expanded_on_update_append() {
+    let dir = tempdir().unwrap();
+    let id = create_task(dir.path(), "Append emoji");
+    commands::update::run(
+        dir.path(),
+        &id,
+        UpdateArgs {
+            message: Some(":white_check_mark: fixed".to_string()),
+            append: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    assert!(
+        item.description.contains("✅ fixed"),
+        "expected '✅ fixed' in description, got: {:?}",
+        item.description
+    );
+}

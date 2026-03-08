@@ -4,7 +4,7 @@ use anyhow::{Result, bail};
 use chrono::{Local, NaiveDateTime};
 use console::Style;
 
-use crate::{color, store};
+use crate::{color, commands::start::active_start_ts, store};
 
 /// Sum elapsed seconds across all matched `[start]`/`[stop]` pairs in a description.
 fn total_tracked_secs(description: &str) -> i64 {
@@ -95,12 +95,30 @@ fn show_one(dir: &Path, id: &str) -> Result<()> {
             if !item.description.is_empty() {
                 println!();
                 println!("{}", item.description);
-                let tracked = total_tracked_secs(&item.description);
+                let active_ts = active_start_ts(&item.description);
+                let live_secs = active_ts
+                    .as_deref()
+                    .and_then(|ts| NaiveDateTime::parse_from_str(ts, "%Y-%m-%d %H:%M:%S").ok())
+                    .map(|start| {
+                        Local::now()
+                            .naive_local()
+                            .signed_duration_since(start)
+                            .num_seconds()
+                            .max(0)
+                    })
+                    .unwrap_or(0);
+                let tracked = total_tracked_secs(&item.description) + live_secs;
                 if tracked > 0 {
+                    let running_marker = if active_ts.is_some() {
+                        "  ▶ running"
+                    } else {
+                        ""
+                    };
                     println!();
                     println!(
-                        "  Tracked:  {}",
-                        dim.apply_to(super::stop::format_elapsed(tracked))
+                        "  Tracked:  {}{}",
+                        dim.apply_to(super::stop::format_elapsed(tracked)),
+                        running_marker
                     );
                 }
                 println!();

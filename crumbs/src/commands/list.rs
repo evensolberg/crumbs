@@ -4,7 +4,7 @@ use anyhow::Result;
 use chrono::Local;
 use console::Style;
 
-use crate::{color, item::Status, store};
+use crate::{color, commands::start::active_start_ts, item::Status, store};
 
 pub fn run(
     dir: &Path,
@@ -79,8 +79,13 @@ pub fn run(
             Some(sp) => format!(" [{sp}sp]"),
             None => String::new(),
         };
+        let timer_marker = if active_start_ts(&item.description).is_some() {
+            " ▶"
+        } else {
+            ""
+        };
         println!(
-            "{icon} {} {} {} {}{tags}{due_marker}{points_marker}",
+            "{icon} {} {} {} {}{timer_marker}{tags}{due_marker}{points_marker}",
             item.id,
             p_style.apply_to(format!("[P{}]", item.priority)),
             t_style.apply_to(format!("[{}]", item.item_type)),

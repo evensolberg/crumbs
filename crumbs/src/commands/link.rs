@@ -5,19 +5,6 @@ use chrono::Local;
 
 use crate::{item::Status, store};
 
-fn update_item_file(path: &std::path::PathBuf, item: &crate::item::Item) -> Result<()> {
-    let mut fm = item.clone();
-    fm.description.clear(); // description lives in the body, not frontmatter
-    let frontmatter = serde_yaml_ng::to_string(&fm)?;
-    let raw = std::fs::read_to_string(path)?;
-    let body = raw
-        .strip_prefix("---\n")
-        .and_then(|s| s.split_once("\n---\n").map(|(_, body)| body))
-        .unwrap_or("");
-    store::atomic_write(path, &format!("---\n{frontmatter}---\n{body}"))?;
-    Ok(())
-}
-
 pub fn run(
     dir: &Path,
     source_id: &str,
@@ -76,12 +63,12 @@ pub fn run(
         }
 
         tgt_item.updated = today;
-        update_item_file(&tgt_path, &tgt_item)?;
+        store::rewrite_frontmatter(&tgt_path, &tgt_item)?;
         linked.push(tgt_item.id.clone());
     }
 
     src_item.updated = today;
-    update_item_file(&src_path, &src_item)?;
+    store::rewrite_frontmatter(&src_path, &src_item)?;
     store::reindex(dir)?;
 
     let targets = linked.join(", ");

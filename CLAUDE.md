@@ -43,13 +43,15 @@ CLI and GUI should have equivalent functionality wherever it makes sense. When a
 - YAML frontmatter via `serde_yaml_ng`; body text lives in the Markdown body, **not** frontmatter
 - `description` field: `#[serde(default, skip_serializing_if = "String::is_empty")]` for JSON (GUI); every write path clears `item.description` before calling `serde_yaml_ng::to_string` so it never leaks into frontmatter
 - `index.csv` is a read cache rebuilt after every write (`store::reindex`)
-- ID format: `{prefix}-{4-char alphanumeric}`; case-insensitive lookup everywhere
+- ID format: `{prefix}-{3-char alphanumeric}`; case-insensitive lookup everywhere
 - `update::run` takes `UpdateArgs` struct (not positional args) — use `..Default::default()` for unset fields
 - `blocks`/`blocked_by` are updated atomically on both sides via `link` or `block` commands
 
 ## Workflow
 
 When starting work on a crumbs item, run `crumbs start <id> [-m 'comment']`. When the work is done, run `crumbs stop <id> [-m 'comment']`. The `-m` flag is optional and can go anywhere relative to the ID. This keeps an accurate time log and change history in the item body — useful for traceability and retrospectives.
+
+Before implementing a feature or fix, attach the implementation plan to the relevant crumb item using `crumbs update <id> --message '<plan>'` (or `--append` if a description already exists). This creates a permanent historical record of what was planned and why, directly in the item file.
 
 ## Commit style
 

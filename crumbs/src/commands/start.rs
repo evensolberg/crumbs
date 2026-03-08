@@ -46,7 +46,10 @@ pub fn run(dir: &Path, id: &str, comment: Option<&str>) -> Result<()> {
     let now = Local::now();
     let timestamp = now.format("%Y-%m-%d %H:%M:%S");
     let entry = match comment {
-        Some(c) if !c.trim().is_empty() => format!("[start] {timestamp}  {}", c.trim()),
+        Some(c) if !c.trim().is_empty() => {
+            let c = crate::emoji::expand_shortcodes(c.trim());
+            format!("[start] {timestamp}  {c}")
+        }
         _ => format!("[start] {timestamp}"),
     };
     let desc = if existing_desc.is_empty() {

@@ -98,6 +98,7 @@ pub fn run(dir: &Path, id: &str, args: UpdateArgs) -> Result<()> {
                 Some(msg) => msg.trim().to_string(),
                 None => existing_desc,
             };
+            let desc = crate::emoji::expand_shortcodes(&desc).into_owned();
             let new_body = if desc.is_empty() {
                 format!("\n# {}\n", item.title)
             } else {
