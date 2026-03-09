@@ -1,7 +1,7 @@
 ---
 id: cr-uhz
 title: 'Epic rollup: aggregate child item stats under an epic'
-status: open
+status: closed
 type: idea
 priority: 4
 tags:
@@ -9,8 +9,8 @@ tags:
 - future
 - epic
 created: 2026-03-07
-updated: 2026-03-07
-closed_reason: ''
+updated: 2026-03-08
+closed_reason: Won’t do
 dependencies: []
 ---
 

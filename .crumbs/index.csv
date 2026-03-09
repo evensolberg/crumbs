@@ -2,6 +2,7 @@ id,title,status,type,priority,tags,created,updated,closed_reason,story_points
 cr-0uy,Markdown field is cut off at the bottom of the properties field,closed,bug,2,,2026-03-07,2026-03-07,Fixed resize handler to update detail pane flex-basis instead of list pane height; added min-height:0 to prop-grid for scrolling,
 cr-1f0,"What happens if I try to create a crumb in a non-initialized drectory? It should go to global then, so at least it is caputred and can potentially be moved later.",closed,task,2,,2026-03-05,2026-03-05,,
 cr-2pa,Ask for confirmation in the GUI when deleting crumbs,closed,task,2,,2026-03-07,2026-03-07,Implemented delete-modal with Cancel/Delete buttons; deleteBtn now opens modal instead of invoking directly.,
+cr-4tv,Add a username field to include in updates?,closed,idea,2,,2026-03-08,2026-03-08,Won't do. Not needed.,
 cr-4ys,GUI Priority column  should be left justified,closed,task,2,,2026-03-08,2026-03-08,Removed td:nth-child(5) center-align rule from style.css,1
 cr-4zg,GUI: full-text search,closed,feature,2,gui|search,2026-03-07,2026-03-07,"Search bar in filter row: full-text backend search (title + body), debounced 350ms, clears on store switch, search mode shown in status strip",
 cr-6qc,CLI: duplicate an item,open,feature,3,cli,2026-03-07,2026-03-07,,
@@ -16,6 +17,7 @@ cr-h0k,GUI: renaming title does not update the heading in the markdown body,clos
 cr-hf9,Marking things as blocked in the GUI should open a selector to picked item(s) it’s blocked by,closed,task,2,,2026-03-07,2026-03-07,Implemented 2026-03-07,
 cr-ho3,GUI table column resize is wonky. Dragging one divider moves all the other ones too.,closed,bug,2,,2026-03-07,2026-03-08,,
 cr-i4i,Markdown editor autosave after delay,closed,task,2,,2026-03-07,2026-03-07,"Implemented debounced autosave (2s) on input, immediate flush on blur and Cmd/Ctrl-S.",
+cr-ijx,Add opened/clsoed dates to table,closed,task,2,,2026-03-08,2026-03-09,,1
 cr-j90,GUI: autosave fires on blur even when body is unchanged,closed,bug,1,gui|autosave,2026-03-07,2026-03-07,Fixed: introduced loadedBody tracking in main.js; flushAutosave and scheduleAutosave now skip the save if detailText.value matches the last-loaded value,
 cr-jaj,Time tracking per item,closed,idea,4,idea|future,2026-03-07,2026-03-08,Implemented 2026-03-08,
 cr-kan,Crumbs marked as blocked by other crumbs should have blocked status. Updating one with blocking should mark the other as blocked_by,closed,task,2,,2026-03-06,2026-03-06,link/block commands auto-set blocked status in v0.6.0,
@@ -28,12 +30,12 @@ cr-ogw,CLI: defer with an until date,closed,feature,3,cli|defer,2026-03-07,2026-
 cr-q42,GUI: stats view,closed,feature,3,gui|stats,2026-03-07,2026-03-07,Thin status strip added between filter row and list; shows item count + colored dots per non-zero status,
 cr-r48,GUI table enhancements,closed,task,2,,2026-03-06,2026-03-06,Implemented.,
 cr-r8q,Consider the option to add emoji to the body of a crumb. Maybe using :emoji: format?,closed,task,2,,2026-03-08,2026-03-08,Implemented in v0.13.0: :shortcode: expansion at write time + GUI emoji picker,
-cr-rlf,Recurring tasks,open,idea,4,idea|future,2026-03-07,2026-03-07,,
+cr-rlf,Recurring tasks,closed,idea,4,idea|future,2026-03-07,2026-03-08,Won’t do,
 cr-t2c,crumbs show can take multiple entries: crumbs show ca7 an3 q7c,closed,task,2,,2026-03-07,2026-03-07,show accepts Vec<String> with num_args=1..; blank line separator between items; next.rs call site updated,
 cr-tib,GUI: edit tags in the detail pane,closed,bug,1,gui|tags,2026-03-07,2026-03-07,Tags row in detail pane is now an editable comma-separated text input; saves on blur/Enter,
 cr-tmd,Export from the GUI doesn’t work.,closed,bug,1,,2026-03-08,2026-03-08,Added dialog:allow-save to default.json capability,2
 cr-uh7,CLI: story_points on create,closed,bug,2,cli,2026-03-07,2026-03-07,Not a bug: --points is already supported on create. Filed in error.,
-cr-uhz,Epic rollup: aggregate child item stats under an epic,open,idea,4,idea|future|epic,2026-03-07,2026-03-07,,
+cr-uhz,Epic rollup: aggregate child item stats under an epic,closed,idea,4,idea|future|epic,2026-03-07,2026-03-08,Won’t do,
 cr-v64,Investigate building a GUI app to manage crumbs. Rust with Tauri.,closed,epic,2,,2026-03-06,2026-03-06,Done.,8
 cr-vvq,Consider adding story_points to crumbs for planning,closed,task,2,,2026-03-06,2026-03-07,implemented story_points with Fibonacci validation; CSV/export/GUI support included,
 cr-x8z,GUI: edit dependencies in the detail pane,closed,feature,3,gui|dependencies,2026-03-07,2026-03-07,"Dependencies row in detail pane is now an editable comma-separated text input; saves on blur/Enter, Escape reverts",

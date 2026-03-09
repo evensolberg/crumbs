@@ -1,15 +1,15 @@
 ---
 id: cr-rlf
 title: Recurring tasks
-status: open
+status: closed
 type: idea
 priority: 4
 tags:
 - idea
 - future
 created: 2026-03-07
-updated: 2026-03-07
-closed_reason: ''
+updated: 2026-03-08
+closed_reason: Won’t do
 dependencies: []
 ---
 
