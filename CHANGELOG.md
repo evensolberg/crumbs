@@ -2,14 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
-
 ## [0.14.3] - 2026-03-09
 
 ### Feat
 
-- GUI: add Created and Updated as selectable table columns
 - Default export filename crumbs_export.<ext> for --output
+- GUI Created/Updated table columns (v0.14.3)
 
 ### Fix
 

@@ -1,0 +1,2 @@
+id,title,status,type,priority,tags,created,updated,closed_reason,story_points
+cr-axb,GUI version of crumbs creates a description property in the frontmatter that contains the body of the crumb.,open,task,2,,2026-03-07,2026-03-07,,
