@@ -8,14 +8,13 @@ use crossterm::{
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use dialoguer::Confirm;
 use ratatui_core::{
     layout::{Constraint, Direction, Layout},
     style::{Color, Style},
     terminal::Terminal,
 };
 use ratatui_crossterm::CrosstermBackend;
-use ratatui_textarea::TextArea;
+use ratatui_textarea::{Input, Key, TextArea};
 use ratatui_widgets::paragraph::Paragraph;
 
 use crate::store;
@@ -43,15 +42,59 @@ fn setup_terminal() -> Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
     Ok(Terminal::new(backend)?)
 }
 
+/// Status of the in-TUI editor.
+#[derive(PartialEq)]
+enum EditorStatus {
+    /// Normal editing mode.
+    Editing,
+    /// Ctrl-S was just pressed; show a brief "Saved" confirmation.
+    Saved,
+    /// Esc was pressed with unsaved changes; awaiting confirmation.
+    ConfirmDiscard,
+}
+
+/// Outcome returned by `run_editor`.
+enum EditorOutcome {
+    /// User exited after saving at least once via Ctrl-S.
+    /// `saved_lines` is the last Ctrl-S snapshot.
+    Saved { saved_lines: Vec<String> },
+    /// User exited cleanly with no changes and no Ctrl-S.
+    NoChanges,
+    /// User discarded changes (double-Esc) without saving.
+    Discarded,
+}
+
 /// Run the TUI editor loop.
 ///
-/// Returns `true` if the user pressed Ctrl-S (explicit save),
-/// `false` if they pressed Ctrl-C or Esc (cancel/exit).
+/// `save_fn` is called each time the user presses Ctrl-S; it receives the
+/// current textarea lines and should write them to disk.  The loop tracks the
+/// last snapshot written so it can decide whether there are unsaved changes
+/// when Esc is pressed.
+///
+/// # Errors
+///
+/// Returns an error if drawing the terminal frame or reading an event fails,
+/// or if `save_fn` returns an error.
+#[allow(clippy::too_many_lines)]
 fn run_editor(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
     textarea: &mut TextArea,
-) -> Result<bool> {
+    save_fn: &mut dyn FnMut(&[String]) -> Result<()>,
+) -> Result<EditorOutcome> {
+    let initial: Vec<String> = textarea.lines().to_vec();
+    let mut last_saved: Option<Vec<String>> = None;
+    let mut status = EditorStatus::Editing;
+
     loop {
+        let (status_text, status_color) = match status {
+            EditorStatus::Editing => ("  Ctrl-S save  │  Esc exit", Color::DarkGray),
+            EditorStatus::Saved => ("  Saved  │  Ctrl-S save  │  Esc exit", Color::Green),
+            EditorStatus::ConfirmDiscard => (
+                "  Unsaved changes — Esc again to discard, any key to cancel",
+                Color::Yellow,
+            ),
+        };
+
         terminal.draw(|f| {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
@@ -61,19 +104,86 @@ fn run_editor(
             #[allow(deprecated)]
             f.render_widget(textarea.widget(), chunks[0]);
 
-            let status = Paragraph::new("  Ctrl-S save  │  Ctrl-C / Esc cancel")
-                .style(Style::default().fg(Color::DarkGray));
-            f.render_widget(status, chunks[1]);
+            let bar = Paragraph::new(status_text).style(Style::default().fg(status_color));
+            f.render_widget(bar, chunks[1]);
         })?;
 
         if let Event::Key(key) = event::read()? {
-            match (key.modifiers, key.code) {
-                (KeyModifiers::CONTROL, KeyCode::Char('s')) => return Ok(true),
-                (KeyModifiers::CONTROL, KeyCode::Char('c')) | (_, KeyCode::Esc) => {
-                    return Ok(false);
-                }
-                _ => {
+            match status {
+                EditorStatus::ConfirmDiscard => {
+                    if key.code == KeyCode::Esc {
+                        // Second Esc — discard and exit.
+                        return Ok(EditorOutcome::Discarded);
+                    }
+                    // Any other key cancels the discard prompt.
+                    status = EditorStatus::Editing;
                     textarea.input(key);
+                }
+
+                EditorStatus::Editing | EditorStatus::Saved => {
+                    match (key.modifiers, key.code) {
+                        // Ctrl-S: save in place, stay in editor.
+                        (KeyModifiers::CONTROL, KeyCode::Char('s')) => {
+                            save_fn(textarea.lines())?;
+                            last_saved = Some(textarea.lines().to_vec());
+                            status = EditorStatus::Saved;
+                        }
+
+                        // Ctrl-C / Esc: exit if clean, prompt if dirty.
+                        (KeyModifiers::CONTROL, KeyCode::Char('c')) | (_, KeyCode::Esc) => {
+                            let current = textarea.lines().to_vec();
+                            let baseline = last_saved.as_ref().unwrap_or(&initial);
+                            if current == *baseline {
+                                return Ok(last_saved.map_or(EditorOutcome::NoChanges, |lines| {
+                                    EditorOutcome::Saved { saved_lines: lines }
+                                }));
+                            }
+                            status = EditorStatus::ConfirmDiscard;
+                        }
+
+                        // Alt+Left / Alt+Right: word navigation (macOS terminal).
+                        (KeyModifiers::ALT, KeyCode::Left) => {
+                            textarea.input(Input {
+                                key: Key::Left,
+                                ctrl: false,
+                                alt: true,
+                                shift: false,
+                            });
+                        }
+                        (KeyModifiers::ALT, KeyCode::Right) => {
+                            textarea.input(Input {
+                                key: Key::Right,
+                                ctrl: false,
+                                alt: true,
+                                shift: false,
+                            });
+                        }
+                        // Ctrl+Left / Ctrl+Right: word navigation (Linux/Windows).
+                        (KeyModifiers::CONTROL, KeyCode::Left) => {
+                            textarea.input(Input {
+                                key: Key::Left,
+                                ctrl: true,
+                                alt: false,
+                                shift: false,
+                            });
+                        }
+                        (KeyModifiers::CONTROL, KeyCode::Right) => {
+                            textarea.input(Input {
+                                key: Key::Right,
+                                ctrl: true,
+                                alt: false,
+                                shift: false,
+                            });
+                        }
+
+                        // All other keys: pass through to textarea.
+                        _ => {
+                            if status == EditorStatus::Saved {
+                                status = EditorStatus::Editing;
+                            }
+                            textarea.input(key);
+                        }
+                    }
                 }
             }
         }
@@ -95,6 +205,10 @@ fn run_editor(
 ///
 /// Returns `(title, body)` where `body` is everything after the heading line,
 /// with leading/trailing newlines stripped.
+///
+/// # Errors
+///
+/// Returns an error if the file cannot be read.
 pub fn extract_title_and_body(path: &Path) -> Result<(String, String)> {
     let raw = std::fs::read_to_string(path)?;
     let body_section = raw
@@ -121,6 +235,39 @@ pub fn build_body_section(title: &str, body: &str) -> String {
     }
 }
 
+/// Write the textarea lines back to `path`, updating frontmatter as needed.
+fn write_lines(
+    path: &Path,
+    item: &mut crate::item::Item,
+    lines: &[String],
+    dir: &Path,
+) -> Result<()> {
+    let new_title = lines
+        .first()
+        .map(|s| s.trim().to_string())
+        .unwrap_or_default();
+    let new_body = lines
+        .get(2..)
+        .unwrap_or(&[])
+        .join("\n")
+        .trim_matches('\n')
+        .to_string();
+
+    let new_body_section = build_body_section(&new_title, &new_body);
+    item.title = new_title;
+    item.updated = Local::now().date_naive();
+    item.description.clear();
+    let frontmatter = serde_yaml_ng::to_string(item)?;
+    let new_content = format!("---\n{frontmatter}---\n{new_body_section}");
+    store::atomic_write(path, &new_content)?;
+    store::reindex(dir)?;
+    Ok(())
+}
+
+/// # Errors
+///
+/// Returns an error if the item is not found, the file cannot be read or
+/// written, or the TUI encounters an I/O error.
 pub fn run(dir: &Path, id: &str) -> Result<()> {
     let Some((path, mut item)) = store::find_by_id(dir, id)? else {
         bail!("no item found with id: {id}");
@@ -135,56 +282,58 @@ pub fn run(dir: &Path, id: &str) -> Result<()> {
     }
 
     let mut textarea = TextArea::from(lines);
-    let original_lines: Vec<String> = textarea.lines().to_vec();
 
     // Enter raw mode; guard restores terminal on any exit path
     let mut terminal = setup_terminal()?;
     let guard = TerminalGuard;
 
-    let saved = run_editor(&mut terminal, &mut textarea)?;
+    // Build a save closure that writes to disk immediately.
+    let save_fn = {
+        let path = path.clone();
+        let dir = dir.to_path_buf();
+        move |lines: &[String]| -> Result<()> {
+            let new_title = lines
+                .first()
+                .map(|s| s.trim().to_string())
+                .unwrap_or_default();
+            let new_body = lines
+                .get(2..)
+                .unwrap_or(&[])
+                .join("\n")
+                .trim_matches('\n')
+                .to_string();
+            let new_body_section = build_body_section(&new_title, &new_body);
+            // We only update the body/title here; full item update happens on exit.
+            let raw = std::fs::read_to_string(&path)?;
+            let frontmatter_raw = raw
+                .strip_prefix("---\n")
+                .and_then(|s| s.split_once("\n---\n").map(|(fm, _)| fm))
+                .unwrap_or("");
+            let new_content = format!("---\n{frontmatter_raw}\n---\n{new_body_section}");
+            store::atomic_write(&path, &new_content)?;
+            store::reindex(&dir)?;
+            Ok(())
+        }
+    };
+    let mut save_fn = save_fn;
 
-    // Restore terminal before any dialoguer prompt
+    let outcome = run_editor(&mut terminal, &mut textarea, &mut save_fn)?;
+
+    // Restore terminal before any output.
     drop(guard);
     drop(terminal);
 
-    let new_lines: Vec<String> = textarea.lines().to_vec();
-    let changed = new_lines != original_lines;
-
-    let should_save = if saved {
-        true
-    } else if changed {
-        Confirm::new()
-            .with_prompt("Save changes?")
-            .default(true)
-            .interact()?
-    } else {
-        Confirm::new()
-            .with_prompt("No changes — save anyway?")
-            .default(false)
-            .interact()?
-    };
-
-    if should_save {
-        let new_title = new_lines
-            .first()
-            .map(|s| s.trim().to_string())
-            .unwrap_or_default();
-        let new_body = new_lines
-            .get(2..)
-            .unwrap_or(&[])
-            .join("\n")
-            .trim_matches('\n')
-            .to_string();
-
-        let new_body_section = build_body_section(&new_title, &new_body);
-        item.title = new_title;
-        item.updated = Local::now().date_naive();
-        item.description.clear();
-        let frontmatter = serde_yaml_ng::to_string(&item)?;
-        let new_content = format!("---\n{frontmatter}---\n{new_body_section}");
-        store::atomic_write(&path, &new_content)?;
-        store::reindex(dir)?;
-        println!("Updated {}", item.id);
+    match outcome {
+        EditorOutcome::NoChanges | EditorOutcome::Discarded => {
+            // Nothing to write — either no changes were made, or the user
+            // discarded changes via double-Esc.
+        }
+        EditorOutcome::Saved { saved_lines } => {
+            // Do a final authoritative write that updates the Item struct
+            // (title, updated date) using the last Ctrl-S snapshot.
+            write_lines(&path, &mut item, &saved_lines, dir)?;
+            println!("Updated {}", item.id);
+        }
     }
 
     Ok(())

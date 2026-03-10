@@ -6,8 +6,28 @@ All notable changes to this project will be documented in this file.
 
 ### Chore
 
+- Add ratatui, ratatui-textarea, and crossterm deps
+- Bump version to 0.16.0; fix lint warnings in body.rs
+- Add ESLint to crumbs-gui; wire into just lint; fix JS warnings
+
+### Docs
+
+- Document crumbs body command in README
+
+### Feat
+
+- Add body command helper functions with unit tests
+- Implement body command TUI editor
+- Wire crumbs body command into CLI
+
+## [0.15.1] - 2026-03-10
+
+### Chore
+
 - Add CodeMirror 6 bundle for GUI editor upgrade
 - Bump version to 0.15.0
+- Move emoji button into the format toolbar
+- Bump version to 0.15.1
 
 ### Docs
 
@@ -19,6 +39,11 @@ All notable changes to this project will be documented in this file.
 
 - Replace textarea with CodeMirror 6 editor in GUI
 - Color-code item types in GUI table (cr-kos)
+- Enable line wrapping in GUI editor
+- Add format toolbar and editor keyboard shortcuts to GUI
+- Add editor keyboard shortcuts (delete/move line)
+- Add Mod-0 shortcut for normal (non-heading) text
+- Color-code headings by level, remove underline in editor
 
 ### Fix
 
