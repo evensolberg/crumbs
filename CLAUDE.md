@@ -60,6 +60,14 @@ Before implementing a feature or fix, attach the implementation plan to the rele
 - Refresh author before committing: `git mit es`
 - `cargo fmt` runs automatically in the pre-commit hook and re-stages reformatted files
 
+## Rust guidelines
+
+Follow the **Pragmatic Rust Guidelines** (Microsoft, MIT licence) when writing or reviewing Rust code:
+
+> `/Volumes/SSD/Source/Rust/pragmatic rust guidelines.txt`
+
+Key areas relevant to this project: idiomatic API patterns, thorough docs and examples, strong types over primitives, testable APIs, and good test coverage. The project already uses `anyhow` for application-level errors per M-APP-ERROR.
+
 ## Release
 
 - `just release` — installs to `~/.cargo/bin`, then `cargo clean`

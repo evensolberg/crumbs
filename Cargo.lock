@@ -554,7 +554,7 @@ checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
 
 [[package]]
 name = "crumbs"
-version = "0.14.4"
+version = "0.14.5"
 dependencies = [
  "anyhow",
  "chrono",
@@ -578,7 +578,7 @@ dependencies = [
 
 [[package]]
 name = "crumbs-gui"
-version = "0.14.4"
+version = "0.14.5"
 dependencies = [
  "anyhow",
  "chrono",
