@@ -1,3 +1,15 @@
+import {
+  EditorView, keymap, lineNumbers, highlightActiveLine,
+  highlightActiveLineGutter, drawSelection, dropCursor,
+  highlightSpecialChars, placeholder,
+} from './codemirror.bundle.js';
+import { EditorState } from './codemirror.bundle.js';
+import { defaultKeymap, history, historyKeymap, indentWithTab } from './codemirror.bundle.js';
+import { closeBrackets, closeBracketsKeymap } from './codemirror.bundle.js';
+import { search, searchKeymap, highlightSelectionMatches } from './codemirror.bundle.js';
+import { syntaxHighlighting, defaultHighlightStyle } from './codemirror.bundle.js';
+import { markdown } from './codemirror.bundle.js';
+
 const { invoke } = globalThis.__TAURI__.core;
 
 // ── State ─────────────────────────────────────────────────────────────────
@@ -5,6 +17,7 @@ const { invoke } = globalThis.__TAURI__.core;
 let storeDir = '';
 let allItems = [];
 let selectedId = null;
+let outlineVisible = localStorage.getItem('outlineVisible') === 'true';
 let filterStatus   = 'all';
 let filterPriority = 'any';
 let filterType     = 'any';
@@ -72,11 +85,104 @@ const resizeHandle     = document.getElementById('resize-handle');
 const propGrid         = document.getElementById('prop-grid');
 const detailActions    = document.getElementById('detail-actions');
 const detailTitleLabel = document.getElementById('detail-title-label');
-const detailText       = document.getElementById('detail-text');
+const detailEditorEl   = document.getElementById('detail-editor');
+const outlinePanel     = document.getElementById('outline-panel');
+const outlineList      = document.getElementById('outline-list');
+const outlineToggleBtn = document.getElementById('outline-toggle-btn');
 const detailPreview    = document.getElementById('detail-preview');
 const previewBtn       = document.getElementById('preview-btn');
 const emojiBtn         = document.getElementById('emoji-btn');
 const emojiPicker      = document.getElementById('emoji-picker');
+
+// ── CodeMirror theme (inherits app CSS variables) ─────────────────────────
+const appTheme = EditorView.theme({
+  '&': {
+    height: '100%',
+    background: 'var(--bg)',
+    color: 'var(--text)',
+    fontSize: '13px',
+    fontFamily: 'inherit',
+  },
+  '.cm-scroller': { overflow: 'auto' },
+  '.cm-content': { caretColor: 'var(--accent)', padding: '8px 0' },
+  '.cm-cursor': { borderLeftColor: 'var(--accent)' },
+  '.cm-gutters': {
+    background: 'var(--bg-alt, var(--bg))',
+    color: 'var(--text-muted, #888)',
+    border: 'none',
+    borderRight: '1px solid var(--border)',
+  },
+  '.cm-activeLineGutter': { background: 'var(--bg-hover, rgba(0,0,0,.05))' },
+  '.cm-activeLine':        { background: 'var(--bg-hover, rgba(0,0,0,.05))' },
+  '.cm-selectionBackground, ::selection': {
+    background: 'var(--accent-muted, rgba(0,120,255,.2))',
+  },
+  '.cm-searchMatch': {
+    background: 'var(--accent-muted, rgba(0,120,255,.2))',
+    outline: '1px solid var(--accent)',
+  },
+  '.cm-searchMatch.cm-searchMatch-selected': {
+    background: 'var(--accent)',
+    color: 'var(--bg)',
+  },
+  '.cm-panels': {
+    background: 'var(--bg-alt, var(--bg))',
+    color: 'var(--text)',
+    borderTop: '1px solid var(--border)',
+  },
+  '.cm-panels input, .cm-panels button': {
+    background: 'var(--bg)',
+    color: 'var(--text)',
+    border: '1px solid var(--border)',
+    borderRadius: '3px',
+  },
+});
+
+// ── CodeMirror editor instance ─────────────────────────────────────────────
+const view = new EditorView({
+  state: EditorState.create({
+    doc: '',
+    extensions: [
+      appTheme,
+      lineNumbers(),
+      highlightActiveLineGutter(),
+      highlightActiveLine(),
+      highlightSpecialChars(),
+      drawSelection(),
+      dropCursor(),
+      history(),
+      EditorState.allowMultipleSelections.of(true),
+      syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+      markdown(),
+      closeBrackets(),
+      search({ top: false }),
+      highlightSelectionMatches(),
+      placeholder('No body text.'),
+      keymap.of([
+        ...closeBracketsKeymap,
+        ...defaultKeymap,
+        ...historyKeymap,
+        ...searchKeymap,
+        indentWithTab,
+        { key: 'Mod-s', run: () => { flushAutosave(); return true; } },
+      ]),
+      EditorView.updateListener.of(update => {
+        if (update.docChanged) {
+          scheduleAutosave();
+          scheduleOutlineUpdate(); // defined below; hoisted as a function declaration
+        }
+      }),
+      EditorView.domEventHandlers({
+        blur: () => { flushAutosave(); },
+      }),
+    ],
+  }),
+  parent: detailEditorEl,
+});
+
+// Apply initial outline visibility
+outlinePanel.classList.toggle('hidden', !outlineVisible);
+outlineToggleBtn.classList.toggle('active', outlineVisible);
 
 // Toolbar action buttons
 const newBtn        = document.getElementById('new-btn');
@@ -629,12 +735,61 @@ function renderProps(item) {
 function setPreviewMode(on) {
   previewMode = on;
   previewBtn.textContent = on ? 'Edit' : 'Preview';
-  detailText.classList.toggle('hidden', on);
+  detailEditorEl.classList.toggle('hidden', on);
+  outlinePanel.classList.toggle('hidden', on || !outlineVisible);
   detailPreview.classList.toggle('hidden', !on);
   if (on) {
-    detailPreview.innerHTML = marked.parse(expandEmoji(detailText.value || ''));
+    detailPreview.innerHTML = marked.parse(expandEmoji(view.state.doc.toString()));
   }
 }
+
+// ── Heading outline ────────────────────────────────────────────────────────
+
+let outlineDebounceTimer = null;
+
+function renderOutline() {
+  if (!outlineVisible || previewMode) return;
+  const doc = view.state.doc;
+  const headingRe = /^(#{1,6}) (.+)/;
+  const items = [];
+  for (let i = 1; i <= doc.lines; i++) {
+    const line = doc.line(i);
+    const m = line.text.match(headingRe);
+    if (m) items.push({ level: m[1].length, text: m[2], lineNum: i });
+  }
+  if (items.length === 0) {
+    outlineList.innerHTML = '<div class="outline-empty">No headings</div>';
+    return;
+  }
+  outlineList.innerHTML = '';
+  for (const { level, text, lineNum } of items) {
+    const el = document.createElement('div');
+    el.className = 'outline-item';
+    el.style.paddingLeft = `${6 + (level - 1) * 10}px`;
+    el.title = text;
+    el.textContent = text;
+    el.addEventListener('click', () => {
+      const target = view.state.doc.line(lineNum);
+      view.dispatch({ selection: { anchor: target.from }, scrollIntoView: true });
+      view.focus();
+    });
+    outlineList.appendChild(el);
+  }
+}
+
+function scheduleOutlineUpdate() {
+  if (!outlineVisible || previewMode) return;
+  clearTimeout(outlineDebounceTimer);
+  outlineDebounceTimer = setTimeout(renderOutline, 300);
+}
+
+outlineToggleBtn.addEventListener('click', () => {
+  outlineVisible = !outlineVisible;
+  localStorage.setItem('outlineVisible', outlineVisible);
+  outlinePanel.classList.toggle('hidden', !outlineVisible || previewMode);
+  outlineToggleBtn.classList.toggle('active', outlineVisible);
+  if (outlineVisible) renderOutline();
+});
 
 function renderDetail(item) {
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
@@ -652,8 +807,11 @@ function renderDetail(item) {
   renderProps(item);
   detailActions.innerHTML = '';
   loadedBody = item.description ?? '';
-  detailText.value = loadedBody;
+  view.dispatch({
+    changes: { from: 0, to: view.state.doc.length, insert: loadedBody },
+  });
   setPreviewMode(false);
+  renderOutline();
   updateToolbarButtons();
 }
 
@@ -1089,6 +1247,21 @@ async function confirmNew() {
   try {
     await invoke('create_item', { dir: storeDir, title });
     await loadItems();
+    // Newly created items are always `open` so they appear regardless of showClosed.
+    const newItem = allItems
+      .filter(i => i.title === title)
+      .sort((a, b) => b.created.localeCompare(a.created))[0];
+    if (newItem) {
+      selectedId = newItem.id;
+      document.querySelectorAll('#items-body tr').forEach(r => r.classList.remove('selected'));
+      const tr = document.querySelector(`#items-body tr[data-id="${CSS.escape(newItem.id)}"]`);
+      if (tr) {
+        tr.classList.add('selected');
+        tr.scrollIntoView({ block: 'nearest' });
+      }
+      renderDetail(newItem);
+      view.focus();
+    }
   } catch (e) {
     showError(`Create failed: ${e}`);
   }
@@ -1541,23 +1714,18 @@ function scheduleAutosave() {
   if (!selectedId) return;
   clearTimeout(autosaveTimer);
   autosaveTimer = setTimeout(() => {
-    if (detailText.value !== loadedBody) doSaveText(selectedId, detailText.value);
+    const text = view.state.doc.toString();
+    if (text !== loadedBody) doSaveText(selectedId, text);
   }, 2000);
 }
 function flushAutosave() {
   if (!selectedId) return;
   clearTimeout(autosaveTimer);
   autosaveTimer = null;
-  if (detailText.value !== loadedBody) doSaveText(selectedId, detailText.value);
+  const text = view.state.doc.toString();
+  if (text !== loadedBody) doSaveText(selectedId, text);
 }
-detailText.addEventListener('input', scheduleAutosave);
-detailText.addEventListener('blur', flushAutosave);
-detailText.addEventListener('keydown', e => {
-  if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
-    e.preventDefault();
-    flushAutosave();
-  }
-});
+// Input, blur, and Cmd+S are handled by the CM6 updateListener, domEventHandlers, and keymap.
 
 previewBtn.addEventListener('click', () => setPreviewMode(!previewMode));
 
@@ -1750,12 +1918,9 @@ function expandEmoji(text) {
   return text.replace(/:([a-zA-Z0-9_+\-]+):/g, (m, n) => EMOJI_LOOKUP.get(n) ?? m);
 }
 
-function insertAtCursor(el, text) {
-  const s = el.selectionStart, e = el.selectionEnd;
-  el.value = el.value.slice(0, s) + text + el.value.slice(e);
-  el.selectionStart = el.selectionEnd = s + text.length;
-  el.dispatchEvent(new Event('input'));
-  el.focus();
+function insertAtCursor(_el, text) {
+  view.dispatch(view.state.replaceSelection(text));
+  view.focus();
 }
 
 let emojiPickerBuilt = false;
@@ -1782,7 +1947,7 @@ function buildEmojiPicker() {
       btn.textContent = char;
       btn.title = `:${shortcode}:`;
       btn.addEventListener('click', () => {
-        insertAtCursor(detailText, char);
+        insertAtCursor(null, char);
         emojiPicker.classList.add('hidden');
       });
       grid.appendChild(btn);

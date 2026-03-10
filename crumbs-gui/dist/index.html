@@ -130,11 +130,17 @@
           <div class="panel-title">
             <span id="detail-title-label"></span>
             <div class="panel-title-actions">
+              <button type="button" id="outline-toggle-btn" class="btn btn-secondary btn-small" title="Toggle heading outline">&#8801;</button>
               <button type="button" id="emoji-btn" class="btn btn-secondary btn-small" title="Insert emoji" disabled>😀</button>
               <button type="button" id="preview-btn" class="btn btn-secondary btn-small" title="Toggle markdown preview">Preview</button>
             </div>
           </div>
-          <textarea id="detail-text" placeholder="No body text."></textarea>
+          <div id="editor-area">
+            <div id="detail-editor"></div>
+            <div id="outline-panel" class="hidden">
+              <div id="outline-list"></div>
+            </div>
+          </div>
           <div id="detail-preview" class="hidden markdown-body"></div>
         </div>
       </section>

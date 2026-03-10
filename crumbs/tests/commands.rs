@@ -663,7 +663,6 @@ fn show_bare_suffix_expands_with_store_prefix() {
     let dir = tempdir().unwrap();
     // Initialize the store so config.toml is written with prefix "cr".
     commands::init::run(&dir.path().join(".crumbs"), Some("cr".to_string())).unwrap();
-    // create_task writes items directly into dir.path(), not into .crumbs/.
     // For this test we work directly with the store dir for simplicity.
     let store_dir = dir.path().join(".crumbs");
     store::write_item(
