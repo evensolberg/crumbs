@@ -176,6 +176,7 @@ const view = new EditorView({
         { key: 'Mod-d',          run: deleteLine },
         { key: 'Mod-ArrowUp',    run: moveLineUp },
         { key: 'Mod-ArrowDown',  run: moveLineDown },
+        { key: 'Mod-0',          run: () => { applyHeading(0); return true; } },
         { key: 'Mod-1',          run: () => { applyHeading(1); return true; } },
         { key: 'Mod-2',          run: () => { applyHeading(2); return true; } },
         { key: 'Mod-3',          run: () => { applyHeading(3); return true; } },
