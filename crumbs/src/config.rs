@@ -7,12 +7,29 @@ pub fn global_dir() -> PathBuf {
         .join("crumbs")
 }
 
+/// Walk from `start` upward through parent directories and return the first
+/// `.crumbs` subdirectory that exists, or `None` if none is found before
+/// reaching the filesystem root.
+fn find_crumbs_in_ancestors(start: &std::path::Path) -> Option<PathBuf> {
+    let mut current = start;
+    loop {
+        let candidate = current.join(".crumbs");
+        if candidate.is_dir() {
+            return Some(candidate);
+        }
+        match current.parent() {
+            Some(parent) => current = parent,
+            None => return None,
+        }
+    }
+}
+
 /// Resolve which directory to operate on.
 ///
 /// Priority:
 /// 1. `--dir <path>` explicit override
 /// 2. `--global` flag → global data dir
-/// 3. `.crumbs/` subdirectory under cwd (local project store)
+/// 3. Nearest `.crumbs/` found by walking from cwd up to the filesystem root
 /// 4. Global data dir as fallback
 pub fn resolve_dir(dir: Option<PathBuf>, global: bool) -> PathBuf {
     if let Some(d) = dir {
@@ -30,10 +47,8 @@ pub fn resolve_dir(dir: Option<PathBuf>, global: bool) -> PathBuf {
     if global {
         return global_dir();
     }
-    let local = std::env::current_dir()
-        .unwrap_or_else(|_| PathBuf::from("."))
-        .join(".crumbs");
-    if local.is_dir() {
+    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    if let Some(local) = find_crumbs_in_ancestors(&cwd) {
         return local;
     }
     global_dir()
@@ -103,5 +118,41 @@ mod tests {
         // Either it found a .crumbs dir in the current tree, or it's global_dir().
         // At minimum it should not panic and return a valid path.
         assert!(!result.as_os_str().is_empty());
+    }
+
+    // --- find_crumbs_in_ancestors ---
+
+    #[test]
+    fn ancestor_walk_finds_crumbs_in_parent() {
+        let base = tempdir().unwrap();
+        let crumbs = base.path().join(".crumbs");
+        std::fs::create_dir(&crumbs).unwrap();
+        // Simulate being in a subdirectory of the project root.
+        let subdir = base.path().join("src").join("commands");
+        std::fs::create_dir_all(&subdir).unwrap();
+        let result = find_crumbs_in_ancestors(&subdir);
+        assert_eq!(result, Some(crumbs));
+    }
+
+    #[test]
+    fn ancestor_walk_returns_none_when_not_found() {
+        let base = tempdir().unwrap();
+        // No .crumbs anywhere under base — should return None.
+        let result = find_crumbs_in_ancestors(base.path());
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn ancestor_walk_prefers_nearest_crumbs() {
+        // A nested .crumbs in a subdirectory should win over one in a parent.
+        let base = tempdir().unwrap();
+        let outer_crumbs = base.path().join(".crumbs");
+        let inner = base.path().join("nested");
+        let inner_crumbs = inner.join(".crumbs");
+        std::fs::create_dir_all(&outer_crumbs).unwrap();
+        std::fs::create_dir_all(&inner_crumbs).unwrap();
+        // Walking from `inner` should find inner_crumbs first.
+        let result = find_crumbs_in_ancestors(&inner);
+        assert_eq!(result, Some(inner_crumbs));
     }
 }
