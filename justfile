@@ -167,6 +167,7 @@ dist:
 # Checks for potential code improvements
 @lint:
     cargo lclippy -p crumbs -- -W clippy::pedantic -W clippy::nursery -W clippy::unwrap_used
+    npm --prefix crumbs-gui run lint
 
 # Checks for potential code improvements and fixes what it can
 @lintfix:

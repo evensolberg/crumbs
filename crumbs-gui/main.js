@@ -90,7 +90,6 @@ const errorBanner      = document.getElementById('error-banner');
 const emptyState       = document.getElementById('empty-state');
 const itemsTable       = document.getElementById('items-table');
 const itemsBody        = document.getElementById('items-body');
-const listPane         = document.getElementById('list-pane');
 const detailPane       = document.getElementById('detail-pane');
 const detailLeft       = document.getElementById('detail-left');
 const detailResizer    = document.getElementById('detail-resizer');
@@ -2070,7 +2069,7 @@ const EMOJI_DATA = [
 const EMOJI_LOOKUP = new Map(EMOJI_DATA.flatMap(cat => cat.emoji));
 
 function expandEmoji(text) {
-  return text.replace(/:([a-zA-Z0-9_+\-]+):/g, (m, n) => EMOJI_LOOKUP.get(n) ?? m);
+  return text.replace(/:([a-zA-Z0-9_+-]+):/g, (m, n) => EMOJI_LOOKUP.get(n) ?? m);
 }
 
 function insertAtCursor(_el, text) {
@@ -2079,7 +2078,6 @@ function insertAtCursor(_el, text) {
 }
 
 let emojiPickerBuilt = false;
-let emojiActiveTab = 0;
 
 function buildEmojiPicker() {
   if (emojiPickerBuilt) return;
@@ -2092,7 +2090,6 @@ function buildEmojiPicker() {
   grid.className = 'ep-grid';
 
   function showTab(idx) {
-    emojiActiveTab = idx;
     tabs.querySelectorAll('.ep-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
     grid.innerHTML = '';
     for (const [shortcode, char] of EMOJI_DATA[idx].emoji) {
