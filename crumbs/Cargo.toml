@@ -5,6 +5,9 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.102"
+crossterm = "0.29"
+ratatui = "0.29"
+ratatui-textarea = { version = "0.8", features = ["crossterm"] }
 emojis = "0.8"
 dialoguer = "0.12"
 dirs = "6"
