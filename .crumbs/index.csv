@@ -42,7 +42,7 @@ cr-tmd,Export from the GUI doesn’t work.,closed,bug,1,,2026-03-08,2026-03-08,A
 cr-uh7,CLI: story_points on create,closed,bug,2,cli,2026-03-07,2026-03-07,Not a bug: --points is already supported on create. Filed in error.,
 cr-uhz,Epic rollup: aggregate child item stats under an epic,closed,idea,4,idea|future|epic,2026-03-07,2026-03-08,Won’t do,
 cr-v64,Investigate building a GUI app to manage crumbs. Rust with Tauri.,closed,epic,2,,2026-03-06,2026-03-06,Done.,8
-cr-v7e,Did we lose the ability in the CLI to identify a spec just on the last 3 letters when in a directory with a .crumbs initialized?,open,bug,2,,2026-03-09,2026-03-10,,
+cr-v7e,Did we lose the ability in the CLI to identify a spec just on the last 3 letters when in a directory with a .crumbs initialized?,closed,bug,2,,2026-03-09,2026-03-10,fixed: resolve_dir now walks ancestor dirs like git does for .git,
 cr-vvq,Consider adding story_points to crumbs for planning,closed,task,2,,2026-03-06,2026-03-07,implemented story_points with Fibonacci validation; CSV/export/GUI support included,
 cr-x8z,GUI: edit dependencies in the detail pane,closed,feature,3,gui|dependencies,2026-03-07,2026-03-07,"Dependencies row in detail pane is now an editable comma-separated text input; saves on blur/Enter, Escape reverts",
 cr-ydo,GUI: must click twice to select a different crumb after editing body,closed,bug,1,gui|autosave,2026-03-07,2026-03-07,Fixed as part of cr-j90: skipping the no-op blur save eliminates the spurious loadItems re-render that ate the first click,
