@@ -6,7 +6,7 @@ cr-4eq,Creating a new crumb in the GUI should take me to it,closed,task,2,,2026-
 cr-4tv,Add a username field to include in updates?,closed,idea,2,,2026-03-08,2026-03-08,Won't do. Not needed.,
 cr-4ys,GUI Priority column  should be left justified,closed,task,2,,2026-03-08,2026-03-08,Removed td:nth-child(5) center-align rule from style.css,1
 cr-4zg,GUI: full-text search,closed,feature,2,gui|search,2026-03-07,2026-03-07,"Search bar in filter row: full-text backend search (title + body), debounced 350ms, clears on store switch, search mode shown in status strip",
-cr-6qc,CLI: duplicate an items,open,feature,3,cli,2026-03-07,2026-03-10,,
+cr-6qc,CLI: duplicate an item,open,feature,3,cli,2026-03-07,2026-03-10,,
 cr-73q,Need more statuses than just open and closed. Need blocked and deferred at least.,closed,task,2,,2026-03-05,2026-03-06,Added blocked and deferred status variants in v0.6.0,
 cr-74h,GUI table updates,closed,task,2,,2026-03-06,2026-03-06,Done.,
 cr-7c9,CLI: message starting with -- crashes create,closed,bug,1,cli,2026-03-07,2026-03-07,"Fixed: added allow_hyphen_values = true to message arg in Create, C, and Update commands",

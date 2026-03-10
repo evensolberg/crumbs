@@ -1,6 +1,6 @@
 ---
 id: cr-6qc
-title: 'CLI: duplicate an items'
+title: 'CLI: duplicate an item'
 status: open
 type: feature
 priority: 3
@@ -12,7 +12,7 @@ closed_reason: ''
 dependencies: []
 ---
 
-# CLI: duplicate an items
+# CLI: duplicate an item
 
 Add `crumbs duplicate <id>` to copy an item with a new ID, resetting status to open and clearing closed_reason. Useful as a lightweight template for recurring tasks.
 

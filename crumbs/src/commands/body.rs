@@ -90,7 +90,7 @@ fn run_editor(
             EditorStatus::Editing => ("  Ctrl-S save  │  Esc exit", Color::DarkGray),
             EditorStatus::Saved => ("  Saved  │  Ctrl-S save  │  Esc exit", Color::Green),
             EditorStatus::ConfirmDiscard => (
-                "  Unsaved changes — Esc again to discard, any key to resume",
+                "  Unsaved changes — (S) Save & exit  (E) Exit  (R) Resume",
                 Color::Yellow,
             ),
         };
@@ -111,13 +111,22 @@ fn run_editor(
         if let Event::Key(key) = event::read()? {
             match status {
                 EditorStatus::ConfirmDiscard => {
-                    if key.code == KeyCode::Esc {
-                        // Second Esc — discard and exit.
-                        return Ok(EditorOutcome::Discarded);
+                    match key.code {
+                        KeyCode::Char('s' | 'S') => {
+                            // Save current content and exit.
+                            save_fn(textarea.lines())?;
+                            let lines = textarea.lines().to_vec();
+                            return Ok(EditorOutcome::Saved { saved_lines: lines });
+                        }
+                        KeyCode::Char('e' | 'E') => {
+                            return Ok(EditorOutcome::Discarded);
+                        }
+                        // R or Esc: go back to editing.
+                        KeyCode::Char('r' | 'R') | KeyCode::Esc => {
+                            status = EditorStatus::Editing;
+                        }
+                        _ => {}
                     }
-                    // Any other key cancels the discard prompt.
-                    status = EditorStatus::Editing;
-                    textarea.input(key);
                 }
 
                 EditorStatus::Editing | EditorStatus::Saved => {

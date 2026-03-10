@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 ### Fix
 
 - Use "resume" instead of "cancel" in discard prompt
+- Use Alt+b/f for word navigation (macOS terminal compatibility)
 
 ## [0.16.0] - 2026-03-10
 
