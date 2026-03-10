@@ -1,0 +1,17 @@
+{
+  "name": "crumbs-gui-bundle",
+  "private": true,
+  "scripts": {
+    "build-cm6": "esbuild codemirror-entry.js --bundle --format=esm --minify --outfile=dist/codemirror.bundle.js"
+  },
+  "devDependencies": {
+    "@codemirror/autocomplete": "^6",
+    "@codemirror/commands": "^6",
+    "@codemirror/lang-markdown": "^6",
+    "@codemirror/language": "^6",
+    "@codemirror/search": "^6",
+    "@codemirror/state": "^6",
+    "@codemirror/view": "^6",
+    "esbuild": "^0.25"
+  }
+}

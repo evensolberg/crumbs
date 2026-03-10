@@ -1,9 +1,10 @@
+use chrono::NaiveDate;
 use tempfile::tempdir;
 
 use crumbs::{
     commands,
     commands::update::UpdateArgs,
-    item::{ItemType, Status},
+    item::{Item, ItemType, Status},
     store,
 };
 
@@ -638,6 +639,56 @@ fn update_title_preserves_existing_description() {
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
     assert_eq!(item.title, "New Title");
     assert_eq!(item.description, "Body text to keep.");
+}
+
+// ── show ─────────────────────────────────────────────────────────────────────
+
+#[test]
+fn show_full_id_succeeds() {
+    let dir = tempdir().unwrap();
+    let id = create_task(dir.path(), "Show Me");
+    // Full ID lookup must succeed without error.
+    commands::show::run(dir.path(), &[id]).unwrap();
+}
+
+#[test]
+fn show_unknown_id_errors() {
+    let dir = tempdir().unwrap();
+    let result = commands::show::run(dir.path(), &["cr-zzz".to_string()]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn show_bare_suffix_expands_with_store_prefix() {
+    let dir = tempdir().unwrap();
+    // Initialize the store so config.toml is written with prefix "cr".
+    commands::init::run(&dir.path().join(".crumbs"), Some("cr".to_string())).unwrap();
+    // create_task writes items directly into dir.path(), not into .crumbs/.
+    // For this test we work directly with the store dir for simplicity.
+    let store_dir = dir.path().join(".crumbs");
+    store::write_item(
+        &store_dir,
+        &Item {
+            id: "cr-b01".to_string(),
+            title: "Bare Lookup".to_string(),
+            status: Status::Open,
+            item_type: ItemType::Task,
+            priority: 2,
+            tags: vec![],
+            created: NaiveDate::from_ymd_opt(2026, 3, 1).unwrap(),
+            updated: NaiveDate::from_ymd_opt(2026, 3, 1).unwrap(),
+            closed_reason: String::new(),
+            dependencies: vec![],
+            blocks: vec![],
+            blocked_by: vec![],
+            due: None,
+            description: String::new(),
+            story_points: None,
+        },
+    )
+    .unwrap();
+    // "b01" (bare suffix) must resolve to "cr-b01" and succeed.
+    commands::show::run(&store_dir, &["b01".to_string()]).unwrap();
 }
 
 // ── Emoji shortcode expansion ─────────────────────────────────────────────────

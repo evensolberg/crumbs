@@ -357,4 +357,74 @@ mod tests {
         let result = find_by_id(dir.path(), "bc-nope").unwrap();
         assert!(result.is_none());
     }
+
+    #[test]
+    fn find_by_id_case_insensitive() {
+        let dir = tempdir().unwrap();
+        write_item(dir.path(), &sample_item("bc-f01", "Case Test")).unwrap();
+        let result = find_by_id(dir.path(), "BC-F01").unwrap();
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().1.title, "Case Test");
+    }
+
+    #[test]
+    fn find_by_id_bare_suffix_expands_with_prefix() {
+        let dir = tempdir().unwrap();
+        // Write a config.toml so the prefix is "bc" (matches item IDs used here).
+        crate::store_config::save(
+            dir.path(),
+            &crate::store_config::StoreConfig {
+                prefix: "bc".to_string(),
+            },
+        )
+        .unwrap();
+        write_item(dir.path(), &sample_item("bc-s01", "Bare Suffix")).unwrap();
+        // "s01" (no dash) should expand to "bc-s01".
+        let result = find_by_id(dir.path(), "s01").unwrap();
+        assert!(
+            result.is_some(),
+            "bare suffix lookup should find bc-s01 when prefix is 'bc'"
+        );
+        assert_eq!(result.unwrap().1.title, "Bare Suffix");
+    }
+
+    #[test]
+    fn find_by_id_bare_suffix_case_insensitive() {
+        let dir = tempdir().unwrap();
+        crate::store_config::save(
+            dir.path(),
+            &crate::store_config::StoreConfig {
+                prefix: "bc".to_string(),
+            },
+        )
+        .unwrap();
+        write_item(dir.path(), &sample_item("bc-s02", "Case Bare")).unwrap();
+        // Upper-cased bare suffix should still match.
+        let result = find_by_id(dir.path(), "S02").unwrap();
+        assert!(
+            result.is_some(),
+            "bare suffix lookup should be case-insensitive"
+        );
+        assert_eq!(result.unwrap().1.title, "Case Bare");
+    }
+
+    #[test]
+    fn find_by_id_bare_suffix_wrong_prefix_returns_none() {
+        let dir = tempdir().unwrap();
+        // Store has prefix "bc" but item id uses "xx".
+        crate::store_config::save(
+            dir.path(),
+            &crate::store_config::StoreConfig {
+                prefix: "bc".to_string(),
+            },
+        )
+        .unwrap();
+        write_item(dir.path(), &sample_item("xx-s03", "Wrong Prefix")).unwrap();
+        // "s03" with prefix "bc" gives "bc-s03" which doesn't match "xx-s03".
+        let result = find_by_id(dir.path(), "s03").unwrap();
+        assert!(
+            result.is_none(),
+            "bare suffix with mismatched prefix should return None"
+        );
+    }
 }
