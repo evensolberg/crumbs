@@ -58,6 +58,7 @@ fn run_editor(
                 .constraints([Constraint::Min(1), Constraint::Length(1)])
                 .split(f.area());
 
+            #[allow(deprecated)]
             f.render_widget(textarea.widget(), chunks[0]);
 
             let status = Paragraph::new("  Ctrl-S save  │  Ctrl-C / Esc cancel")
@@ -111,6 +112,7 @@ pub fn extract_title_and_body(path: &Path) -> Result<(String, String)> {
 ///
 /// Returns the string that goes after `---\n` (the closing frontmatter fence),
 /// including the leading newline.
+#[must_use]
 pub fn build_body_section(title: &str, body: &str) -> String {
     if body.is_empty() {
         format!("\n# {title}\n")
@@ -120,15 +122,14 @@ pub fn build_body_section(title: &str, body: &str) -> String {
 }
 
 pub fn run(dir: &Path, id: &str) -> Result<()> {
-    let (path, mut item) = match store::find_by_id(dir, id)? {
-        None => bail!("no item found with id: {id}"),
-        Some(found) => found,
+    let Some((path, mut item)) = store::find_by_id(dir, id)? else {
+        bail!("no item found with id: {id}");
     };
 
     let (title, body) = extract_title_and_body(&path)?;
 
     // Build TextArea: line 0 = title, line 1 = blank, lines 2+ = body
-    let mut lines = vec![title.clone(), String::new()];
+    let mut lines = vec![title, String::new()];
     for line in body.lines() {
         lines.push(line.to_string());
     }
@@ -138,12 +139,12 @@ pub fn run(dir: &Path, id: &str) -> Result<()> {
 
     // Enter raw mode; guard restores terminal on any exit path
     let mut terminal = setup_terminal()?;
-    let _guard = TerminalGuard;
+    let guard = TerminalGuard;
 
     let saved = run_editor(&mut terminal, &mut textarea)?;
 
     // Restore terminal before any dialoguer prompt
-    drop(_guard);
+    drop(guard);
     drop(terminal);
 
     let new_lines: Vec<String> = textarea.lines().to_vec();
