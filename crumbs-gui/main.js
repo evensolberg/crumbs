@@ -157,6 +157,7 @@ const view = new EditorView({
       closeBrackets(),
       search({ top: false }),
       highlightSelectionMatches(),
+      EditorView.lineWrapping,
       placeholder('No body text.'),
       keymap.of([
         ...closeBracketsKeymap,

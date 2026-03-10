@@ -14,6 +14,11 @@
   --priority-3: #888;
   --priority-4: #aaa;
 
+  --type-bug:     #e07b39;
+  --type-feature: #4a9eff;
+  --type-epic:    #9b6dff;
+  --type-idea:    #00a878;
+
   --toolbar-h: 78px;
   --resize-h: 5px;
 

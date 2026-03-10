@@ -6,6 +6,43 @@ All notable changes to this project will be documented in this file.
 
 ### Chore
 
+- Add CodeMirror 6 bundle for GUI editor upgrade
+- Bump version to 0.15.0
+
+### Docs
+
+- Add reference to Pragmatic Rust Guidelines in CLAUDE.md
+- Add design spec for GUI editor enhancements (cr-4eq, cr-8r8)
+- Add implementation plan for GUI editor enhancements
+
+### Feat
+
+- Replace textarea with CodeMirror 6 editor in GUI
+- Color-code item types in GUI table (cr-kos)
+
+### Fix
+
+- Walk ancestor dirs to find local .crumbs store (cr-v7e)
+
+### Test
+
+- Add bare suffix lookup tests for find_by_id and show
+
+## [0.14.5] - 2026-03-10
+
+### Chore
+
+- Bump version to 0.14.5
+
+### Fix
+
+- GUI drag-and-drop via event delegation + module dragItemId
+- Replace HTML5 DnD with pointer-event drag simulation for GUI
+
+## [0.14.4] - 2026-03-10
+
+### Chore
+
 - Add emoji module, new crumb items, update dist and changelog
 
 ### Fix

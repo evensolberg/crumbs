@@ -442,7 +442,10 @@ function cellFor(item, colKey) {
       return `<td class="item-title">${prefix}${escHtml(item.title)}</td>`;
     }
     case 'status':       return `<td>${statusBadge(item.status)}</td>`;
-    case 'type':         return `<td style="font-size:11px;color:var(--text-dim)">${escHtml(item.type ?? '')}</td>`;
+    case 'type': {
+      const typeColor = { bug: 'var(--type-bug)', feature: 'var(--type-feature)', epic: 'var(--type-epic)', idea: 'var(--type-idea)' }[item.type] ?? 'var(--text-dim)';
+      return `<td style="font-size:11px;color:${typeColor};font-weight:${item.type === 'bug' ? '600' : 'normal'}">${escHtml(item.type ?? '')}</td>`;
+    }
     case 'priority':     return `<td>${priorityBadge(item.priority)}</td>`;
     case 'due':          return `<td>${dueHtml(item.due)}</td>`;
     case 'tags':         return `<td class="item-tags">${escHtml((item.tags ?? []).join(', '))}</td>`;
