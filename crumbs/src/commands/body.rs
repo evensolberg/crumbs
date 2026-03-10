@@ -141,37 +141,24 @@ fn run_editor(
                             status = EditorStatus::ConfirmDiscard;
                         }
 
-                        // Alt+Left / Alt+Right: word navigation (macOS terminal).
-                        (KeyModifiers::ALT, KeyCode::Left) => {
+                        // Word navigation.
+                        // macOS Terminal/iTerm2 sends Option+Left/Right as Alt+b/f.
+                        // Linux/Windows terminals send Ctrl+Left/Right or Alt+Left/Right.
+                        (KeyModifiers::ALT, KeyCode::Char('b') | KeyCode::Left)
+                        | (KeyModifiers::CONTROL, KeyCode::Left) => {
                             textarea.input(Input {
-                                key: Key::Left,
+                                key: Key::Char('b'),
                                 ctrl: false,
                                 alt: true,
                                 shift: false,
                             });
                         }
-                        (KeyModifiers::ALT, KeyCode::Right) => {
+                        (KeyModifiers::ALT, KeyCode::Char('f') | KeyCode::Right)
+                        | (KeyModifiers::CONTROL, KeyCode::Right) => {
                             textarea.input(Input {
-                                key: Key::Right,
+                                key: Key::Char('f'),
                                 ctrl: false,
                                 alt: true,
-                                shift: false,
-                            });
-                        }
-                        // Ctrl+Left / Ctrl+Right: word navigation (Linux/Windows).
-                        (KeyModifiers::CONTROL, KeyCode::Left) => {
-                            textarea.input(Input {
-                                key: Key::Left,
-                                ctrl: true,
-                                alt: false,
-                                shift: false,
-                            });
-                        }
-                        (KeyModifiers::CONTROL, KeyCode::Right) => {
-                            textarea.input(Input {
-                                key: Key::Right,
-                                ctrl: true,
-                                alt: false,
                                 shift: false,
                             });
                         }

@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+### Feat
+
+- Redesign body editor UX
+
+### Fix
+
+- Use "resume" instead of "cancel" in discard prompt
+
+## [0.16.0] - 2026-03-10
+
 ### Chore
 
 - Add ratatui, ratatui-textarea, and crossterm deps
