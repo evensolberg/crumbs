@@ -7,8 +7,19 @@ import { EditorState, Compartment } from './codemirror.bundle.js';
 import { defaultKeymap, history, historyKeymap, indentWithTab, deleteLine, moveLineUp, moveLineDown } from './codemirror.bundle.js';
 import { closeBrackets, closeBracketsKeymap } from './codemirror.bundle.js';
 import { search, searchKeymap, highlightSelectionMatches, openSearchPanel } from './codemirror.bundle.js';
-import { syntaxHighlighting, defaultHighlightStyle } from './codemirror.bundle.js';
+import { syntaxHighlighting, defaultHighlightStyle, HighlightStyle } from './codemirror.bundle.js';
+import { tags } from './codemirror.bundle.js';
 import { markdown } from './codemirror.bundle.js';
+
+const headingHighlight = HighlightStyle.define([
+  { tag: tags.heading,  textDecoration: 'none', fontWeight: 'bold' },
+  { tag: tags.heading1, color: 'var(--cm-h1)', fontWeight: 'bold' },
+  { tag: tags.heading2, color: 'var(--cm-h2)' },
+  { tag: tags.heading3, color: 'var(--cm-h3)' },
+  { tag: tags.heading4, color: 'var(--cm-h4)' },
+  { tag: tags.heading5, color: 'var(--cm-h5)' },
+  { tag: tags.heading6, color: 'var(--cm-h6)' },
+]);
 
 const { invoke } = globalThis.__TAURI__.core;
 
@@ -158,6 +169,7 @@ const view = new EditorView({
       history(),
       EditorState.allowMultipleSelections.of(true),
       syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+      syntaxHighlighting(headingHighlight),
       markdown(),
       closeBrackets(),
       search({ top: false }),

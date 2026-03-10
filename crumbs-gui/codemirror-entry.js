@@ -40,6 +40,9 @@ export {
 export {
   syntaxHighlighting,
   defaultHighlightStyle,
+  HighlightStyle,
 } from '@codemirror/language';
+
+export { tags } from '@lezer/highlight';
 
 export { markdown } from '@codemirror/lang-markdown';
