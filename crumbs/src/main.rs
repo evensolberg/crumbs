@@ -111,6 +111,8 @@ enum Command {
         #[arg(long)]
         clear_points: bool,
     },
+    /// Edit an item's title and body in an inline TUI editor
+    Body { id: String },
     /// Mark an item as blocking others (links + sets blocked status on targets)
     Block {
         /// The item that is doing the blocking
@@ -336,6 +338,9 @@ fn main() -> Result<()> {
                     title: None,
                 },
             )?;
+        }
+        Command::Body { id } => {
+            commands::body::run(&dir, &id)?;
         }
         Command::Block {
             id,
