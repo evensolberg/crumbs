@@ -90,7 +90,7 @@ fn run_editor(
             EditorStatus::Editing => ("  Ctrl-S save  │  Esc exit", Color::DarkGray),
             EditorStatus::Saved => ("  Saved  │  Ctrl-S save  │  Esc exit", Color::Green),
             EditorStatus::ConfirmDiscard => (
-                "  Unsaved changes — Esc again to discard, any key to cancel",
+                "  Unsaved changes — Esc again to discard, any key to resume",
                 Color::Yellow,
             ),
         };
