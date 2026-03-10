@@ -232,10 +232,18 @@ Timer entries are plain lines written into the markdown body, interleaved natura
 
 `crumbs show` sums matched pairs: `Total tracked: 1h 22m 45s`. Running `crumbs start` when a timer is already active prints "Already started at HH:MM:SS" and exits without modifying the file.
 
+### Edit title and body
+
+```sh
+crumbs body bc-x7q                   # inline TUI editor for title + body text
+```
+
+Opens an inline terminal editor (ratatui-textarea). Edit the title (line 1) and body text. **Ctrl-S** saves; **Ctrl-C** or **Esc** cancels with a confirmation prompt if there are unsaved changes.
+
 ### Edit raw file
 
 ```sh
-crumbs edit bc-x7q                   # opens in $EDITOR; reindexes on exit
+crumbs edit bc-x7q                   # opens full .md file in $EDITOR; reindexes on exit
 crumbs reindex                       # rebuild index.csv manually
 ```
 
