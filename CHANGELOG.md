@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [unreleased]
+
+### Chore
+
+- Add emoji module, new crumb items, update dist and changelog
+
+### Fix
+
+- Move/import resolve destination via resolve_dir (v0.14.4)
+
 ## [0.14.3] - 2026-03-09
 
 ### Feat

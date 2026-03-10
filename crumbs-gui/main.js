@@ -18,6 +18,7 @@ let sortCol = 'priority';
 let sortDir = 'asc';
 let searchResults = null;   // null = normal mode; Item[] = search mode
 let searchTimer = null;
+let dragItemId = null;      // ID of the row currently being dragged
 
 // ── Column definitions ─────────────────────────────────────────────────────
 
@@ -435,11 +436,12 @@ function renderTable() {
     tr.dataset.id = item.id;
     tr.draggable = true;
     tr.addEventListener('dragstart', e => {
+      dragItemId = item.id;
       e.dataTransfer.setData('text/plain', item.id);
       e.dataTransfer.effectAllowed = 'move';
       tr.classList.add('dragging');
     });
-    tr.addEventListener('dragend', () => tr.classList.remove('dragging'));
+    tr.addEventListener('dragend', () => { dragItemId = null; tr.classList.remove('dragging'); });
     itemsBody.appendChild(tr);
   }
 }
@@ -1198,37 +1200,49 @@ function renderSidebar() {
     </div>
   `).join('');
 
-  // Wire up drag-over / drop on each sidebar store entry.
-  for (const el of storeListEl.querySelectorAll('.store-item[data-path]')) {
-    const dstPath = el.dataset.path;
-    if (dstPath === storeDir) continue; // no-op drop onto the active store
-    el.addEventListener('dragenter', e => {
-      e.preventDefault();
-      el.classList.add('drop-target');
-    });
-    el.addEventListener('dragover', e => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-    });
-    el.addEventListener('dragleave', e => {
-      if (!el.contains(e.relatedTarget)) el.classList.remove('drop-target');
-    });
-    el.addEventListener('drop', async e => {
-      e.preventDefault();
-      el.classList.remove('drop-target');
-      const id = e.dataTransfer.getData('text/plain');
-      if (!id) return;
-      clearError();
-      try {
-        await invoke('move_item', { srcDir: storeDir, id, dstDir: dstPath });
-        if (selectedId === id) selectedId = null;
-        await loadItems();
-      } catch (err) {
-        showError(`Move failed: ${err}`);
-      }
-    });
+}
+
+// ── Sidebar drag-and-drop (delegated on the container) ────────────────────
+// Using event delegation + a module-level dragItemId avoids per-element
+// listener churn on renderSidebar() and bypasses WKWebView's unreliable
+// dataTransfer.getData() during the drop event.
+
+function clearDropTargets() {
+  for (const el of storeListEl.querySelectorAll('.drop-target')) {
+    el.classList.remove('drop-target');
   }
 }
+
+storeListEl.addEventListener('dragover', e => {
+  const target = e.target.closest('.store-item[data-path]');
+  if (!target || target.dataset.path === storeDir) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  for (const el of storeListEl.querySelectorAll('.store-item')) {
+    el.classList.toggle('drop-target', el === target);
+  }
+});
+
+storeListEl.addEventListener('dragleave', e => {
+  if (!storeListEl.contains(e.relatedTarget)) clearDropTargets();
+});
+
+storeListEl.addEventListener('drop', async e => {
+  const target = e.target.closest('.store-item[data-path]');
+  clearDropTargets();
+  if (!target || target.dataset.path === storeDir) return;
+  e.preventDefault();
+  const id = dragItemId ?? e.dataTransfer.getData('text/plain');
+  if (!id) return;
+  clearError();
+  try {
+    await invoke('move_item', { srcDir: storeDir, id, dstDir: target.dataset.path });
+    if (selectedId === id) selectedId = null;
+    await loadItems();
+  } catch (err) {
+    showError(`Move failed: ${err}`);
+  }
+});
 
 storeListEl.addEventListener('click', async e => {
   const item = e.target.closest('.store-item[data-path]');
