@@ -20,6 +20,9 @@ export {
   history,
   historyKeymap,
   indentWithTab,
+  deleteLine,
+  moveLineUp,
+  moveLineDown,
 } from '@codemirror/commands';
 
 export {

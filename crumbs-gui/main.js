@@ -4,7 +4,7 @@ import {
   highlightSpecialChars, placeholder,
 } from './codemirror.bundle.js';
 import { EditorState, Compartment } from './codemirror.bundle.js';
-import { defaultKeymap, history, historyKeymap, indentWithTab } from './codemirror.bundle.js';
+import { defaultKeymap, history, historyKeymap, indentWithTab, deleteLine, moveLineUp, moveLineDown } from './codemirror.bundle.js';
 import { closeBrackets, closeBracketsKeymap } from './codemirror.bundle.js';
 import { search, searchKeymap, highlightSelectionMatches, openSearchPanel } from './codemirror.bundle.js';
 import { syntaxHighlighting, defaultHighlightStyle } from './codemirror.bundle.js';
@@ -170,15 +170,18 @@ const view = new EditorView({
         ...historyKeymap,
         ...searchKeymap,
         indentWithTab,
-        { key: 'Mod-s', run: () => { flushAutosave(); return true; } },
-        { key: 'Mod-b', run: () => { wrapInline('**'); return true; } },
-        { key: 'Mod-i', run: () => { wrapInline('*');  return true; } },
-        { key: 'Mod-1', run: () => { applyHeading(1); return true; } },
-        { key: 'Mod-2', run: () => { applyHeading(2); return true; } },
-        { key: 'Mod-3', run: () => { applyHeading(3); return true; } },
-        { key: 'Mod-4', run: () => { applyHeading(4); return true; } },
-        { key: 'Mod-5', run: () => { applyHeading(5); return true; } },
-        { key: 'Mod-6', run: () => { applyHeading(6); return true; } },
+        { key: 'Mod-s',          run: () => { flushAutosave(); return true; } },
+        { key: 'Mod-b',          run: () => { wrapInline('**'); return true; } },
+        { key: 'Mod-i',          run: () => { wrapInline('*');  return true; } },
+        { key: 'Mod-d',          run: deleteLine },
+        { key: 'Mod-ArrowUp',    run: moveLineUp },
+        { key: 'Mod-ArrowDown',  run: moveLineDown },
+        { key: 'Mod-1',          run: () => { applyHeading(1); return true; } },
+        { key: 'Mod-2',          run: () => { applyHeading(2); return true; } },
+        { key: 'Mod-3',          run: () => { applyHeading(3); return true; } },
+        { key: 'Mod-4',          run: () => { applyHeading(4); return true; } },
+        { key: 'Mod-5',          run: () => { applyHeading(5); return true; } },
+        { key: 'Mod-6',          run: () => { applyHeading(6); return true; } },
       ]),
       EditorView.updateListener.of(update => {
         if (update.docChanged) {
