@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Feat
 
 - Redesign body editor UX
+- Replace double-Esc discard with explicit S/E/R prompt
 
 ### Fix
 
