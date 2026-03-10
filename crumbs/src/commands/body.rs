@@ -1,6 +1,83 @@
 use std::path::Path;
 
-use anyhow::Result;
+use anyhow::{Result, bail};
+use chrono::Local;
+use crossterm::{
+    cursor::Show,
+    event::{self, Event, KeyCode, KeyModifiers},
+    execute,
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+};
+use dialoguer::Confirm;
+use ratatui_core::{
+    layout::{Constraint, Direction, Layout},
+    style::{Color, Style},
+    terminal::Terminal,
+};
+use ratatui_crossterm::CrosstermBackend;
+use ratatui_textarea::TextArea;
+use ratatui_widgets::paragraph::Paragraph;
+
+use crate::store;
+
+// serde_yaml_ng is a direct dep of the crumbs crate (see Cargo.toml)
+
+/// RAII guard that restores the terminal on drop.
+///
+/// This ensures the terminal is always restored even if `run` returns early
+/// via `?` or panics.
+struct TerminalGuard;
+
+impl Drop for TerminalGuard {
+    fn drop(&mut self) {
+        let _ = disable_raw_mode();
+        let _ = execute!(std::io::stdout(), LeaveAlternateScreen, Show);
+    }
+}
+
+fn setup_terminal() -> Result<Terminal<CrosstermBackend<std::io::Stdout>>> {
+    enable_raw_mode()?;
+    let mut stdout = std::io::stdout();
+    execute!(stdout, EnterAlternateScreen)?;
+    let backend = CrosstermBackend::new(stdout);
+    Ok(Terminal::new(backend)?)
+}
+
+/// Run the TUI editor loop.
+///
+/// Returns `true` if the user pressed Ctrl-S (explicit save),
+/// `false` if they pressed Ctrl-C or Esc (cancel/exit).
+fn run_editor(
+    terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
+    textarea: &mut TextArea,
+) -> Result<bool> {
+    loop {
+        terminal.draw(|f| {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Min(1), Constraint::Length(1)])
+                .split(f.area());
+
+            f.render_widget(textarea.widget(), chunks[0]);
+
+            let status = Paragraph::new("  Ctrl-S save  │  Ctrl-C / Esc cancel")
+                .style(Style::default().fg(Color::DarkGray));
+            f.render_widget(status, chunks[1]);
+        })?;
+
+        if let Event::Key(key) = event::read()? {
+            match (key.modifiers, key.code) {
+                (KeyModifiers::CONTROL, KeyCode::Char('s')) => return Ok(true),
+                (KeyModifiers::CONTROL, KeyCode::Char('c')) | (_, KeyCode::Esc) => {
+                    return Ok(false);
+                }
+                _ => {
+                    textarea.input(key);
+                }
+            }
+        }
+    }
+}
 
 /// Extract the title and body from an item's `.md` file.
 ///
@@ -42,8 +119,74 @@ pub fn build_body_section(title: &str, body: &str) -> String {
     }
 }
 
-pub fn run(_dir: &Path, _id: &str) -> Result<()> {
-    todo!()
+pub fn run(dir: &Path, id: &str) -> Result<()> {
+    let (path, mut item) = match store::find_by_id(dir, id)? {
+        None => bail!("no item found with id: {id}"),
+        Some(found) => found,
+    };
+
+    let (title, body) = extract_title_and_body(&path)?;
+
+    // Build TextArea: line 0 = title, line 1 = blank, lines 2+ = body
+    let mut lines = vec![title.clone(), String::new()];
+    for line in body.lines() {
+        lines.push(line.to_string());
+    }
+
+    let mut textarea = TextArea::from(lines);
+    let original_lines: Vec<String> = textarea.lines().to_vec();
+
+    // Enter raw mode; guard restores terminal on any exit path
+    let mut terminal = setup_terminal()?;
+    let _guard = TerminalGuard;
+
+    let saved = run_editor(&mut terminal, &mut textarea)?;
+
+    // Restore terminal before any dialoguer prompt
+    drop(_guard);
+    drop(terminal);
+
+    let new_lines: Vec<String> = textarea.lines().to_vec();
+    let changed = new_lines != original_lines;
+
+    let should_save = if saved {
+        true
+    } else if changed {
+        Confirm::new()
+            .with_prompt("Save changes?")
+            .default(true)
+            .interact()?
+    } else {
+        Confirm::new()
+            .with_prompt("No changes — save anyway?")
+            .default(false)
+            .interact()?
+    };
+
+    if should_save {
+        let new_title = new_lines
+            .first()
+            .map(|s| s.trim().to_string())
+            .unwrap_or_default();
+        let new_body = new_lines
+            .get(2..)
+            .unwrap_or(&[])
+            .join("\n")
+            .trim_matches('\n')
+            .to_string();
+
+        let new_body_section = build_body_section(&new_title, &new_body);
+        item.title = new_title;
+        item.updated = Local::now().date_naive();
+        item.description.clear();
+        let frontmatter = serde_yaml_ng::to_string(&item)?;
+        let new_content = format!("---\n{frontmatter}---\n{new_body_section}");
+        store::atomic_write(&path, &new_content)?;
+        store::reindex(dir)?;
+        println!("Updated {}", item.id);
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
