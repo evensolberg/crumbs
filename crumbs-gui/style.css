@@ -545,19 +545,64 @@ button:disabled {
   flex-shrink: 0;
 }
 
-/* ── Detail text area ────────────────────────────────────────────────────── */
+/* ── Editor area + outline panel ─────────────────────────────────────────── */
 
-#detail-text {
+#editor-area {
+  display: flex;
   flex: 1;
-  background: var(--bg);
-  color: var(--text);
-  border: none;
-  outline: none;
-  resize: none;
-  padding: 10px 12px;
-  font-family: monospace;
-  font-size: 13px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#detail-editor {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+#detail-editor .cm-editor {
+  height: 100%;
+}
+
+#detail-editor .cm-scroller {
+  overflow: auto;
+}
+
+#outline-panel {
+  width: 180px;
+  min-width: 180px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 6px 0;
+  font-size: 12px;
+}
+
+#outline-panel.hidden {
+  display: none;
+}
+
+.outline-item {
+  display: block;
+  padding: 3px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-muted, #888);
+  border-radius: 3px;
   line-height: 1.6;
+}
+
+.outline-item:hover {
+  background: var(--bg-hover, rgba(0,0,0,.05));
+  color: var(--text);
+}
+
+.outline-empty {
+  padding: 8px;
+  color: var(--text-muted, #888);
+  font-style: italic;
 }
 
 /* ── Table ───────────────────────────────────────────────────────────────── */
