@@ -361,7 +361,7 @@ fn main() -> Result<()> {
             let dst = if to == "global" {
                 config::global_dir()
             } else {
-                PathBuf::from(&to)
+                config::resolve_dir(Some(PathBuf::from(&to)), false)
             };
             commands::move_::run(&dir, &id, &dst)?;
         }
@@ -369,7 +369,7 @@ fn main() -> Result<()> {
             let src = if from == "global" {
                 config::global_dir()
             } else {
-                PathBuf::from(&from)
+                config::resolve_dir(Some(PathBuf::from(&from)), false)
             };
             commands::move_::run(&dir, &id, &src)?;
         }

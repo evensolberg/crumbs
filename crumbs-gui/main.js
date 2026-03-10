@@ -1202,12 +1202,17 @@ function renderSidebar() {
   for (const el of storeListEl.querySelectorAll('.store-item[data-path]')) {
     const dstPath = el.dataset.path;
     if (dstPath === storeDir) continue; // no-op drop onto the active store
+    el.addEventListener('dragenter', e => {
+      e.preventDefault();
+      el.classList.add('drop-target');
+    });
     el.addEventListener('dragover', e => {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
-      el.classList.add('drop-target');
     });
-    el.addEventListener('dragleave', () => el.classList.remove('drop-target'));
+    el.addEventListener('dragleave', e => {
+      if (!el.contains(e.relatedTarget)) el.classList.remove('drop-target');
+    });
     el.addEventListener('drop', async e => {
       e.preventDefault();
       el.classList.remove('drop-target');
