@@ -3,10 +3,10 @@ import {
   highlightActiveLineGutter, drawSelection, dropCursor,
   highlightSpecialChars, placeholder,
 } from './codemirror.bundle.js';
-import { EditorState } from './codemirror.bundle.js';
+import { EditorState, Compartment } from './codemirror.bundle.js';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from './codemirror.bundle.js';
 import { closeBrackets, closeBracketsKeymap } from './codemirror.bundle.js';
-import { search, searchKeymap, highlightSelectionMatches } from './codemirror.bundle.js';
+import { search, searchKeymap, highlightSelectionMatches, openSearchPanel } from './codemirror.bundle.js';
 import { syntaxHighlighting, defaultHighlightStyle } from './codemirror.bundle.js';
 import { markdown } from './codemirror.bundle.js';
 
@@ -18,6 +18,8 @@ let storeDir = '';
 let allItems = [];
 let selectedId = null;
 let outlineVisible = localStorage.getItem('outlineVisible') === 'true';
+let lineWrapOn = localStorage.getItem('lineWrap') !== 'false'; // default on
+const lineWrapCompartment = new Compartment();
 let filterStatus   = 'all';
 let filterPriority = 'any';
 let filterType     = 'any';
@@ -85,6 +87,9 @@ const resizeHandle     = document.getElementById('resize-handle');
 const propGrid         = document.getElementById('prop-grid');
 const detailActions    = document.getElementById('detail-actions');
 const detailTitleLabel = document.getElementById('detail-title-label');
+const formatToolbar    = document.getElementById('format-toolbar');
+const headingSelect    = document.getElementById('heading-select');
+const fmtWrapBtn       = document.getElementById('fmt-wrap');
 const detailEditorEl   = document.getElementById('detail-editor');
 const outlinePanel     = document.getElementById('outline-panel');
 const outlineList      = document.getElementById('outline-list');
@@ -157,7 +162,7 @@ const view = new EditorView({
       closeBrackets(),
       search({ top: false }),
       highlightSelectionMatches(),
-      EditorView.lineWrapping,
+      lineWrapCompartment.of(lineWrapOn ? EditorView.lineWrapping : []),
       placeholder('No body text.'),
       keymap.of([
         ...closeBracketsKeymap,
@@ -166,6 +171,14 @@ const view = new EditorView({
         ...searchKeymap,
         indentWithTab,
         { key: 'Mod-s', run: () => { flushAutosave(); return true; } },
+        { key: 'Mod-b', run: () => { wrapInline('**'); return true; } },
+        { key: 'Mod-i', run: () => { wrapInline('*');  return true; } },
+        { key: 'Mod-1', run: () => { applyHeading(1); return true; } },
+        { key: 'Mod-2', run: () => { applyHeading(2); return true; } },
+        { key: 'Mod-3', run: () => { applyHeading(3); return true; } },
+        { key: 'Mod-4', run: () => { applyHeading(4); return true; } },
+        { key: 'Mod-5', run: () => { applyHeading(5); return true; } },
+        { key: 'Mod-6', run: () => { applyHeading(6); return true; } },
       ]),
       EditorView.updateListener.of(update => {
         if (update.docChanged) {
@@ -739,6 +752,7 @@ function renderProps(item) {
 function setPreviewMode(on) {
   previewMode = on;
   previewBtn.textContent = on ? 'Edit' : 'Preview';
+  formatToolbar.classList.toggle('hidden', on);
   detailEditorEl.classList.toggle('hidden', on);
   outlinePanel.classList.toggle('hidden', on || !outlineVisible);
   detailPreview.classList.toggle('hidden', !on);
@@ -746,6 +760,127 @@ function setPreviewMode(on) {
     detailPreview.innerHTML = marked.parse(expandEmoji(view.state.doc.toString()));
   }
 }
+
+// ── Format toolbar ────────────────────────────────────────────────────────
+
+function wrapInline(marker, closeMarker = marker) {
+  const { state } = view;
+  const changes = [];
+  const newRanges = [];
+  for (const range of state.selection.ranges) {
+    if (range.empty) {
+      changes.push({ from: range.from, insert: marker + closeMarker });
+      newRanges.push({ anchor: range.from + marker.length });
+    } else {
+      const text = state.doc.sliceString(range.from, range.to);
+      // Toggle: remove markers if already wrapped
+      if (text.startsWith(marker) && text.endsWith(closeMarker) && text.length > marker.length + closeMarker.length) {
+        changes.push({ from: range.from, to: range.to, insert: text.slice(marker.length, text.length - closeMarker.length) });
+      } else {
+        changes.push({ from: range.from, insert: marker });
+        changes.push({ from: range.to, insert: closeMarker });
+      }
+    }
+  }
+  view.dispatch({ changes });
+  view.focus();
+}
+
+function applyHeading(level) {
+  const { state } = view;
+  const changes = [];
+  for (const range of state.selection.ranges) {
+    const startLine = state.doc.lineAt(range.from);
+    const endLine   = state.doc.lineAt(range.to);
+    for (let n = startLine.number; n <= endLine.number; n++) {
+      const line  = state.doc.line(n);
+      const match = line.text.match(/^(#{1,6}) /);
+      if (level === 0) {
+        if (match) changes.push({ from: line.from, to: line.from + match[1].length + 1, insert: '' });
+      } else {
+        const prefix = '#'.repeat(level) + ' ';
+        if (match) {
+          changes.push({ from: line.from, to: line.from + match[1].length + 1, insert: prefix });
+        } else {
+          changes.push({ from: line.from, insert: prefix });
+        }
+      }
+    }
+  }
+  if (changes.length) view.dispatch({ changes });
+  // Sync the dropdown to reflect the applied level
+  if (headingSelect) headingSelect.value = String(level);
+  view.focus();
+}
+
+function toggleLinePrefix(prefix) {
+  const { state } = view;
+  const changes = [];
+  for (const range of state.selection.ranges) {
+    const startLine = state.doc.lineAt(range.from);
+    const endLine   = state.doc.lineAt(range.to);
+    for (let n = startLine.number; n <= endLine.number; n++) {
+      const line = state.doc.line(n);
+      if (line.text.startsWith(prefix)) {
+        changes.push({ from: line.from, to: line.from + prefix.length, insert: '' });
+      } else {
+        changes.push({ from: line.from, insert: prefix });
+      }
+    }
+  }
+  if (changes.length) view.dispatch({ changes });
+  view.focus();
+}
+
+function insertCodeBlock() {
+  const { state } = view;
+  const range = state.selection.main;
+  if (range.empty) {
+    const insert = '```\n\n```';
+    view.dispatch({ changes: { from: range.from, insert }, selection: { anchor: range.from + 4 } });
+  } else {
+    const selected = state.doc.sliceString(range.from, range.to);
+    view.dispatch({ changes: { from: range.from, to: range.to, insert: '```\n' + selected + '\n```' } });
+  }
+  view.focus();
+}
+
+function insertHR() {
+  const { state } = view;
+  const line = state.doc.lineAt(state.selection.main.from);
+  const insert = line.text.trim() === '' ? '---' : '\n---';
+  view.dispatch({ changes: { from: line.to, insert } });
+  view.focus();
+}
+
+function toggleLineWrap() {
+  lineWrapOn = !lineWrapOn;
+  localStorage.setItem('lineWrap', lineWrapOn);
+  view.dispatch({ effects: lineWrapCompartment.reconfigure(lineWrapOn ? EditorView.lineWrapping : []) });
+  fmtWrapBtn.classList.toggle('active', lineWrapOn);
+  view.focus();
+}
+
+// Sync heading dropdown to current cursor line on selection change
+EditorView.updateListener.of(update => {
+  if (update.selectionSet && headingSelect) {
+    const line = update.state.doc.lineAt(update.state.selection.main.from);
+    const m = line.text.match(/^(#{1,6}) /);
+    headingSelect.value = m ? String(m[1].length) : '0';
+  }
+});
+
+// Wire format toolbar buttons
+headingSelect.addEventListener('change', () => { applyHeading(parseInt(headingSelect.value, 10)); });
+document.getElementById('fmt-bold').addEventListener('click',      () => wrapInline('**'));
+document.getElementById('fmt-italic').addEventListener('click',    () => wrapInline('*'));
+document.getElementById('fmt-code').addEventListener('click',      () => wrapInline('`'));
+document.getElementById('fmt-codeblock').addEventListener('click', () => insertCodeBlock());
+document.getElementById('fmt-quote').addEventListener('click',     () => toggleLinePrefix('> '));
+document.getElementById('fmt-hr').addEventListener('click',        () => insertHR());
+document.getElementById('fmt-find').addEventListener('click',      () => { openSearchPanel(view); view.focus(); });
+fmtWrapBtn.addEventListener('click', toggleLineWrap);
+fmtWrapBtn.classList.toggle('active', lineWrapOn);
 
 // ── Heading outline ────────────────────────────────────────────────────────
 

@@ -13,7 +13,7 @@ export {
   placeholder,
 } from '@codemirror/view';
 
-export { EditorState } from '@codemirror/state';
+export { EditorState, Compartment } from '@codemirror/state';
 
 export {
   defaultKeymap,
@@ -31,6 +31,7 @@ export {
   search,
   searchKeymap,
   highlightSelectionMatches,
+  openSearchPanel,
 } from '@codemirror/search';
 
 export {

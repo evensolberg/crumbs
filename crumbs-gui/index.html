@@ -135,6 +135,27 @@
               <button type="button" id="preview-btn" class="btn btn-secondary btn-small" title="Toggle markdown preview">Preview</button>
             </div>
           </div>
+          <div id="format-toolbar">
+            <select id="heading-select" title="Heading level">
+              <option value="0">Normal</option>
+              <option value="1">H1</option>
+              <option value="2">H2</option>
+              <option value="3">H3</option>
+              <option value="4">H4</option>
+              <option value="5">H5</option>
+              <option value="6">H6</option>
+            </select>
+            <div class="fmt-sep"></div>
+            <button type="button" class="fmt-btn" id="fmt-bold"    title="Bold (Cmd+B)"><strong>B</strong></button>
+            <button type="button" class="fmt-btn" id="fmt-italic"  title="Italic (Cmd+I)"><em>I</em></button>
+            <button type="button" class="fmt-btn" id="fmt-code"    title="Inline code">&#96;</button>
+            <button type="button" class="fmt-btn" id="fmt-codeblock" title="Code block">&#96;&#96;&#96;</button>
+            <button type="button" class="fmt-btn" id="fmt-quote"   title="Blockquote">❝</button>
+            <button type="button" class="fmt-btn" id="fmt-hr"      title="Horizontal rule">—</button>
+            <div class="fmt-sep"></div>
+            <button type="button" class="fmt-btn" id="fmt-find"    title="Find / Replace (Cmd+F)">Find</button>
+            <button type="button" class="fmt-btn" id="fmt-wrap"    title="Toggle line wrap">↵</button>
+          </div>
           <div id="editor-area">
             <div id="detail-editor"></div>
             <div id="outline-panel" class="hidden">
