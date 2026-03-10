@@ -1,13 +1,13 @@
 ---
 id: cr-7w2
 title: Moving crumbs issues
-status: in_progress
+status: closed
 type: task
 priority: 2
 tags: []
 created: 2026-03-09
 updated: 2026-03-09
-closed_reason: ''
+closed_reason: 'All three sub-issues fixed: CLI move/import now uses resolve_dir for destination; GUI drag-and-drop replaced HTML5 DnD with pointer-event simulation (WKWebView incompatibility)'
 dependencies: []
 ---
 

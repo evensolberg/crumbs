@@ -434,14 +434,7 @@ function renderTable() {
     if (item.id === selectedId) tr.classList.add('selected');
     tr.innerHTML = visibleCols.map(key => cellFor(item, key)).join('');
     tr.dataset.id = item.id;
-    tr.draggable = true;
-    tr.addEventListener('dragstart', e => {
-      dragItemId = item.id;
-      e.dataTransfer.setData('text/plain', item.id);
-      e.dataTransfer.effectAllowed = 'move';
-      tr.classList.add('dragging');
-    });
-    tr.addEventListener('dragend', () => { dragItemId = null; tr.classList.remove('dragging'); });
+    tr.addEventListener('mousedown', e => startRowDrag(e, item, tr));
     itemsBody.appendChild(tr);
   }
 }
@@ -1202,10 +1195,12 @@ function renderSidebar() {
 
 }
 
-// ── Sidebar drag-and-drop (delegated on the container) ────────────────────
-// Using event delegation + a module-level dragItemId avoids per-element
-// listener churn on renderSidebar() and bypasses WKWebView's unreliable
-// dataTransfer.getData() during the drop event.
+// ── Row → sidebar drag (pointer events; bypasses WKWebView HTML5 DnD bugs) ─
+// HTML5 drag-and-drop is unreliable in Tauri's WKWebView: dragover may not
+// fire and dataTransfer.getData() often returns empty on drop. We simulate
+// drag using mousedown/mousemove/mouseup + elementFromPoint for hit-testing.
+
+let dragGhost = null;
 
 function clearDropTargets() {
   for (const el of storeListEl.querySelectorAll('.drop-target')) {
@@ -1213,36 +1208,62 @@ function clearDropTargets() {
   }
 }
 
-storeListEl.addEventListener('dragover', e => {
-  const target = e.target.closest('.store-item[data-path]');
-  if (!target || target.dataset.path === storeDir) return;
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-  for (const el of storeListEl.querySelectorAll('.store-item')) {
-    el.classList.toggle('drop-target', el === target);
-  }
-});
+function sidebarTargetAt(x, y) {
+  // Ghost has pointer-events:none so elementFromPoint sees through it.
+  const el = document.elementFromPoint(x, y);
+  const item = el?.closest('.store-item[data-path]');
+  return item && item.dataset.path !== storeDir ? item : null;
+}
 
-storeListEl.addEventListener('dragleave', e => {
-  if (!storeListEl.contains(e.relatedTarget)) clearDropTargets();
-});
+function startRowDrag(e, item, tr) {
+  if (e.button !== 0) return;            // left-click only
+  e.preventDefault();                    // prevent text selection
 
-storeListEl.addEventListener('drop', async e => {
-  const target = e.target.closest('.store-item[data-path]');
-  clearDropTargets();
-  if (!target || target.dataset.path === storeDir) return;
-  e.preventDefault();
-  const id = dragItemId ?? e.dataTransfer.getData('text/plain');
-  if (!id) return;
-  clearError();
-  try {
-    await invoke('move_item', { srcDir: storeDir, id, dstDir: target.dataset.path });
-    if (selectedId === id) selectedId = null;
-    await loadItems();
-  } catch (err) {
-    showError(`Move failed: ${err}`);
+  dragItemId = item.id;
+  tr.classList.add('dragging');
+
+  // Floating ghost label
+  dragGhost = document.createElement('div');
+  dragGhost.className = 'drag-ghost';
+  dragGhost.textContent = item.title;
+  dragGhost.style.left = `${e.clientX + 14}px`;
+  dragGhost.style.top  = `${e.clientY - 10}px`;
+  document.body.appendChild(dragGhost);
+
+  function onMove(ev) {
+    dragGhost.style.left = `${ev.clientX + 14}px`;
+    dragGhost.style.top  = `${ev.clientY - 10}px`;
+    const target = sidebarTargetAt(ev.clientX, ev.clientY);
+    for (const el of storeListEl.querySelectorAll('.store-item')) {
+      el.classList.toggle('drop-target', el === target);
+    }
   }
-});
+
+  async function onUp(ev) {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    dragGhost.remove(); dragGhost = null;
+    tr.classList.remove('dragging');
+    clearDropTargets();
+
+    const target = sidebarTargetAt(ev.clientX, ev.clientY);
+    const id = dragItemId;
+    dragItemId = null;
+    if (!target || !id) return;
+
+    clearError();
+    try {
+      await invoke('move_item', { srcDir: storeDir, id, dstDir: target.dataset.path });
+      if (selectedId === id) selectedId = null;
+      await loadItems();
+    } catch (err) {
+      showError(`Move failed: ${err}`);
+    }
+  }
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
 
 storeListEl.addEventListener('click', async e => {
   const item = e.target.closest('.store-item[data-path]');
