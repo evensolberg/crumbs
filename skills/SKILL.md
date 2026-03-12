@@ -30,7 +30,7 @@ crumbs init --global             # global store (prefix suggestion: "glob")
 
 ### Create
 ```sh
-crumbs create 'Fix login bug' --item-type bug --priority 1 --tags auth
+crumbs create 'Fix login bug' --type bug --priority 1 --tags auth
 crumbs create 'Auth redesign' --message 'Covers OAuth and sessions' --due 2026-04-01
 crumbs c 'Quick idea'            # shorthand
 ```
@@ -43,6 +43,7 @@ crumbs list --all
 crumbs list --status blocked
 crumbs list --status open --priority 0
 crumbs list --tag project/auth
+crumbs list --type bug           # filter by type (task, bug, feature, epic, idea)
 crumbs list --verbose            # show first two body lines beneath each item
 crumbs next                      # highest-priority actionable item (skips deferred with future until date)
 ```
@@ -57,6 +58,7 @@ crumbs search "login"
 
 ### Update
 ```sh
+crumbs update cr-x7q --title 'New title'
 crumbs update cr-x7q --status in_progress
 crumbs update cr-x7q --priority 0 --tags auth,urgent
 crumbs update cr-x7q --message 'Now includes OAuth flow'

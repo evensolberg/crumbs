@@ -327,7 +327,7 @@ fn list_no_filter_does_not_error() {
     let dir = tempdir().unwrap();
     create_task(dir.path(), "List Task 1");
     create_task(dir.path(), "List Task 2");
-    commands::list::run(dir.path(), None, None, None, false, false).unwrap();
+    commands::list::run(dir.path(), None, None, None, None, false, false).unwrap();
 }
 
 #[test]

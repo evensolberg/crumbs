@@ -4,13 +4,19 @@ use anyhow::Result;
 use chrono::Local;
 use console::Style;
 
-use crate::{color, commands::start::active_start_ts, item::Status, store};
+use crate::{
+    color,
+    commands::start::active_start_ts,
+    item::{ItemType, Status},
+    store,
+};
 
 pub fn run(
     dir: &Path,
     status_filter: Option<&str>,
     tag_filter: Option<&str>,
     priority_filter: Option<u8>,
+    type_filter: Option<ItemType>,
     all: bool,
     verbose: bool,
 ) -> Result<()> {
@@ -46,6 +52,11 @@ pub fn run(
             }
             if let Some(p) = priority_filter
                 && item.priority != p
+            {
+                return false;
+            }
+            if let Some(ref t) = type_filter
+                && &item.item_type != t
             {
                 return false;
             }

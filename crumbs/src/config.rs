@@ -36,10 +36,7 @@ pub fn resolve_dir(dir: Option<PathBuf>, global: bool) -> PathBuf {
         // If the path already ends with `.crumbs` or contains store markers,
         // use it directly; otherwise append `.crumbs` so that
         // `--dir /some/project` behaves the same as `--dir /some/project/.crumbs`.
-        if d.ends_with(".crumbs")
-            || d.join("index.csv").is_file()
-            || d.join("config.toml").is_file()
-        {
+        if d.ends_with(".crumbs") {
             return d;
         }
         return d.join(".crumbs");
@@ -76,11 +73,14 @@ mod tests {
     }
 
     #[test]
-    fn explicit_dir_with_store_markers_unchanged() {
+    fn dir_with_store_files_but_no_crumbs_suffix_appends_crumbs() {
+        // Even if a directory contains store files, only the .crumbs suffix
+        // prevents the append — file contents are not checked.
         let dir = tempdir().unwrap();
         std::fs::write(dir.path().join("config.toml"), "").unwrap();
+        std::fs::write(dir.path().join("index.csv"), "").unwrap();
         let result = resolve_dir(Some(dir.path().to_path_buf()), false);
-        assert_eq!(result, dir.path());
+        assert_eq!(result, dir.path().join(".crumbs"));
     }
 
     #[test]

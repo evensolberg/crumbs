@@ -100,7 +100,7 @@ crumbs init --prefix myp       # skip interactive prompt, set prefix directly
 ### Create an item
 
 ```sh
-crumbs create 'Fix the login bug' --item-type bug --priority 1 --tags project/auth
+crumbs create 'Fix the login bug' --type bug --priority 1 --tags project/auth
 crumbs create 'Auth redesign' --message 'Covers login, OAuth, and session handling'
 crumbs create 'Ship it' --due 2026-04-01 --points 5
 crumbs c 'Quick idea'          # shorthand
@@ -109,7 +109,7 @@ crumbs c 'Quick idea'          # shorthand
 
 | Flag              | Default | Values                                           |
 | ----------------- | ------- | ------------------------------------------------ |
-| `-t, --item-type` | `task`  | `task`, `bug`, `feature`, `epic`, `idea`         |
+| `-t, --type`      | `task`  | `task`, `bug`, `feature`, `epic`, `idea`         |
 | `-p, --priority`  | `2`     | `0` (critical) … `4` (backlog)                   |
 | `--tags`          | —       | comma-separated, e.g. `project/foo,needs-review` |
 | `-m, --message`   | —       | freeform text stored in the markdown body        |
@@ -125,6 +125,7 @@ crumbs list --all              # include closed
 crumbs list --status blocked
 crumbs list --tag project/auth
 crumbs list --priority 0       # P0 items only
+crumbs list --type bug         # filter by type (task, bug, feature, epic, idea)
 crumbs list --verbose          # show first two body lines beneath each item
 crumbs next                    # highest-priority actionable item (skips deferred with future until date)
 ```
@@ -141,6 +142,7 @@ crumbs search "login"
 ### Update an item
 
 ```sh
+crumbs update bc-x7q --title 'New title'
 crumbs update bc-x7q --status in_progress
 crumbs update bc-x7q --priority 0
 crumbs update bc-x7q --tags project/auth,urgent

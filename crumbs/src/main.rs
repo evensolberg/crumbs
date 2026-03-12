@@ -23,17 +23,44 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Initialize a .crumbs store in the current directory
-    Init {
-        /// ID prefix to use (skips interactive prompt)
+    // ── Browsing ──────────────────────────────────────────────────────────────
+    /// List items
+    List {
+        #[arg(short, long)]
+        status: Option<String>,
+        #[arg(short, long)]
+        tag: Option<String>,
+        /// Filter by priority (0-4)
+        #[arg(short, long)]
+        priority: Option<u8>,
+        /// Filter by type (task, bug, feature, epic, idea)
         #[arg(long)]
-        prefix: Option<String>,
+        r#type: Option<String>,
+        /// Show all items including closed
+        #[arg(short, long)]
+        all: bool,
+        /// Show first two lines of body text beneath each item
+        #[arg(short, long)]
+        verbose: bool,
     },
+    /// Show one or more items
+    Show {
+        #[arg(num_args = 1..)]
+        ids: Vec<String>,
+    },
+    /// Search item content
+    Search { query: String },
+    /// Show the highest-priority open item
+    Next,
+    /// Show summary statistics
+    Stats,
+
+    // ── Creating & editing ────────────────────────────────────────────────────
     /// Create a new item
-    #[command(alias = "c")]
+    #[command(visible_alias = "c")]
     Create {
         title: String,
-        #[arg(short = 't', long, default_value = "task")]
+        #[arg(short = 't', long = "type", default_value = "task")]
         item_type: String,
         #[arg(short, long, default_value = "2")]
         priority: u8,
@@ -51,36 +78,12 @@ enum Command {
         #[arg(long)]
         points: Option<u8>,
     },
-    /// List items
-    List {
-        #[arg(short, long)]
-        status: Option<String>,
-        #[arg(short, long)]
-        tag: Option<String>,
-        /// Filter by priority (0-4)
-        #[arg(short, long)]
-        priority: Option<u8>,
-        /// Show all items including closed
-        #[arg(short, long)]
-        all: bool,
-        /// Show first two lines of body text beneath each item
-        #[arg(short, long)]
-        verbose: bool,
-    },
-    /// Show one or more items
-    Show {
-        #[arg(num_args = 1..)]
-        ids: Vec<String>,
-    },
-    /// Open an item in $EDITOR
-    Edit { id: String },
-    /// Show summary statistics
-    Stats,
-    /// Show the highest-priority open item
-    Next,
     /// Update an item
     Update {
         id: String,
+        /// New title for the item
+        #[arg(long)]
+        title: Option<String>,
         #[arg(short, long)]
         status: Option<String>,
         #[arg(short, long)]
@@ -113,26 +116,10 @@ enum Command {
     },
     /// Edit an item's title and body in an inline TUI editor
     Body { id: String },
-    /// Mark an item as blocking others (links + sets blocked status on targets)
-    Block {
-        /// The item that is doing the blocking
-        id: String,
-        /// Comma-separated IDs of items being blocked (omit to mark <id> itself as blocked)
-        targets: Option<String>,
-        /// Remove the blocking relationship (and reopen targets if unblocked)
-        #[arg(long)]
-        remove: bool,
-    },
-    /// Defer an item (or reopen a deferred item)
-    Defer {
-        id: String,
-        /// Reopen a deferred item (set status back to open)
-        #[arg(long)]
-        reopen: bool,
-        /// Wake-up date: item resurfaces in `next` on or after this date (YYYY-MM-DD)
-        #[arg(long)]
-        until: Option<NaiveDate>,
-    },
+    /// Open an item in $EDITOR
+    Edit { id: String },
+
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
     /// Start a timer for an item (appends [start] entry, sets status to in_progress)
     Start {
         id: String,
@@ -146,6 +133,58 @@ enum Command {
         /// Optional comment to record with the stop entry
         #[arg(short = 'm', long, allow_hyphen_values = true)]
         comment: Option<String>,
+    },
+    /// Close an item
+    Close {
+        id: String,
+        #[arg(short, long)]
+        reason: Option<String>,
+    },
+    /// Defer an item (or reopen a deferred item)
+    Defer {
+        id: String,
+        /// Reopen a deferred item (set status back to open)
+        #[arg(long)]
+        reopen: bool,
+        /// Wake-up date: item resurfaces in `next` on or after this date (YYYY-MM-DD)
+        #[arg(long)]
+        until: Option<NaiveDate>,
+    },
+    /// Permanently delete an item
+    Delete {
+        /// ID of the item to delete
+        id: String,
+    },
+
+    // ── Relationships ─────────────────────────────────────────────────────────
+    /// Mark an item as blocking others (links + sets blocked status on targets)
+    Block {
+        /// The item that is doing the blocking
+        id: String,
+        /// Comma-separated IDs of items being blocked (omit to mark <id> itself as blocked)
+        targets: Option<String>,
+        /// Remove the blocking relationship (and reopen targets if unblocked)
+        #[arg(long)]
+        remove: bool,
+    },
+    /// Add or remove blocks/blocked-by relationships between items
+    Link {
+        id: String,
+        /// Relationship direction: "blocks" or "blocked-by"
+        relation: String,
+        /// Comma-separated target IDs
+        targets: String,
+        /// Remove the link instead of adding it
+        #[arg(long)]
+        remove: bool,
+    },
+
+    // ── Store management ──────────────────────────────────────────────────────
+    /// Initialize a .crumbs store in the current directory
+    Init {
+        /// ID prefix to use (skips interactive prompt)
+        #[arg(long)]
+        prefix: Option<String>,
     },
     /// Move an item to a different store (assigns a new ID)
     Move {
@@ -163,34 +202,10 @@ enum Command {
         #[arg(long)]
         from: String,
     },
-    /// Add or remove blocks/blocked-by relationships between items
-    Link {
-        id: String,
-        /// Relationship direction: "blocks" or "blocked-by"
-        relation: String,
-        /// Comma-separated target IDs
-        targets: String,
-        /// Remove the link instead of adding it
-        #[arg(long)]
-        remove: bool,
-    },
-    /// Close an item
-    Close {
-        id: String,
-        #[arg(short, long)]
-        reason: Option<String>,
-    },
-    /// Permanently delete an item
-    Delete {
-        /// ID of the item to delete
-        id: String,
-    },
     /// Remove all closed items from the store
     Clean,
     /// Rebuild the CSV index from .md files
     Reindex,
-    /// Search item content
-    Search { query: String },
     /// Export items to CSV, JSON, or TOON
     Export {
         /// Output format: csv, json, or toon
@@ -200,6 +215,8 @@ enum Command {
         #[arg(short, long, num_args = 0..=1, default_missing_value = "crumbs_export")]
         output: Option<PathBuf>,
     },
+
+    // ── Tooling ───────────────────────────────────────────────────────────────
     /// Print shell completion script to stdout
     Completions {
         /// Shell to generate completions for
@@ -276,14 +293,23 @@ fn main() -> Result<()> {
             status,
             tag,
             priority,
+            r#type,
             all,
             verbose,
         } => {
+            let type_filter = r#type
+                .as_deref()
+                .map(|t| {
+                    t.parse::<ItemType>()
+                        .map_err(|e: String| anyhow::anyhow!(e))
+                })
+                .transpose()?;
             commands::list::run(
                 &dir,
                 status.as_deref(),
                 tag.as_deref(),
                 priority,
+                type_filter,
                 all,
                 verbose,
             )?;
@@ -302,6 +328,7 @@ fn main() -> Result<()> {
         }
         Command::Update {
             id,
+            title,
             status,
             priority,
             tags,
@@ -335,7 +362,7 @@ fn main() -> Result<()> {
                     append: final_append,
                     story_points: points,
                     clear_points,
-                    title: None,
+                    title,
                 },
             )?;
         }

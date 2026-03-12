@@ -2,7 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
+## [0.16.1] - 2026-03-10
+
+### Chore
+
+- Bump version to 0.16.1
 
 ### Feat
 
