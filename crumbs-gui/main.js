@@ -348,10 +348,10 @@ function isModalOpen() {
   return !!document.querySelector('.modal:not(.hidden)');
 }
 
-function selectRow(id) {
+function selectRow(id, tr) {
   selectedId = id;
-  for (const r of document.querySelectorAll('#items-body tr')) r.classList.remove('selected');
-  const tr = document.querySelector(`#items-body tr[data-id="${CSS.escape(id)}"]`);
+  document.querySelector('#items-body tr.selected')?.classList.remove('selected');
+  if (!tr) tr = document.querySelector(`#items-body tr[data-id="${CSS.escape(id)}"]`);
   if (tr) {
     tr.classList.add('selected');
     tr.scrollIntoView({ block: 'nearest' });
@@ -1717,10 +1717,10 @@ document.addEventListener('keydown', e => {
     return;
   }
 
-  // Cmd/Ctrl+R — refresh (suppressed when a modal is open; always prevents native reload)
-  if (mod && e.key === 'r' && !isModalOpen()) {
+  // Cmd/Ctrl+R — always prevent native webview reload; only run loadItems when no modal is open
+  if (mod && e.key === 'r') {
     e.preventDefault();
-    loadItems();
+    if (!isModalOpen()) loadItems();
     return;
   }
 
@@ -1739,7 +1739,7 @@ document.addEventListener('keydown', e => {
     } else {
       nextIndex = currentIndex >= rows.length - 1 ? rows.length - 1 : currentIndex + 1;
     }
-    selectRow(rows[nextIndex].dataset.id);
+    selectRow(rows[nextIndex].dataset.id, rows[nextIndex]);
     return;
   }
 
