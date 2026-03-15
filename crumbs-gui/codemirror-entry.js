@@ -28,6 +28,7 @@ export {
 export {
   closeBrackets,
   closeBracketsKeymap,
+  snippet,
 } from '@codemirror/autocomplete';
 
 export {
