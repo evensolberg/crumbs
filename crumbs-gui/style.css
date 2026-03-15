@@ -1068,14 +1068,14 @@ tbody td {
 /* ── Help modal ──────────────────────────────────────────────────────── */
 
 .help-modal-box {
-  width: min(520px, 90vw);
+  width: min(680px, 96vw);
   max-height: 80vh;
   overflow-y: auto;
 }
 
 .help-sections {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 18px;
 }
 
@@ -1101,7 +1101,6 @@ tbody td {
 
 .help-table td:first-child {
   padding-right: 12px;
-  min-width: 120px;
   white-space: nowrap;
 }
 
