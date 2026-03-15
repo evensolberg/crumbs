@@ -330,7 +330,9 @@ function selectedItem() {
   return allItems.find(i => i.id === selectedId) ?? null;
 }
 
-function isInputFocused() {
+// Returns true when any interactive control has keyboard focus, so global
+// shortcuts are suppressed and don't fire unexpectedly.
+function isControlFocused() {
   const el = document.activeElement;
   if (!el) return false;
   const tag = el.tagName;
@@ -350,7 +352,7 @@ function isModalOpen() {
 
 function selectRow(id, tr) {
   selectedId = id;
-  document.querySelector('#items-body tr.selected')?.classList.remove('selected');
+  for (const r of document.querySelectorAll('#items-body tr.selected')) r.classList.remove('selected');
   if (!tr) tr = document.querySelector(`#items-body tr[data-id="${CSS.escape(id)}"]`);
   if (tr) {
     tr.classList.add('selected');
@@ -1697,20 +1699,20 @@ document.addEventListener('keydown', e => {
   }
 
   // ? — open help modal
-  if (e.key === '?' && !isInputFocused() && !isModalOpen()) {
+  if (e.key === '?' && !isControlFocused() && !isModalOpen()) {
     helpModal.classList.remove('hidden');
     return;
   }
 
   // Cmd/Ctrl+N — new item
-  if (mod && e.key === 'n' && !isInputFocused() && !isModalOpen()) {
+  if (mod && e.key === 'n' && !isControlFocused() && !isModalOpen()) {
     e.preventDefault();
     openNewModal();
     return;
   }
 
-  // Cmd/Ctrl+F — focus search bar (only when editor not focused)
-  if (mod && e.key === 'f' && !isInputFocused() && !isModalOpen()) {
+  // Cmd/Ctrl+F — focus search bar (when no interactive control is focused)
+  if (mod && e.key === 'f' && !isControlFocused() && !isModalOpen()) {
     e.preventDefault();
     searchInput.focus();
     searchInput.select();
@@ -1725,7 +1727,7 @@ document.addEventListener('keydown', e => {
   }
 
   // Navigation and selection shortcuts — suppressed when any input/editor focused or modal open
-  if (isInputFocused() || isModalOpen()) return;
+  if (isControlFocused() || isModalOpen()) return;
 
   // ↑ / ↓ — row navigation
   if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
@@ -1927,7 +1929,7 @@ document.addEventListener('click', e => {
 itemsBody.addEventListener('click', e => {
   const tr = e.target.closest('tr[data-id]');
   if (!tr) return;
-  selectRow(tr.dataset.id);
+  selectRow(tr.dataset.id, tr);
 });
 
 // Inline rename via double-click on detail pane title
