@@ -1684,7 +1684,6 @@ document.addEventListener('keydown', e => {
     hideContextMenu();
     if (!helpModal.classList.contains('hidden')) {
       helpModal.classList.add('hidden');
-      return;
     }
     return;
   }
@@ -1711,15 +1710,15 @@ document.addEventListener('keydown', e => {
     return;
   }
 
-  // Cmd/Ctrl+R — refresh
-  if (mod && e.key === 'r' && !isModalOpen()) {
+  // Cmd/Ctrl+R — refresh (always prevent default to block native webview reload)
+  if (mod && e.key === 'r') {
     e.preventDefault();
     loadItems();
     return;
   }
 
-  // Navigation and selection shortcuts — suppressed when any input/editor focused
-  if (isInputFocused()) return;
+  // Navigation and selection shortcuts — suppressed when any input/editor focused or modal open
+  if (isInputFocused() || isModalOpen()) return;
 
   // ↑ / ↓ — row navigation
   if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
@@ -1753,7 +1752,7 @@ document.addEventListener('keydown', e => {
   // Delete/Backspace — open delete modal for selected item
   if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
     e.preventDefault();
-    deleteModal.classList.remove('hidden');
+    openDeleteModal();
     return;
   }
 });
