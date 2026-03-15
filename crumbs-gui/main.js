@@ -332,16 +332,31 @@ function selectedItem() {
 
 function isInputFocused() {
   const el = document.activeElement;
-  return el && (
-    el.tagName === 'INPUT' ||
-    el.tagName === 'TEXTAREA' ||
-    el.tagName === 'SELECT' ||
-    !!el.closest('.cm-editor')
-  );
+  if (!el) return false;
+  const tag = el.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  if (el.closest('.cm-editor')) return true;
+  // Treat any other focusable element (button, link, etc.) as "focused"
+  // so global shortcuts don't fire when a toolbar control has keyboard focus.
+  if (tag === 'BUTTON' || tag === 'A') return true;
+  if (el.isContentEditable) return true;
+  if (el.getAttribute('role') === 'textbox') return true;
+  return false;
 }
 
 function isModalOpen() {
   return !!document.querySelector('.modal:not(.hidden)');
+}
+
+function selectRow(id) {
+  selectedId = id;
+  for (const r of document.querySelectorAll('#items-body tr')) r.classList.remove('selected');
+  const tr = document.querySelector(`#items-body tr[data-id="${CSS.escape(id)}"]`);
+  if (tr) {
+    tr.classList.add('selected');
+    tr.scrollIntoView({ block: 'nearest' });
+  }
+  renderDetail(selectedItem());
 }
 
 // ── Toolbar contextual button state ──────────────────────────────────────
@@ -1423,14 +1438,7 @@ async function confirmNew() {
       .filter(i => i.title === title)
       .sort((a, b) => b.created.localeCompare(a.created))[0];
     if (newItem) {
-      selectedId = newItem.id;
-      document.querySelectorAll('#items-body tr').forEach(r => r.classList.remove('selected'));
-      const tr = document.querySelector(`#items-body tr[data-id="${CSS.escape(newItem.id)}"]`);
-      if (tr) {
-        tr.classList.add('selected');
-        tr.scrollIntoView({ block: 'nearest' });
-      }
-      renderDetail(newItem);
+      selectRow(newItem.id);
       view.focus();
     }
   } catch (e) {
@@ -1709,8 +1717,8 @@ document.addEventListener('keydown', e => {
     return;
   }
 
-  // Cmd/Ctrl+R — refresh (always prevent default to block native webview reload)
-  if (mod && e.key === 'r') {
+  // Cmd/Ctrl+R — refresh (suppressed when a modal is open; always prevents native reload)
+  if (mod && e.key === 'r' && !isModalOpen()) {
     e.preventDefault();
     loadItems();
     return;
@@ -1731,12 +1739,7 @@ document.addEventListener('keydown', e => {
     } else {
       nextIndex = currentIndex >= rows.length - 1 ? rows.length - 1 : currentIndex + 1;
     }
-    const nextRow = rows[nextIndex];
-    selectedId = nextRow.dataset.id;
-    for (const r of rows) r.classList.remove('selected');
-    nextRow.classList.add('selected');
-    renderDetail(selectedItem());
-    nextRow.scrollIntoView({ block: 'nearest' });
+    selectRow(rows[nextIndex].dataset.id);
     return;
   }
 
@@ -1924,12 +1927,7 @@ document.addEventListener('click', e => {
 itemsBody.addEventListener('click', e => {
   const tr = e.target.closest('tr[data-id]');
   if (!tr) return;
-  selectedId = tr.dataset.id;
-  for (const r of document.querySelectorAll('#items-body tr')) {
-    r.classList.remove('selected');
-  }
-  tr.classList.add('selected');
-  renderDetail(selectedItem());
+  selectRow(tr.dataset.id);
 });
 
 // Inline rename via double-click on detail pane title
