@@ -1704,9 +1704,8 @@ document.addEventListener('keydown', e => {
   // Cmd/Ctrl+F — focus search bar (only when editor not focused)
   if (mod && e.key === 'f' && !isInputFocused() && !isModalOpen()) {
     e.preventDefault();
-    const si = document.getElementById('search-input');
-    si.focus();
-    si.select();
+    searchInput.focus();
+    searchInput.select();
     return;
   }
 
