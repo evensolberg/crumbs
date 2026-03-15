@@ -17,9 +17,11 @@
         <span class="store-path" id="store-path"></span>
       </div>
       <div class="toolbar-actions">
+        <button type="button" id="help-btn" class="btn btn-secondary btn-small" title="Keyboard shortcuts &amp; help (?)">?</button>
         <button type="button" id="sidebar-toggle-btn" class="btn btn-secondary btn-small" title="Toggle store sidebar">&#9776;</button>
+        <button type="button" id="theme-btn" class="btn btn-secondary btn-small" title="Toggle light/dark theme">&#9788;</button>
         <div class="toolbar-sep"></div>
-<button type="button" id="new-btn" class="btn btn-action btn-small" title="Create a new item">+ New</button>
+        <button type="button" id="new-btn" class="btn btn-action btn-small" title="Create a new item">+ New</button>
         <div class="toolbar-sep"></div>
         <button type="button" id="start-btn"  class="btn btn-action btn-small"    disabled title="Mark selected item as In Progress">Start</button>
         <button type="button" id="block-btn"  class="btn btn-warn btn-small"      disabled title="Mark selected item as Blocked">Block</button>
@@ -72,7 +74,6 @@
         </label>
         <button type="button" id="col-picker-btn" class="btn btn-secondary btn-small" title="Show/hide columns">Columns &#9660;</button>
         <div id="col-picker-menu" class="col-picker-menu hidden"></div>
-        <button type="button" id="theme-btn" class="btn btn-secondary btn-small" title="Toggle light/dark theme">&#9788;</button>
         <button type="button" id="reindex-btn" class="btn btn-secondary btn-small" title="Rebuild index.csv from .md files">Reindex</button>
         <button type="button" id="refresh-btn" class="btn btn-secondary btn-small" title="Reload items from disk">Refresh</button>
       </div>
@@ -282,6 +283,62 @@
       <div class="modal-actions">
         <button type="button" id="export-cancel-btn" class="btn btn-secondary">Cancel</button>
         <button type="button" id="export-confirm-btn" class="btn btn-action">Save…</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help modal -->
+  <div id="help-modal" class="modal hidden">
+    <div class="modal-box help-modal-box">
+      <h2>Help</h2>
+      <div class="help-sections">
+        <div class="help-section">
+          <h3>App shortcuts</h3>
+          <table class="help-table">
+            <tbody>
+              <tr><td><kbd>?</kbd></td><td>Open this help</td></tr>
+              <tr><td><kbd>Cmd/Ctrl+N</kbd></td><td>New item</td></tr>
+              <tr><td><kbd>Cmd/Ctrl+F</kbd></td><td>Focus search bar</td></tr>
+              <tr><td><kbd>Cmd/Ctrl+R</kbd></td><td>Refresh</td></tr>
+              <tr><td><kbd>↑ / ↓</kbd></td><td>Navigate rows</td></tr>
+              <tr><td><kbd>Enter</kbd></td><td>Focus body editor</td></tr>
+              <tr><td><kbd>Delete / Backspace</kbd></td><td>Delete selected item</td></tr>
+              <tr><td><kbd>Escape</kbd></td><td>Dismiss modal</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="help-section">
+          <h3>Editor shortcuts</h3>
+          <table class="help-table">
+            <tbody>
+              <tr><td><kbd>Cmd/Ctrl+S</kbd></td><td>Save</td></tr>
+              <tr><td><kbd>Cmd/Ctrl+B</kbd></td><td>Bold</td></tr>
+              <tr><td><kbd>Cmd/Ctrl+I</kbd></td><td>Italic</td></tr>
+              <tr><td><kbd>Cmd/Ctrl+K</kbd></td><td>Insert link</td></tr>
+              <tr><td><kbd>Cmd/Ctrl+F</kbd></td><td>Find / Replace</td></tr>
+              <tr><td><kbd>Cmd/Ctrl+D</kbd></td><td>Delete line</td></tr>
+              <tr><td><kbd>Cmd/Ctrl+↑/↓</kbd></td><td>Move line</td></tr>
+              <tr><td><kbd>Cmd/Ctrl+0–6</kbd></td><td>Heading level</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="help-section">
+          <h3>Status symbols</h3>
+          <table class="help-table">
+            <tbody>
+              <tr><td>○</td><td>Open</td></tr>
+              <tr><td>●</td><td>In Progress</td></tr>
+              <tr><td>⊘</td><td>Blocked</td></tr>
+              <tr><td>◷</td><td>Deferred</td></tr>
+              <tr><td>✓</td><td>Closed</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="help-section">
+          <h3>ID tips</h3>
+          <p class="help-tip">Bare suffix works: <code>x7q</code> → <code>cr-x7q</code></p>
+          <p class="help-tip">IDs are case-insensitive: <code>CR-X7Q</code> = <code>cr-x7q</code></p>
+        </div>
       </div>
     </div>
   </div>
