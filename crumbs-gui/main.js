@@ -5,7 +5,7 @@ import {
 } from './codemirror.bundle.js';
 import { EditorState, Compartment } from './codemirror.bundle.js';
 import { defaultKeymap, history, historyKeymap, indentWithTab, deleteLine, moveLineUp, moveLineDown } from './codemirror.bundle.js';
-import { closeBrackets, closeBracketsKeymap } from './codemirror.bundle.js';
+import { closeBrackets, closeBracketsKeymap, snippet } from './codemirror.bundle.js';
 import { search, searchKeymap, highlightSelectionMatches, openSearchPanel } from './codemirror.bundle.js';
 import { syntaxHighlighting, defaultHighlightStyle, HighlightStyle } from './codemirror.bundle.js';
 import { tags } from './codemirror.bundle.js';
@@ -194,6 +194,7 @@ const view = new EditorView({
         { key: 'Mod-4',          run: () => { applyHeading(4); return true; } },
         { key: 'Mod-5',          run: () => { applyHeading(5); return true; } },
         { key: 'Mod-6',          run: () => { applyHeading(6); return true; } },
+        { key: 'Mod-k',          run: snippet('[${text}](${url})') },
       ]),
       EditorView.updateListener.of(update => {
         if (update.docChanged) {
@@ -215,6 +216,7 @@ outlineToggleBtn.classList.toggle('active', outlineVisible);
 
 // Toolbar action buttons
 const newBtn        = document.getElementById('new-btn');
+const helpBtn       = document.getElementById('help-btn');
 const nextBtn       = document.getElementById('next-btn');
 const startBtn      = document.getElementById('start-btn');
 const blockBtn      = document.getElementById('block-btn');
@@ -245,6 +247,7 @@ const closeConfirmBtn = document.getElementById('close-confirm-btn');
 
 // New item modal
 const newModal      = document.getElementById('new-modal');
+const helpModal     = document.getElementById('help-modal');
 const newTitle      = document.getElementById('new-title');
 const newCancelBtn  = document.getElementById('new-cancel-btn');
 const newConfirmBtn = document.getElementById('new-confirm-btn');
@@ -325,6 +328,20 @@ function dueHtml(due) {
 
 function selectedItem() {
   return allItems.find(i => i.id === selectedId) ?? null;
+}
+
+function isInputFocused() {
+  const el = document.activeElement;
+  return el && (
+    el.tagName === 'INPUT' ||
+    el.tagName === 'TEXTAREA' ||
+    el.tagName === 'SELECT' ||
+    !!el.closest('.cm-editor')
+  );
+}
+
+function isModalOpen() {
+  return !!document.querySelector('.modal:not(.hidden)');
 }
 
 // ── Toolbar contextual button state ──────────────────────────────────────
@@ -1660,7 +1677,85 @@ document.addEventListener('click', e => {
   if (!storeContextMenu.contains(e.target)) hideContextMenu();
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') hideContextMenu();
+  const mod = e.metaKey || e.ctrlKey;
+
+  // Escape — dismiss help modal or context menu
+  if (e.key === 'Escape') {
+    hideContextMenu();
+    if (!helpModal.classList.contains('hidden')) {
+      helpModal.classList.add('hidden');
+      return;
+    }
+    return;
+  }
+
+  // ? — open help modal
+  if (e.key === '?' && !isInputFocused() && !isModalOpen()) {
+    helpModal.classList.remove('hidden');
+    return;
+  }
+
+  // Cmd/Ctrl+N — new item
+  if (mod && e.key === 'n' && !isInputFocused() && !isModalOpen()) {
+    e.preventDefault();
+    openNewModal();
+    return;
+  }
+
+  // Cmd/Ctrl+F — focus search bar (only when editor not focused)
+  if (mod && e.key === 'f' && !isInputFocused()) {
+    e.preventDefault();
+    const si = document.getElementById('search-input');
+    si.focus();
+    si.select();
+    return;
+  }
+
+  // Cmd/Ctrl+R — refresh
+  if (mod && e.key === 'r' && !isModalOpen()) {
+    e.preventDefault();
+    loadItems();
+    return;
+  }
+
+  // Navigation and selection shortcuts — suppressed when any input/editor focused
+  if (isInputFocused()) return;
+
+  // ↑ / ↓ — row navigation
+  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    const rows = [...document.querySelectorAll('#items-body tr[data-id]')];
+    if (!rows.length) return;
+    e.preventDefault();
+    const currentIndex = rows.findIndex(r => r.dataset.id === selectedId);
+    let nextIndex;
+    if (e.key === 'ArrowUp') {
+      nextIndex = currentIndex <= 0 ? 0 : currentIndex - 1;
+    } else {
+      nextIndex = currentIndex >= rows.length - 1 ? rows.length - 1 : currentIndex + 1;
+    }
+    const nextRow = rows[nextIndex];
+    selectedId = nextRow.dataset.id;
+    for (const r of rows) r.classList.remove('selected');
+    nextRow.classList.add('selected');
+    renderDetail(selectedItem());
+    nextRow.scrollIntoView({ block: 'nearest' });
+    return;
+  }
+
+  // Enter — focus CM6 editor for selected item
+  if (e.key === 'Enter' && selectedId) {
+    if (!detailPane.classList.contains('hidden')) {
+      view.focus();
+    }
+    return;
+  }
+
+  // Delete/Backspace — open delete modal for selected item
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
+    e.preventDefault();
+    deleteModal.classList.remove('hidden');
+    return;
+  }
 });
 
 sidebarAddBtn.addEventListener('click', openOpenDirModal);
@@ -2162,6 +2257,10 @@ cleanBtn.addEventListener('click', async () => {
 });
 
 newBtn.addEventListener('click', openNewModal);
+helpBtn.addEventListener('click', () => helpModal.classList.remove('hidden'));
+helpModal.addEventListener('click', e => {
+  if (e.target === helpModal) helpModal.classList.add('hidden');
+});
 nextBtn.addEventListener('click', doNext);
 
 // Delete modal events
