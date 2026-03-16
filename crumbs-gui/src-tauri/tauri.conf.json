@@ -1,6 +1,6 @@
 {
   "productName": "crumbs",
-  "version": "0.16.4",
+  "version": "0.16.5",
   "identifier": "sh.evensolberg.crumbs-gui",
   "build": {
     "frontendDist": "../dist"
