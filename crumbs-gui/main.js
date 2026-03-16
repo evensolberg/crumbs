@@ -764,7 +764,7 @@ function renderProps(item) {
   });
   tagsInput.addEventListener('keydown', e => {
     if (e.key === 'Enter') tagsInput.blur();
-    if (e.key === 'Escape') { tagsInput.value = loadedTags; tagsInput.blur(); }
+    if (e.key === 'Escape') { tagsInput.value = loadedTags; tagsInput.blur(); e.stopPropagation(); }
   });
   propRow('Tags', '').appendChild(tagsInput);
 
@@ -784,7 +784,7 @@ function renderProps(item) {
   });
   depsInput.addEventListener('keydown', e => {
     if (e.key === 'Enter') depsInput.blur();
-    if (e.key === 'Escape') { depsInput.value = loadedDeps; depsInput.blur(); }
+    if (e.key === 'Escape') { depsInput.value = loadedDeps; depsInput.blur(); e.stopPropagation(); }
   });
   propRow('Depends', '').appendChild(depsInput);
   if ((item.blocks ?? []).length > 0) {
@@ -1192,7 +1192,7 @@ exportCancelBtn.addEventListener('click', () => { exportModal.classList.add('hid
 exportConfirmBtn.addEventListener('click', confirmExport);
 exportModal.addEventListener('keydown', e => {
   if (e.key === 'Enter') confirmExport();
-  if (e.key === 'Escape') exportModal.classList.add('hidden');
+  if (e.key === 'Escape') { exportModal.classList.add('hidden'); e.stopPropagation(); }
 });
 exportModal.addEventListener('click', e => {
   if (e.target === exportModal) exportModal.classList.add('hidden');
@@ -1341,7 +1341,7 @@ blockerSearch.addEventListener('input', () => renderBlockerList(blockerSearch.va
 blockerCancelBtn.addEventListener('click', () => { blockedByModal.classList.add('hidden'); });
 blockerConfirmBtn.addEventListener('click', confirmBlockedBy);
 blockedByModal.addEventListener('keydown', e => {
-  if (e.key === 'Escape') blockedByModal.classList.add('hidden');
+  if (e.key === 'Escape') { blockedByModal.classList.add('hidden'); e.stopPropagation(); }
 });
 blockedByModal.addEventListener('click', e => {
   if (e.target === blockedByModal) blockedByModal.classList.add('hidden');
@@ -1371,7 +1371,7 @@ deferCancelBtn.addEventListener('click', () => { deferModal.classList.add('hidde
 deferConfirmBtn.addEventListener('click', confirmDefer);
 deferModal.addEventListener('keydown', e => {
   if (e.key === 'Enter') confirmDefer();
-  if (e.key === 'Escape') deferModal.classList.add('hidden');
+  if (e.key === 'Escape') { deferModal.classList.add('hidden'); e.stopPropagation(); }
 });
 deferModal.addEventListener('click', e => {
   if (e.target === deferModal) deferModal.classList.add('hidden');
@@ -1413,7 +1413,7 @@ timerCancelBtn.addEventListener('click', () => { timerModal.classList.add('hidde
 timerConfirmBtn.addEventListener('click', confirmTimer);
 timerModal.addEventListener('keydown', e => {
   if (e.key === 'Enter') confirmTimer();
-  if (e.key === 'Escape') timerModal.classList.add('hidden');
+  if (e.key === 'Escape') { timerModal.classList.add('hidden'); e.stopPropagation(); }
 });
 timerModal.addEventListener('click', e => {
   if (e.target === timerModal) timerModal.classList.add('hidden');
@@ -1646,7 +1646,7 @@ function beginRename(item) {
   input.addEventListener('blur', commit);
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
-    if (e.key === 'Escape') { input.removeEventListener('blur', commit); renderSidebar(); }
+    if (e.key === 'Escape') { input.removeEventListener('blur', commit); renderSidebar(); e.stopPropagation(); }
   });
 }
 
@@ -1952,7 +1952,7 @@ detailTitleLabel.addEventListener('dblclick', () => {
   input.addEventListener('blur', commit);
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
-    if (e.key === 'Escape') { input.removeEventListener('blur', commit); input.replaceWith(detailTitleLabel); }
+    if (e.key === 'Escape') { input.removeEventListener('blur', commit); input.replaceWith(detailTitleLabel); e.stopPropagation(); }
   });
 });
 
@@ -2266,7 +2266,7 @@ deleteCancelBtn.addEventListener('click', () => { deleteModal.classList.add('hid
 deleteConfirmBtn.addEventListener('click', confirmDelete);
 deleteModal.addEventListener('keydown', e => {
   if (e.key === 'Enter') confirmDelete();
-  if (e.key === 'Escape') deleteModal.classList.add('hidden');
+  if (e.key === 'Escape') { deleteModal.classList.add('hidden'); e.stopPropagation(); }
 });
 deleteModal.addEventListener('click', e => {
   if (e.target === deleteModal) deleteModal.classList.add('hidden');
@@ -2280,7 +2280,7 @@ closeCancelBtn.addEventListener('click', () => {
 closeConfirmBtn.addEventListener('click', confirmClose);
 closeReason.addEventListener('keydown', e => {
   if (e.key === 'Enter') confirmClose();
-  if (e.key === 'Escape') { closeModal.classList.add('hidden'); pendingCloseId = ''; }
+  if (e.key === 'Escape') { closeModal.classList.add('hidden'); pendingCloseId = ''; e.stopPropagation(); }
 });
 closeModal.addEventListener('click', e => {
   if (e.target === closeModal) { closeModal.classList.add('hidden'); pendingCloseId = ''; }
@@ -2291,7 +2291,7 @@ newCancelBtn.addEventListener('click', () => { newModal.classList.add('hidden');
 newConfirmBtn.addEventListener('click', confirmNew);
 newTitle.addEventListener('keydown', e => {
   if (e.key === 'Enter') confirmNew();
-  if (e.key === 'Escape') newModal.classList.add('hidden');
+  if (e.key === 'Escape') { newModal.classList.add('hidden'); e.stopPropagation(); }
 });
 newModal.addEventListener('click', e => {
   if (e.target === newModal) newModal.classList.add('hidden');
@@ -2302,7 +2302,7 @@ openDirCancelBtn.addEventListener('click', () => { openDirModal.classList.add('h
 openDirOkBtn.addEventListener('click', () => checkAndOpenDir(dirPathInput.value));
 dirPathInput.addEventListener('keydown', e => {
   if (e.key === 'Enter') checkAndOpenDir(dirPathInput.value);
-  if (e.key === 'Escape') openDirModal.classList.add('hidden');
+  if (e.key === 'Escape') { openDirModal.classList.add('hidden'); e.stopPropagation(); }
 });
 openDirModal.addEventListener('click', e => {
   if (e.target === openDirModal) openDirModal.classList.add('hidden');
