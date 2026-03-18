@@ -372,14 +372,13 @@ fn main() -> Result<()> {
                     clear_points,
                     title,
                 },
-                None,
             )?;
         }
         Command::Body { id } => {
             commands::body::run(&dir, &id)?;
         }
         Command::Append { id, text } => {
-            commands::update::run(
+            commands::update::run_labeled(
                 &dir,
                 &id,
                 commands::update::UpdateArgs {

@@ -79,7 +79,6 @@ pub fn update_status(dir: String, id: String, status: String) -> Result<(), Stri
             status: Some(status),
             ..Default::default()
         },
-        None,
     )
     .map_err(|e| e.to_string())
 }
@@ -94,7 +93,6 @@ pub fn update_priority(dir: String, id: String, priority: u8) -> Result<(), Stri
             priority: Some(priority),
             ..Default::default()
         },
-        None,
     )
     .map_err(|e| e.to_string())
 }
@@ -109,7 +107,6 @@ pub fn update_type(dir: String, id: String, item_type: String) -> Result<(), Str
             item_type: Some(item_type),
             ..Default::default()
         },
-        None,
     )
     .map_err(|e| e.to_string())
 }
@@ -125,7 +122,6 @@ pub fn update_due(dir: String, id: String, due: String) -> Result<(), String> {
                 clear_due: true,
                 ..Default::default()
             },
-            None,
         )
         .map_err(|e| e.to_string())
     } else {
@@ -139,7 +135,6 @@ pub fn update_due(dir: String, id: String, due: String) -> Result<(), String> {
                 due: Some(date),
                 ..Default::default()
             },
-            None,
         )
         .map_err(|e| e.to_string())
     }
@@ -155,7 +150,6 @@ pub fn update_body(dir: String, id: String, body: String) -> Result<(), String> 
             message: Some(body),
             ..Default::default()
         },
-        None,
     )
     .map_err(|e| e.to_string())
 }
@@ -171,7 +165,6 @@ pub fn update_points(dir: String, id: String, points: u8) -> Result<(), String> 
                 clear_points: true,
                 ..Default::default()
             },
-            None,
         )
         .map_err(|e| e.to_string())
     } else {
@@ -182,7 +175,6 @@ pub fn update_points(dir: String, id: String, points: u8) -> Result<(), String> 
                 story_points: Some(points),
                 ..Default::default()
             },
-            None,
         )
         .map_err(|e| e.to_string())
     }
@@ -207,7 +199,6 @@ pub fn update_dependencies(dir: String, id: String, dependencies: String) -> Res
             dependencies: Some(dep_list),
             ..Default::default()
         },
-        None,
     )
     .map_err(|e| e.to_string())
 }
@@ -230,7 +221,6 @@ pub fn update_tags(dir: String, id: String, tags: String) -> Result<(), String> 
             tags: Some(tag_list),
             ..Default::default()
         },
-        None,
     )
     .map_err(|e| e.to_string())
 }
@@ -245,7 +235,6 @@ pub fn update_title(dir: String, id: String, title: String) -> Result<(), String
             title: Some(title),
             ..Default::default()
         },
-        None,
     )
     .map_err(|e| e.to_string())
 }

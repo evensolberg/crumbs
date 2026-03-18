@@ -229,7 +229,6 @@ fn update_changes_status() {
             status: Some("in_progress".to_string()),
             ..Default::default()
         },
-        None,
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -247,7 +246,6 @@ fn update_changes_priority() {
             priority: Some(0),
             ..Default::default()
         },
-        None,
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -265,7 +263,6 @@ fn update_replaces_tags() {
             tags: Some(vec!["new-tag".to_string()]),
             ..Default::default()
         },
-        None,
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -283,7 +280,6 @@ fn update_changes_type() {
             item_type: Some("bug".to_string()),
             ..Default::default()
         },
-        None,
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -293,7 +289,7 @@ fn update_changes_type() {
 #[test]
 fn update_unknown_id_errors() {
     let dir = tempdir().unwrap();
-    let result = commands::update::run(dir.path(), "bc-zzz", UpdateArgs::default(), None);
+    let result = commands::update::run(dir.path(), "bc-zzz", UpdateArgs::default());
     assert!(result.is_err());
 }
 
@@ -466,7 +462,6 @@ fn update_replaces_dependencies() {
             dependencies: Some(vec![dep_id.clone()]),
             ..Default::default()
         },
-        None,
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -573,7 +568,6 @@ fn update_message_replaces_description() {
             message: Some("New description text.".to_string()),
             ..Default::default()
         },
-        None,
     )
     .unwrap();
     let (path, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -601,7 +595,6 @@ fn update_title_rewrites_body_heading() {
             title: Some("New Title".to_string()),
             ..Default::default()
         },
-        None,
     )
     .unwrap();
     let (path, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -641,7 +634,6 @@ fn update_title_preserves_existing_description() {
             title: Some("New Title".to_string()),
             ..Default::default()
         },
-        None,
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -731,7 +723,6 @@ fn emoji_shortcodes_expanded_on_update_message() {
             message: Some(":bug: found".to_string()),
             ..Default::default()
         },
-        None,
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -750,7 +741,6 @@ fn emoji_shortcodes_expanded_on_update_append() {
             append: true,
             ..Default::default()
         },
-        None,
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
@@ -773,7 +763,6 @@ fn update_run_appends_body_when_append_is_true() {
             append: true,
             ..Default::default()
         },
-        None,
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();

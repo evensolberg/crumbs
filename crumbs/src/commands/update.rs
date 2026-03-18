@@ -24,10 +24,19 @@ pub struct UpdateArgs {
     pub title: Option<String>,
 }
 
-/// `output_label` overrides the verb in the success line (default: `"Updated"`).
-/// Pass `None` from library call sites; the CLI uses `Some("Appended to")` for
-/// the `append` subcommand so users see a more accurate confirmation.
-pub fn run(dir: &Path, id: &str, args: UpdateArgs, output_label: Option<&str>) -> Result<()> {
+/// Update an item. Prints `"Updated <id>"` on success.
+pub fn run(dir: &Path, id: &str, args: UpdateArgs) -> Result<()> {
+    run_labeled(dir, id, args, None)
+}
+
+/// Like [`run`], but overrides the success verb (e.g. `"Appended to"`).
+/// Used by the CLI `append` subcommand; not intended for library consumers.
+pub fn run_labeled(
+    dir: &Path,
+    id: &str,
+    args: UpdateArgs,
+    output_label: Option<&str>,
+) -> Result<()> {
     match store::find_by_id(dir, id)? {
         None => bail!("no item found with id: {id}"),
         Some((path, mut item)) => {
