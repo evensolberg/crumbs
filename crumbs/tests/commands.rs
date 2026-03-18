@@ -750,3 +750,26 @@ fn emoji_shortcodes_expanded_on_update_append() {
         item.description
     );
 }
+
+#[test]
+fn append_subcommand_appends_body_and_uses_output_label() {
+    let dir = tempdir().unwrap();
+    let id = create_task(dir.path(), "Append label test");
+    commands::update::run(
+        dir.path(),
+        &id,
+        UpdateArgs {
+            message: Some("a note via append subcommand".to_string()),
+            append: true,
+            output_label: Some("Appended to".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    assert!(
+        item.description.contains("a note via append subcommand"),
+        "expected appended text in description, got: {:?}",
+        item.description
+    );
+}

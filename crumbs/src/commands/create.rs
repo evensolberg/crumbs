@@ -1,8 +1,7 @@
 use std::path::Path;
 
 use anyhow::Result;
-use chrono::Local;
-use chrono::NaiveDate;
+use chrono::{Local, NaiveDate};
 use console::Style;
 
 use crate::{
