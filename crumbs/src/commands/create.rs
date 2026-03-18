@@ -59,8 +59,11 @@ pub fn run(
     };
     let path = store::write_item(dir, &item)?;
     store::reindex(dir)?;
-    let id_style = Style::new().bold().white();
-    println!("Created {} — {}", id_style.apply_to(&item.id), item.title);
+    println!(
+        "Created {} — {}",
+        Style::new().bold().apply_to(&item.id),
+        item.title
+    );
     println!("  {}", path.display());
     Ok(())
 }
