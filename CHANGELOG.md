@@ -17,6 +17,8 @@ All notable changes to this project will be documented in this file.
 
 ### Feat
 
+- `crumbs append <id> <text>` (alias `a`) — shorthand for `update --append`; prints "Appended to <id>"
+- Bold item ID in `crumbs create` output for easier copy-paste
 - Toolbar restructure and help modal HTML
 - Help modal styles
 - Keyboard shortcuts and help modal

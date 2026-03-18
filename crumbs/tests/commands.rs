@@ -752,7 +752,7 @@ fn emoji_shortcodes_expanded_on_update_append() {
 }
 
 #[test]
-fn append_subcommand_appends_body_and_uses_output_label() {
+fn update_run_with_append_and_output_label_appends_body() {
     let dir = tempdir().unwrap();
     let id = create_task(dir.path(), "Append label test");
     commands::update::run(
