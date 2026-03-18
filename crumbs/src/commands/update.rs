@@ -22,11 +22,12 @@ pub struct UpdateArgs {
     pub story_points: Option<u8>,
     pub clear_points: bool,
     pub title: Option<String>,
-    /// Override the verb printed on success (default: "Updated")
-    pub output_label: Option<String>,
 }
 
-pub fn run(dir: &Path, id: &str, args: UpdateArgs) -> Result<()> {
+/// `output_label` overrides the verb in the success line (default: `"Updated"`).
+/// Pass `None` from library call sites; the CLI uses `Some("Appended to")` for
+/// the `append` subcommand so users see a more accurate confirmation.
+pub fn run(dir: &Path, id: &str, args: UpdateArgs, output_label: Option<&str>) -> Result<()> {
     match store::find_by_id(dir, id)? {
         None => bail!("no item found with id: {id}"),
         Some((path, mut item)) => {
@@ -112,7 +113,7 @@ pub fn run(dir: &Path, id: &str, args: UpdateArgs) -> Result<()> {
             store::atomic_write(&path, &new_content)?;
 
             store::reindex(dir)?;
-            let label = args.output_label.as_deref().unwrap_or("Updated");
+            let label = output_label.unwrap_or("Updated");
             println!("{label} {}", item.id);
         }
     }

@@ -371,8 +371,8 @@ fn main() -> Result<()> {
                     story_points: points,
                     clear_points,
                     title,
-                    output_label: None,
                 },
+                None,
             )?;
         }
         Command::Body { id } => {
@@ -385,9 +385,9 @@ fn main() -> Result<()> {
                 commands::update::UpdateArgs {
                     message: Some(text),
                     append: true,
-                    output_label: Some("Appended to".to_string()),
                     ..Default::default()
                 },
+                Some("Appended to"),
             )?;
         }
         Command::Block {
