@@ -7,8 +7,6 @@ All notable changes to this project will be documented in this file.
 ### Chore
 
 - Export snippet from CM6 bundle
-- Bump version to 0.16.3
-- Bump version to 0.16.4
 - Bump version to 0.16.5
 
 ### Docs

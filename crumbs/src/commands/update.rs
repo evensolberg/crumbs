@@ -31,6 +31,7 @@ pub fn run(dir: &Path, id: &str, args: UpdateArgs) -> Result<()> {
 
 /// Like [`run`], but overrides the success verb (e.g. `"Appended to"`).
 /// Used by the CLI `append` subcommand; not intended for library consumers.
+#[doc(hidden)]
 pub fn run_labeled(
     dir: &Path,
     id: &str,
