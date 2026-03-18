@@ -752,23 +752,22 @@ fn emoji_shortcodes_expanded_on_update_append() {
 }
 
 #[test]
-fn update_run_with_append_and_output_label_appends_body() {
+fn update_run_with_append_flag_appends_body() {
     let dir = tempdir().unwrap();
-    let id = create_task(dir.path(), "Append label test");
+    let id = create_task(dir.path(), "Append flag test");
     commands::update::run(
         dir.path(),
         &id,
         UpdateArgs {
-            message: Some("a note via append subcommand".to_string()),
+            message: Some("a note via append flag".to_string()),
             append: true,
-            output_label: Some("Appended to".to_string()),
             ..Default::default()
         },
     )
     .unwrap();
     let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
     assert!(
-        item.description.contains("a note via append subcommand"),
+        item.description.contains("a note via append flag"),
         "expected appended text in description, got: {:?}",
         item.description
     );
