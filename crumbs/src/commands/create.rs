@@ -2,8 +2,8 @@ use std::path::Path;
 
 use anyhow::Result;
 use chrono::Local;
-
 use chrono::NaiveDate;
+use console::Style;
 
 use crate::{
     id,
@@ -59,7 +59,8 @@ pub fn run(
     };
     let path = store::write_item(dir, &item)?;
     store::reindex(dir)?;
-    println!("Created {} — {}", item.id, item.title);
+    let id_style = Style::new().bold().white();
+    println!("Created {} — {}", id_style.apply_to(&item.id), item.title);
     println!("  {}", path.display());
     Ok(())
 }
