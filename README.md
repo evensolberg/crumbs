@@ -154,9 +154,11 @@ crumbs update bc-x7q --message 'Now includes OAuth flow'
 crumbs update bc-x7q --append 'See also PR #99'             # appends with [date] prefix
 crumbs update bc-x7q --points 8
 crumbs update bc-x7q --clear-points
+crumbs append bc-x7q 'Quick note'                           # shorthand for update --append
+crumbs a bc-x7q 'Quick note'                                # alias
 ```
 
-`--tags` and `--depends` **replace** the existing list. `--append 'text'` adds to the body (with a `[YYYY-MM-DD]` prefix) instead of replacing it; `--message 'text'` replaces the body.
+`--tags` and `--depends` **replace** the existing list. `--append 'text'` adds to the body (with a `[YYYY-MM-DD]` prefix) instead of replacing it; `--message 'text'` replaces the body. `crumbs append` (alias `a`) is a dedicated shorthand for the append operation.
 
 Body text (in `--message`, `--append`, and timer comments) supports **`:shortcode:`** emoji syntax — e.g. `:tada:` → 🎉, `:bug:` → 🐛, `:white_check_mark:` → ✅. Shortcodes are expanded to real Unicode at write time, so the stored `.md` file always contains the actual emoji character. Unknown shortcodes are left unchanged. In the GUI, the 😀 button next to **Preview** opens a tabbed emoji picker as an alternative to typing shortcodes by hand. For a full list of supported names see the [GitHub emoji cheat sheet](https://github.com/ikatyang/emoji-cheat-sheet).
 

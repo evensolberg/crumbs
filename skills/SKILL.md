@@ -71,6 +71,12 @@ crumbs update cr-x7q --points 5
 crumbs update cr-x7q --clear-points
 ```
 
+### Append (shorthand)
+```sh
+crumbs append cr-x7q 'Quick note'   # shorthand for update --append; alias: a
+crumbs a cr-x7q 'Quick note'
+```
+
 ### Block and defer
 ```sh
 crumbs block cr-x7q cr-y8r,cr-z9s   # cr-x7q blocks targets; targets get blocked status
