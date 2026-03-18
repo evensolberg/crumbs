@@ -118,6 +118,14 @@ enum Command {
     Body { id: String },
     /// Open an item in $EDITOR
     Edit { id: String },
+    /// Append a note to an item's body (shorthand for `update --append`)
+    #[command(visible_alias = "a")]
+    Append {
+        id: String,
+        /// Text to append (prefixed with today's date)
+        #[arg(allow_hyphen_values = true)]
+        text: String,
+    },
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
     /// Start a timer for an item (appends [start] entry, sets status to in_progress)
@@ -368,6 +376,18 @@ fn main() -> Result<()> {
         }
         Command::Body { id } => {
             commands::body::run(&dir, &id)?;
+        }
+        Command::Append { id, text } => {
+            commands::update::run_labeled(
+                &dir,
+                &id,
+                commands::update::UpdateArgs {
+                    message: Some(text),
+                    append: true,
+                    ..Default::default()
+                },
+                Some("Appended to"),
+            )?;
         }
         Command::Block {
             id,

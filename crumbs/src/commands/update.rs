@@ -24,7 +24,20 @@ pub struct UpdateArgs {
     pub title: Option<String>,
 }
 
+/// Update an item. Prints `"Updated <id>"` on success.
 pub fn run(dir: &Path, id: &str, args: UpdateArgs) -> Result<()> {
+    run_labeled(dir, id, args, None)
+}
+
+/// Like [`run`], but overrides the success verb (e.g. `"Appended to"`).
+/// Used by the CLI `append` subcommand; not intended for library consumers.
+#[doc(hidden)]
+pub fn run_labeled(
+    dir: &Path,
+    id: &str,
+    args: UpdateArgs,
+    output_label: Option<&str>,
+) -> Result<()> {
     match store::find_by_id(dir, id)? {
         None => bail!("no item found with id: {id}"),
         Some((path, mut item)) => {
@@ -110,7 +123,8 @@ pub fn run(dir: &Path, id: &str, args: UpdateArgs) -> Result<()> {
             store::atomic_write(&path, &new_content)?;
 
             store::reindex(dir)?;
-            println!("Updated {}", item.id);
+            let label = output_label.unwrap_or("Updated");
+            println!("{label} {}", item.id);
         }
     }
     Ok(())

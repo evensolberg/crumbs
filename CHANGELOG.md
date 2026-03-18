@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## [unreleased]
+
+### Chore
+
+- Export snippet from CM6 bundle
+- Bump version to 0.16.5
+
+### Docs
+
+- Add keyboard shortcuts & help modal design spec
+
+### Feat
+
+- `crumbs append <id> <text>` (alias `a`) — shorthand for `update --append`; prints "Appended to <id>"
+- Bold item ID in `crumbs create` output for easier copy-paste
+- Toolbar restructure and help modal HTML
+- Help modal styles
+- Keyboard shortcuts and help modal
+
+### Fix
+
+- Code review — modal guards, openDeleteModal, kbd scope, blank line
+- Cmd+F modal guard, clarify Cmd+F help text
+- Address Copilot review comments on keyboard shortcuts PR
+- Address second round of Copilot review comments
+- Address third round of Copilot review comments
+- Address fourth round of Copilot review comments
+- Improve help modal layout — wider, less cramped
+- Improve kbd styling consistency in help modal
+- Stop Escape propagation in all per-modal/per-element handlers
+
+## [0.16.2] - 2026-03-12
+
+### Feat
+
+- V0.16.2 — list --type, update --title, fix move path resolution
+
 ## [0.16.1] - 2026-03-10
 
 ### Chore

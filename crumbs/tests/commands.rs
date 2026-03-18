@@ -750,3 +750,25 @@ fn emoji_shortcodes_expanded_on_update_append() {
         item.description
     );
 }
+
+#[test]
+fn update_run_appends_body_when_append_is_true() {
+    let dir = tempdir().unwrap();
+    let id = create_task(dir.path(), "Append flag test");
+    commands::update::run(
+        dir.path(),
+        &id,
+        UpdateArgs {
+            message: Some("a note via append flag".to_string()),
+            append: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    assert!(
+        item.description.contains("a note via append flag"),
+        "expected appended text in description, got: {:?}",
+        item.description
+    );
+}
