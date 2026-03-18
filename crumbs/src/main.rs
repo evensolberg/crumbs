@@ -119,6 +119,7 @@ enum Command {
     /// Open an item in $EDITOR
     Edit { id: String },
     /// Append a note to an item's body (shorthand for `update --append`)
+    #[command(visible_alias = "a")]
     Append {
         id: String,
         /// Text to append (prefixed with today's date)
@@ -370,6 +371,7 @@ fn main() -> Result<()> {
                     story_points: points,
                     clear_points,
                     title,
+                    output_label: None,
                 },
             )?;
         }
@@ -383,6 +385,7 @@ fn main() -> Result<()> {
                 commands::update::UpdateArgs {
                     message: Some(text),
                     append: true,
+                    output_label: Some("Appended to".to_string()),
                     ..Default::default()
                 },
             )?;

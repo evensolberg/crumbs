@@ -22,6 +22,8 @@ pub struct UpdateArgs {
     pub story_points: Option<u8>,
     pub clear_points: bool,
     pub title: Option<String>,
+    /// Override the verb printed on success (default: "Updated")
+    pub output_label: Option<String>,
 }
 
 pub fn run(dir: &Path, id: &str, args: UpdateArgs) -> Result<()> {
@@ -110,7 +112,8 @@ pub fn run(dir: &Path, id: &str, args: UpdateArgs) -> Result<()> {
             store::atomic_write(&path, &new_content)?;
 
             store::reindex(dir)?;
-            println!("Updated {}", item.id);
+            let label = args.output_label.as_deref().unwrap_or("Updated");
+            println!("{label} {}", item.id);
         }
     }
     Ok(())
