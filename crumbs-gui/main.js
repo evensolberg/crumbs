@@ -304,8 +304,8 @@ const PRIORITY_LABELS = ['critical', 'high', 'normal', 'low', 'backlog'];
 const STATUS_LABELS   = {
   open: 'Open',
   in_progress: 'In Progress',
-  blocked: '⊘ Blocked',
-  deferred: '◷ Deferred',
+  blocked: 'Blocked',
+  deferred: 'Deferred',
   closed: 'Closed',
 };
 
@@ -786,7 +786,7 @@ function renderProps(item) {
     if (e.key === 'Enter') depsInput.blur();
     if (e.key === 'Escape') { depsInput.value = loadedDeps; depsInput.blur(); e.stopPropagation(); }
   });
-  propRow('Depends', '').appendChild(depsInput);
+  propRow('Depends on', '').appendChild(depsInput);
   if ((item.blocks ?? []).length > 0) {
     propRow('Blocks', escHtml(item.blocks.join(', ')));
   }
