@@ -62,8 +62,13 @@ Before implementing a feature or fix, attach the implementation plan to the rele
 
 ## Crumbs File Editing
 
-- When closing a crumb (changing status to `done`, `cancelled`, etc.), **only change the `status` field** in the YAML frontmatter. Do not add, remove, or reorder any other fields.
-- Never inject fields like `description`, `updated_at`, or anything else not already present in the file.
+Prefer using the CLI (`crumbs start/stop/update/close`) for all status and metadata changes — `crumbs close <id>` sets `status: closed` and also updates `closed_reason` and `updated`, rewriting the full YAML frontmatter automatically.
+
+If a crumb file must be edited by hand:
+- You may only adjust existing fields. Do not add, remove, or reorder keys.
+- `status` must be one of `open`, `in_progress`, `blocked`, `deferred`, or `closed`.
+- Do not manually edit CLI-managed fields such as `closed_reason` or `updated`.
+- Never inject new fields like `description`, `updated_at`, or anything else not already present in the file.
 
 ## GUI / Frontend (Tauri + WKWebView)
 

@@ -4,9 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+## [0.17.0] - 2026-03-29
+
 ### Chore
 
 - Merge chrono imports and add append subcommand test
+- Fix all addressable clippy warnings across 27 files
 
 ### Docs
 
@@ -15,6 +18,7 @@ All notable changes to this project will be documented in this file.
 ### Feat
 
 - Add append subcommand and bold ID in create output
+- Add `crumbs list --sort` with sort keys: id, priority, status, title, type, due, created, updated
 
 ### Fix
 
@@ -25,6 +29,8 @@ All notable changes to this project will be documented in this file.
 - Move output_label out of UpdateArgs into a run() parameter
 - Restore run() signature; add run_labeled() for append subcommand
 - Hide run_labeled from API docs; collapse version bumps in changelog
+- Fix import direction: `crumbs import --from` was moving items backwards
+- Use sort_by_cached_key for string-keyed sorts in list command
 
 ## [0.16.5] - 2026-03-16
 

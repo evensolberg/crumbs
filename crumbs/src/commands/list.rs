@@ -50,20 +50,18 @@ pub fn sort_items(mut items: Vec<(PathBuf, Item)>, key: SortKey) -> Vec<(PathBuf
         SortKey::Id => items.sort_by(|a, b| a.1.id.cmp(&b.1.id)),
         SortKey::Priority => items.sort_by_key(|(_, i)| i.priority),
         SortKey::Status => {
-            items.sort_by(|a, b| a.1.status.to_string().cmp(&b.1.status.to_string()));
+            items.sort_by_cached_key(|(_, i)| i.status.to_string());
         }
         SortKey::Title => {
-            items.sort_by(|a, b| a.1.title.to_lowercase().cmp(&b.1.title.to_lowercase()));
+            items.sort_by_cached_key(|(_, i)| i.title.to_lowercase());
         }
         SortKey::Type => {
-            items.sort_by(|a, b| a.1.item_type.to_string().cmp(&b.1.item_type.to_string()));
+            items.sort_by_cached_key(|(_, i)| i.item_type.to_string());
         }
         // Treat None as "no due date" — sort to the end, after all dated items.
-        SortKey::Due => items.sort_by(|a, b| {
-            let a_due = a.1.due.unwrap_or(NaiveDate::MAX);
-            let b_due = b.1.due.unwrap_or(NaiveDate::MAX);
-            a_due.cmp(&b_due)
-        }),
+        SortKey::Due => {
+            items.sort_by_cached_key(|(_, i)| i.due.unwrap_or(NaiveDate::MAX));
+        }
         SortKey::Created => items.sort_by_key(|(_, i)| i.created),
         SortKey::Updated => items.sort_by_key(|(_, i)| i.updated),
     }
