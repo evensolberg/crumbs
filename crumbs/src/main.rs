@@ -4,7 +4,12 @@ use anyhow::Result;
 use chrono::NaiveDate;
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::{Shell, generate};
-use crumbs::{commands, commands::list::SortKey, config, item::ItemType};
+use crumbs::{
+    commands,
+    commands::list::{ListArgs, SortKey},
+    config,
+    item::ItemType,
+};
 
 #[derive(Parser)]
 #[command(name = "crumbs", about = "Flat-folder Markdown task tracker", version)]
@@ -319,13 +324,15 @@ fn main() -> Result<()> {
             let sort_key: SortKey = sort.parse().map_err(|e: String| anyhow::anyhow!(e))?;
             commands::list::run(
                 &dir,
-                status.as_deref(),
-                tag.as_deref(),
-                priority,
-                type_filter,
-                all,
-                verbose,
-                sort_key,
+                ListArgs {
+                    status_filter: status,
+                    tag_filter: tag,
+                    priority_filter: priority,
+                    type_filter,
+                    all,
+                    verbose,
+                    sort: Some(sort_key),
+                },
             )?;
         }
         Command::Show { ids } => {

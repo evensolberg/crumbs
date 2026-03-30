@@ -3,7 +3,7 @@ use tempfile::tempdir;
 
 use crumbs::{
     commands,
-    commands::list::SortKey,
+    commands::list::{ListArgs, SortKey},
     commands::update::UpdateArgs,
     item::{Item, ItemType, Status},
     store,
@@ -328,17 +328,7 @@ fn list_no_filter_does_not_error() {
     let dir = tempdir().unwrap();
     create_task(dir.path(), "List Task 1");
     create_task(dir.path(), "List Task 2");
-    commands::list::run(
-        dir.path(),
-        None,
-        None,
-        None,
-        None,
-        false,
-        false,
-        SortKey::Id,
-    )
-    .unwrap();
+    commands::list::run(dir.path(), ListArgs::default()).unwrap();
 }
 
 #[test]
@@ -416,19 +406,36 @@ fn move_transfers_item_to_destination() {
 }
 
 #[test]
-fn import_transfers_item_from_source_to_current() {
+fn import_direction_is_src_to_dst_not_dst_to_src() {
+    // Regression test for the import CLI dispatch bug: move_::run(&dir, &id, &src)
+    // was called with src and dst swapped, moving the item the wrong way.
+    // This test verifies that run(src, id, dst) moves the item FROM src TO dst,
+    // not from dst to src.
     let src = tempdir().unwrap();
     let dst = tempdir().unwrap();
     commands::init::run(src.path(), Some("src".to_string())).unwrap();
     commands::init::run(dst.path(), Some("dst".to_string())).unwrap();
     let id = create_task(src.path(), "Import Me");
-    // import is move_::run(src, id, dst) — source first, destination second.
+    // If the args were swapped (bug), run(dst, id, src) would look for "id" in dst
+    // (where it doesn't exist) and return an error. Running correctly should succeed.
     commands::move_::run(src.path(), &id, dst.path()).unwrap();
-    // Item is gone from source.
-    assert!(store::find_by_id(src.path(), &id).unwrap().is_none());
-    // Item appears in destination.
-    let items = store::load_all(dst.path()).unwrap();
-    assert!(items.iter().any(|(_, i)| i.title == "Import Me"));
+    // Item is gone from source — confirms directionality.
+    assert!(
+        store::find_by_id(src.path(), &id).unwrap().is_none(),
+        "item must leave src"
+    );
+    // Item appears in destination — confirms it arrived.
+    let dst_items = store::load_all(dst.path()).unwrap();
+    assert!(
+        dst_items.iter().any(|(_, i)| i.title == "Import Me"),
+        "item must arrive in dst"
+    );
+    // Source is empty — nothing was moved into it.
+    let src_items = store::load_all(src.path()).unwrap();
+    assert!(
+        src_items.is_empty(),
+        "src must be empty after move (nothing moved into it)"
+    );
 }
 
 // ── delete ───────────────────────────────────────────────────────────────────
@@ -928,4 +935,38 @@ fn sort_by_type_alphabetical() {
     let sorted = commands::list::sort_items(items, SortKey::Type);
     assert_eq!(sorted[0].1.item_type, ItemType::Bug);
     assert_eq!(sorted[1].1.item_type, ItemType::Feature);
+}
+
+#[test]
+fn sort_by_due_undated_items_sort_last() {
+    let dir = tempdir().unwrap();
+    let id_no_due = create_task(dir.path(), "No due date");
+    let id_due = create_task(dir.path(), "Has due date");
+    use chrono::NaiveDate;
+    commands::update::run(
+        dir.path(),
+        &id_due,
+        UpdateArgs {
+            due: Some(NaiveDate::from_ymd_opt(2026, 1, 1).unwrap()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let items = store::load_all(dir.path()).unwrap();
+    let sorted = commands::list::sort_items(items, SortKey::Due);
+    // Dated item must come first; undated item must sort to the end.
+    assert_eq!(sorted[0].1.id, id_due, "dated item should sort first");
+    assert_eq!(sorted[1].1.id, id_no_due, "undated item should sort last");
+}
+
+#[test]
+fn sort_key_from_str_error_on_unknown_field() {
+    let result = "bogus".parse::<SortKey>();
+    assert!(result.is_err());
+    let msg = result.unwrap_err();
+    assert!(
+        msg.contains("unknown sort key"),
+        "error should mention unknown key: {msg}"
+    );
+    assert!(msg.contains("id"), "error should list valid keys: {msg}");
 }

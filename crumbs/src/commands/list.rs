@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use chrono::Local;
+use chrono::{Local, NaiveDate};
 use console::Style;
 
 use crate::{
@@ -57,26 +57,44 @@ pub fn sort_items(mut items: Vec<(PathBuf, Item)>, key: SortKey) -> Vec<(PathBuf
         SortKey::Type => {
             items.sort_by(|a, b| a.1.item_type.to_string().cmp(&b.1.item_type.to_string()))
         }
-        SortKey::Due => items.sort_by(|a, b| a.1.due.cmp(&b.1.due)),
+        // Treat None as "no due date" — sort to the end, after all dated items.
+        SortKey::Due => items.sort_by(|a, b| {
+            let a_due = a.1.due.unwrap_or(NaiveDate::MAX);
+            let b_due = b.1.due.unwrap_or(NaiveDate::MAX);
+            a_due.cmp(&b_due)
+        }),
         SortKey::Created => items.sort_by_key(|(_, i)| i.created),
         SortKey::Updated => items.sort_by_key(|(_, i)| i.updated),
     }
     items
 }
 
-pub fn run(
-    dir: &Path,
-    status_filter: Option<&str>,
-    tag_filter: Option<&str>,
-    priority_filter: Option<u8>,
-    type_filter: Option<ItemType>,
-    all: bool,
-    verbose: bool,
-    sort: SortKey,
-) -> Result<()> {
+/// Arguments for `crumbs list`.
+#[derive(Default)]
+pub struct ListArgs {
+    pub status_filter: Option<String>,
+    pub tag_filter: Option<String>,
+    pub priority_filter: Option<u8>,
+    pub type_filter: Option<ItemType>,
+    pub all: bool,
+    pub verbose: bool,
+    pub sort: Option<SortKey>,
+}
+
+pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
+    let ListArgs {
+        status_filter,
+        tag_filter,
+        priority_filter,
+        type_filter,
+        all,
+        verbose,
+        sort,
+    } = args;
+    let sort = sort.unwrap_or(SortKey::Id);
     // Validate the status filter up front so a typo surfaces as an error
     // rather than silently returning "No items found."
-    let status_filter_parsed: Option<Status> = match status_filter {
+    let status_filter_parsed: Option<Status> = match status_filter.as_deref() {
         None => None,
         Some(s) => Some(
             s.parse()
@@ -99,7 +117,7 @@ pub fn run(
             {
                 return false;
             }
-            if let Some(tag) = tag_filter
+            if let Some(tag) = tag_filter.as_deref()
                 && !item.tags.iter().any(|t| t.contains(tag))
             {
                 return false;
