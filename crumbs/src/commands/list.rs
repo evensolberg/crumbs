@@ -1,28 +1,109 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use chrono::Local;
+use chrono::{Local, NaiveDate};
 use console::Style;
 
 use crate::{
     color,
     commands::start::active_start_ts,
-    item::{ItemType, Status},
+    item::{Item, ItemType, Status},
     store,
 };
 
-pub fn run(
-    dir: &Path,
-    status_filter: Option<&str>,
-    tag_filter: Option<&str>,
-    priority_filter: Option<u8>,
-    type_filter: Option<ItemType>,
-    all: bool,
-    verbose: bool,
-) -> Result<()> {
+/// Fields by which `crumbs list` output can be sorted.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SortKey {
+    Id,
+    Priority,
+    Status,
+    Title,
+    Type,
+    Due,
+    Created,
+    Updated,
+}
+
+impl std::str::FromStr for SortKey {
+    type Err = String;
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "id" => Ok(Self::Id),
+            "priority" => Ok(Self::Priority),
+            "status" => Ok(Self::Status),
+            "title" => Ok(Self::Title),
+            "type" => Ok(Self::Type),
+            "due" => Ok(Self::Due),
+            "created" => Ok(Self::Created),
+            "updated" => Ok(Self::Updated),
+            other => Err(format!(
+                "unknown sort key {other:?}; valid: id, priority, status, title, type, due, created, updated"
+            )),
+        }
+    }
+}
+
+/// Sort a list of `(path, item)` pairs by the given key.
+#[must_use]
+pub fn sort_items(mut items: Vec<(PathBuf, Item)>, key: SortKey) -> Vec<(PathBuf, Item)> {
+    match key {
+        SortKey::Id => items.sort_by(|a, b| a.1.id.cmp(&b.1.id)),
+        SortKey::Priority => {
+            items.sort_by_cached_key(|(_, i)| (i.priority, i.id.clone()));
+        }
+        SortKey::Status => {
+            items.sort_by_cached_key(|(_, i)| (i.status.to_string(), i.id.clone()));
+        }
+        SortKey::Title => {
+            items.sort_by_cached_key(|(_, i)| (i.title.to_lowercase(), i.id.clone()));
+        }
+        SortKey::Type => {
+            items.sort_by_cached_key(|(_, i)| (i.item_type.to_string(), i.id.clone()));
+        }
+        // Treat None as "no due date" — sort to the end, after all dated items.
+        SortKey::Due => {
+            items.sort_by_cached_key(|(_, i)| (i.due.unwrap_or(NaiveDate::MAX), i.id.clone()));
+        }
+        SortKey::Created => {
+            items.sort_by_cached_key(|(_, i)| (i.created, i.id.clone()));
+        }
+        SortKey::Updated => {
+            items.sort_by_cached_key(|(_, i)| (i.updated, i.id.clone()));
+        }
+    }
+    items
+}
+
+/// Arguments for `crumbs list`.
+#[derive(Default)]
+pub struct ListArgs {
+    pub status_filter: Option<String>,
+    pub tag_filter: Option<String>,
+    pub priority_filter: Option<u8>,
+    pub type_filter: Option<ItemType>,
+    pub all: bool,
+    pub verbose: bool,
+    pub sort: Option<SortKey>,
+}
+
+/// # Errors
+///
+/// Returns an error if the status filter value is not a recognised [`Status`]
+/// variant, or if the store directory cannot be read.
+pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
+    let ListArgs {
+        status_filter,
+        tag_filter,
+        priority_filter,
+        type_filter,
+        all,
+        verbose,
+        sort,
+    } = args;
+    let sort = sort.unwrap_or(SortKey::Id);
     // Validate the status filter up front so a typo surfaces as an error
     // rather than silently returning "No items found."
-    let status_filter_parsed: Option<Status> = match status_filter {
+    let status_filter_parsed: Option<Status> = match status_filter.as_deref() {
         None => None,
         Some(s) => Some(
             s.parse()
@@ -32,7 +113,7 @@ pub fn run(
 
     let items = store::load_all(dir)?;
     let filtered: Vec<_> = items
-        .iter()
+        .into_iter()
         .filter(|(_, item)| {
             // By default hide closed items unless --all or an explicit status filter is given.
             // Blocked and deferred items remain visible by default.
@@ -45,7 +126,7 @@ pub fn run(
             {
                 return false;
             }
-            if let Some(tag) = tag_filter
+            if let Some(tag) = tag_filter.as_deref()
                 && !item.tags.iter().any(|t| t.contains(tag))
             {
                 return false;
@@ -69,8 +150,9 @@ pub fn run(
         return Ok(());
     }
 
+    let sorted = sort_items(filtered, sort);
     let today = Local::now().date_naive();
-    for (_, item) in filtered {
+    for (_, item) in sorted {
         let icon = color::status_icon_styled(&item.status);
         let p_style = color::priority(item.priority);
         let t_style = color::item_type(&item.item_type);
@@ -86,10 +168,9 @@ pub fn run(
             Some(d) => format!(" due:{d}"),
             None => String::new(),
         };
-        let points_marker = match item.story_points {
-            Some(sp) => format!(" [{sp}sp]"),
-            None => String::new(),
-        };
+        let points_marker = item
+            .story_points
+            .map_or_else(String::new, |sp| format!(" [{sp}sp]"));
         let timer_marker = if active_start_ts(&item.description).is_some() {
             " ▶"
         } else {

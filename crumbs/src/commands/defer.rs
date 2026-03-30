@@ -7,6 +7,10 @@ use crate::{item::Status, store};
 
 /// `crumbs defer <id> [--until <date>]` — set status to deferred, optionally setting a wake-up date.
 /// `crumbs defer <id> --reopen` — set status back to open.
+///
+/// # Errors
+///
+/// Returns an error if the item is not found or the store cannot be updated.
 pub fn run(dir: &Path, id: &str, reopen: bool, until: Option<NaiveDate>) -> Result<()> {
     let (path, mut item) = store::find_by_id(dir, id)?
         .ok_or_else(|| anyhow::anyhow!("no item found with id: {id}"))?;

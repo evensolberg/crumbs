@@ -7,6 +7,10 @@ const ALPHABET: &[u8] = b"abcdefghijklmnopqrstuvwxyz0123456789";
 /// The suffix is 3 alphanumeric characters; format is `{prefix}-{3-char}`.
 /// `is_taken` is called for each candidate; generation retries up to
 /// `MAX_ATTEMPTS` times until a free ID is found.
+///
+/// # Errors
+///
+/// Returns an error if a unique ID cannot be generated within `MAX_ATTEMPTS` tries.
 pub fn generate(prefix: &str, mut is_taken: impl FnMut(&str) -> bool) -> anyhow::Result<String> {
     const MAX_ATTEMPTS: usize = 16;
     let mut rng = rand::rng();

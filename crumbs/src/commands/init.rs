@@ -19,13 +19,16 @@ fn validate_prefix(prefix: &str) -> Result<()> {
         .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
     {
         bail!(
-            "prefix {:?} contains invalid characters; only lowercase letters and digits are allowed",
-            prefix
+            "prefix {prefix:?} contains invalid characters; only lowercase letters and digits are allowed"
         );
     }
     Ok(())
 }
 
+/// # Errors
+///
+/// Returns an error if the store directory cannot be created, the prefix is invalid,
+/// or the config cannot be saved.
 pub fn run(dir: &Path, prefix_override: Option<String>) -> Result<()> {
     if dir.is_dir() {
         println!("Already initialized at {}. Nothing to do.", dir.display());

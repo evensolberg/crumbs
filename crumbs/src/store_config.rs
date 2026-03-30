@@ -19,6 +19,7 @@ impl Default for StoreConfig {
     }
 }
 
+#[must_use]
 pub fn load(dir: &Path) -> StoreConfig {
     let path = dir.join(CONFIG_FILE);
     let Ok(raw) = std::fs::read_to_string(&path) else {
@@ -27,6 +28,9 @@ pub fn load(dir: &Path) -> StoreConfig {
     toml::from_str(&raw).unwrap_or_default()
 }
 
+/// # Errors
+///
+/// Returns an error if the config cannot be serialized or written to disk.
 pub fn save(dir: &Path, cfg: &StoreConfig) -> Result<()> {
     let path = dir.join(CONFIG_FILE);
     let raw = toml::to_string(cfg).context("serialize config")?;
@@ -37,6 +41,7 @@ pub fn save(dir: &Path, cfg: &StoreConfig) -> Result<()> {
 /// Derive a suggested prefix from a directory name.
 /// Takes the first letter of each word (split on `-`, `_`, and spaces),
 /// lowercased, max 4 chars. Falls back to `DEFAULT_PREFIX`.
+#[must_use]
 pub fn suggest_prefix(dir: &Path) -> String {
     let name = dir
         .file_name()

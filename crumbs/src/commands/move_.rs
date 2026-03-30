@@ -8,6 +8,11 @@ use crate::{id, store, store_config};
 ///
 /// A new ID is generated using the destination store's prefix. The original
 /// file is deleted and both stores are reindexed.
+///
+/// # Errors
+///
+/// Returns an error if the destination store is missing, the item is not found,
+/// a new ID cannot be generated, or the file operations fail.
 pub fn run(src_dir: &Path, id: &str, dst_dir: &Path) -> Result<()> {
     if !dst_dir.is_dir() {
         bail!(
@@ -30,7 +35,7 @@ pub fn run(src_dir: &Path, id: &str, dst_dir: &Path) -> Result<()> {
             .any(|(_, i)| i.id.eq_ignore_ascii_case(candidate))
     })?;
 
-    item.id = new_id.clone();
+    item.id = new_id;
 
     // Write to destination then remove the source file.
     store::write_item(dst_dir, &item)?;
@@ -39,6 +44,6 @@ pub fn run(src_dir: &Path, id: &str, dst_dir: &Path) -> Result<()> {
     store::reindex(src_dir)?;
     store::reindex(dst_dir)?;
 
-    println!("Moved {} → {} ({})", old_id, new_id, dst_dir.display());
+    println!("Moved {} → {} ({})", old_id, item.id, dst_dir.display());
     Ok(())
 }

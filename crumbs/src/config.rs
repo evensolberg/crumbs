@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 /// Return the global crumbs data directory (platform-specific via `dirs::data_dir`).
+#[must_use]
 pub fn global_dir() -> PathBuf {
     dirs::data_dir()
         .unwrap_or_else(|| PathBuf::from("."))
@@ -31,6 +32,7 @@ fn find_crumbs_in_ancestors(start: &std::path::Path) -> Option<PathBuf> {
 /// 2. `--global` flag → global data dir
 /// 3. Nearest `.crumbs/` found by walking from cwd up to the filesystem root
 /// 4. Global data dir as fallback
+#[must_use]
 pub fn resolve_dir(dir: Option<PathBuf>, global: bool) -> PathBuf {
     if let Some(d) = dir {
         // If the path already ends with `.crumbs` or contains store markers,

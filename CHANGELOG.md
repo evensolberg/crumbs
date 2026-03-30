@@ -4,9 +4,41 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+## [0.17.0] - 2026-03-29
+
+### Chore
+
+- Merge chrono imports and add append subcommand test
+- Fix all addressable clippy warnings across 27 files
+
+### Docs
+
+- Document append subcommand in README and skill
+
+### Feat
+
+- Add append subcommand and bold ID in create output
+- Add `crumbs list --sort` with sort keys: id, priority, status, title, type, due, created, updated
+
+### Fix
+
+- Append subcommand alias and confirmation message
+- Drop .white() from create ID style for theme consistency
+- Address Copilot review comments on append PR
+- Remove output_label from test that doesn't assert on it
+- Move output_label out of UpdateArgs into a run() parameter
+- Restore run() signature; add run_labeled() for append subcommand
+- Hide run_labeled from API docs; collapse version bumps in changelog
+- Fix import direction: `crumbs import --from` was moving items backwards
+- Use sort_by_cached_key for string-keyed sorts in list command
+
+## [0.16.5] - 2026-03-16
+
 ### Chore
 
 - Export snippet from CM6 bundle
+- Bump version to 0.16.3
+- Bump version to 0.16.4
 - Bump version to 0.16.5
 
 ### Docs
@@ -15,8 +47,6 @@ All notable changes to this project will be documented in this file.
 
 ### Feat
 
-- `crumbs append <id> <text>` (alias `a`) — shorthand for `update --append`; prints "Appended to <id>"
-- Bold item ID in `crumbs create` output for easier copy-paste
 - Toolbar restructure and help modal HTML
 - Help modal styles
 - Keyboard shortcuts and help modal

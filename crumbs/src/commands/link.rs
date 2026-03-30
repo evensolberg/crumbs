@@ -5,6 +5,10 @@ use chrono::Local;
 
 use crate::{item::Status, store};
 
+/// # Errors
+///
+/// Returns an error if any item cannot be found, the relation is unknown, or the store cannot be
+/// updated.
 pub fn run(
     dir: &Path,
     source_id: &str,

@@ -8,6 +8,9 @@ use crate::{
     store,
 };
 
+/// # Errors
+///
+/// Returns an error if the store cannot be read.
 pub fn run(dir: &Path) -> Result<()> {
     let items = store::load_all(dir)?;
 

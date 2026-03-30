@@ -4,6 +4,9 @@ use anyhow::{Result, bail};
 
 use crate::{item::Status, store};
 
+/// # Errors
+///
+/// Returns an error if the item is not found or the file cannot be deleted.
 pub fn run(dir: &Path, id: &str) -> Result<()> {
     match store::find_by_id(dir, id)? {
         None => bail!("no item found with id: {id}"),
@@ -16,6 +19,9 @@ pub fn run(dir: &Path, id: &str) -> Result<()> {
     Ok(())
 }
 
+/// # Errors
+///
+/// Returns an error if items cannot be loaded or closed items cannot be deleted.
 pub fn run_closed(dir: &Path) -> Result<()> {
     let items = store::load_all(dir)?;
     let closed: Vec<_> = items

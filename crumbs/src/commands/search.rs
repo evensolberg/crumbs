@@ -4,6 +4,9 @@ use anyhow::Result;
 
 use crate::store;
 
+/// # Errors
+///
+/// Returns an error if the store cannot be read.
 pub fn run(dir: &Path, query: &str) -> Result<()> {
     let items = store::load_all(dir)?;
     let q = query.to_lowercase();

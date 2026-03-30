@@ -10,6 +10,10 @@ use crate::{
     store, store_config,
 };
 
+/// # Errors
+///
+/// Returns an error if the store cannot be read, a unique ID cannot be generated,
+/// or the new item cannot be written.
 pub fn run(
     dir: &Path,
     title: String,
@@ -22,12 +26,10 @@ pub fn run(
     story_points: Option<u8>,
 ) -> Result<()> {
     let description = crate::emoji::expand_shortcodes(&description).into_owned();
-    if let Some(sp) = story_points {
-        if !is_fibonacci(sp) {
-            anyhow::bail!(
-                "story_points must be a Fibonacci number (1, 2, 3, 5, 8, 13, 21); got {sp}"
-            );
-        }
+    if let Some(sp) = story_points
+        && !is_fibonacci(sp)
+    {
+        anyhow::bail!("story_points must be a Fibonacci number (1, 2, 3, 5, 8, 13, 21); got {sp}");
     }
     let today = Local::now().date_naive();
     let prefix = store_config::load(dir).prefix;

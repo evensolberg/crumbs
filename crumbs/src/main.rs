@@ -4,7 +4,12 @@ use anyhow::Result;
 use chrono::NaiveDate;
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::{Shell, generate};
-use crumbs::{commands, config, item::ItemType};
+use crumbs::{
+    commands,
+    commands::list::{ListArgs, SortKey},
+    config,
+    item::ItemType,
+};
 
 #[derive(Parser)]
 #[command(name = "crumbs", about = "Flat-folder Markdown task tracker", version)]
@@ -42,6 +47,9 @@ enum Command {
         /// Show first two lines of body text beneath each item
         #[arg(short, long)]
         verbose: bool,
+        /// Sort by field: id (default), priority, status, title, type, due, created, updated
+        #[arg(long, default_value = "id")]
+        sort: String,
     },
     /// Show one or more items
     Show {
@@ -128,7 +136,7 @@ enum Command {
     },
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
-    /// Start a timer for an item (appends [start] entry, sets status to in_progress)
+    /// Start a timer for an item (appends `[start]` entry, sets status to `in_progress`)
     Start {
         id: String,
         /// Optional comment to record with the start entry
@@ -219,7 +227,7 @@ enum Command {
         /// Output format: csv, json, or toon
         #[arg(short, long, default_value = "json")]
         format: String,
-        /// Write output to a file; omit value for crumbs_export.<ext> (default: stdout)
+        /// Write output to a file; omit value for `crumbs_export.<ext>` (default: stdout)
         #[arg(short, long, num_args = 0..=1, default_missing_value = "crumbs_export")]
         output: Option<PathBuf>,
     },
@@ -271,7 +279,7 @@ fn main() -> Result<()> {
     }
 
     match cli.command {
-        Command::Init { .. } => unreachable!(),
+        Command::Init { .. } | Command::Completions { .. } => unreachable!(),
         Command::Create {
             title,
             item_type,
@@ -304,6 +312,7 @@ fn main() -> Result<()> {
             r#type,
             all,
             verbose,
+            sort,
         } => {
             let type_filter = r#type
                 .as_deref()
@@ -312,14 +321,18 @@ fn main() -> Result<()> {
                         .map_err(|e: String| anyhow::anyhow!(e))
                 })
                 .transpose()?;
+            let sort_key: SortKey = sort.parse().map_err(|e: String| anyhow::anyhow!(e))?;
             commands::list::run(
                 &dir,
-                status.as_deref(),
-                tag.as_deref(),
-                priority,
-                type_filter,
-                all,
-                verbose,
+                ListArgs {
+                    status_filter: status,
+                    tag_filter: tag,
+                    priority_filter: priority,
+                    type_filter,
+                    all,
+                    verbose,
+                    sort: Some(sort_key),
+                },
             )?;
         }
         Command::Show { ids } => {
@@ -423,7 +436,7 @@ fn main() -> Result<()> {
             } else {
                 config::resolve_dir(Some(PathBuf::from(&from)), false)
             };
-            commands::move_::run(&dir, &id, &src)?;
+            commands::move_::run(&src, &id, &dir)?;
         }
         Command::Link {
             id,
@@ -458,7 +471,6 @@ fn main() -> Result<()> {
             });
             commands::export::run(&dir, &format, output.as_deref())?;
         }
-        Command::Completions { .. } => unreachable!(),
     }
 
     Ok(())

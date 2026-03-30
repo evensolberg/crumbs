@@ -4,6 +4,10 @@ use anyhow::{Context, Result, bail};
 
 use crate::store;
 
+/// # Errors
+///
+/// Returns an error if the item is not found, `$EDITOR` is unset or invalid, or the editor exits
+/// with a non-zero status.
 pub fn run(dir: &Path, id: &str) -> Result<()> {
     let editor_str = std::env::var("EDITOR")
         .or_else(|_| std::env::var("VISUAL"))

@@ -1,8 +1,10 @@
+use assert_cmd::Command;
 use chrono::NaiveDate;
 use tempfile::tempdir;
 
 use crumbs::{
     commands,
+    commands::list::{ListArgs, SortKey},
     commands::update::UpdateArgs,
     item::{Item, ItemType, Status},
     store,
@@ -327,7 +329,7 @@ fn list_no_filter_does_not_error() {
     let dir = tempdir().unwrap();
     create_task(dir.path(), "List Task 1");
     create_task(dir.path(), "List Task 2");
-    commands::list::run(dir.path(), None, None, None, None, false, false).unwrap();
+    commands::list::run(dir.path(), ListArgs::default()).unwrap();
 }
 
 #[test]
@@ -385,6 +387,134 @@ fn list_tag_filter_only_shows_matching() {
         .collect();
     assert_eq!(with_tag.len(), 1);
     assert_eq!(with_tag[0].1.title, "Tagged");
+}
+
+// ── move / import ────────────────────────────────────────────────────────────
+
+#[test]
+fn move_transfers_item_to_destination() {
+    let src = tempdir().unwrap();
+    let dst = tempdir().unwrap();
+    // init::run returns early if the dir already exists, so point it at the
+    // .crumbs subdirectory (which doesn't exist yet) so config.toml is written.
+    let src_store = src.path().join(".crumbs");
+    let dst_store = dst.path().join(".crumbs");
+    commands::init::run(&src_store, Some("src".to_string())).unwrap();
+    commands::init::run(&dst_store, Some("dst".to_string())).unwrap();
+    let id = create_task(&src_store, "Move Me");
+    commands::move_::run(&src_store, &id, &dst_store).unwrap();
+    // Item is gone from source.
+    assert!(store::find_by_id(&src_store, &id).unwrap().is_none());
+    // Item appears in destination (with a new ID under the dst prefix).
+    let items = store::load_all(&dst_store).unwrap();
+    assert!(items.iter().any(|(_, i)| i.title == "Move Me"));
+}
+
+#[test]
+fn import_direction_is_src_to_dst_not_dst_to_src() {
+    // Regression test for the import CLI dispatch bug: move_::run(&dir, &id, &src)
+    // was called with src and dst swapped, moving the item the wrong way.
+    // This test verifies that run(src, id, dst) moves the item FROM src TO dst,
+    // not from dst to src.
+    //
+    // init::run returns early if the dir already exists, so point it at the
+    // .crumbs subdirectory (which doesn't exist yet) so config.toml is written.
+    let src = tempdir().unwrap();
+    let dst = tempdir().unwrap();
+    let src_store = src.path().join(".crumbs");
+    let dst_store = dst.path().join(".crumbs");
+    commands::init::run(&src_store, Some("src".to_string())).unwrap();
+    commands::init::run(&dst_store, Some("dst".to_string())).unwrap();
+    let id = create_task(&src_store, "Import Me");
+    // If the args were swapped (bug), run(dst, id, src) would look for "id" in dst
+    // (where it doesn't exist) and return an error. Running correctly should succeed.
+    commands::move_::run(&src_store, &id, &dst_store).unwrap();
+    // Item is gone from source — confirms directionality.
+    assert!(
+        store::find_by_id(&src_store, &id).unwrap().is_none(),
+        "item must leave src"
+    );
+    // Item appears in destination — confirms it arrived.
+    let dst_items = store::load_all(&dst_store).unwrap();
+    assert!(
+        dst_items.iter().any(|(_, i)| i.title == "Import Me"),
+        "item must arrive in dst"
+    );
+    // Source is empty — nothing was moved into it.
+    let src_items = store::load_all(&src_store).unwrap();
+    assert!(
+        src_items.is_empty(),
+        "src must be empty after move (nothing moved into it)"
+    );
+}
+
+#[test]
+fn import_cli_dispatch_moves_item_from_src_to_dst() {
+    // Binary-level regression test for the CLI dispatch bug: `Command::Import`
+    // in main.rs previously called move_::run(&dir, &id, &src) with src/dst
+    // swapped. This test drives the real binary to catch any future regression
+    // at the dispatch layer, which the library-level test above cannot reach.
+    //
+    // `crumbs init` ignores --dir and uses current_dir()/.crumbs, so we set
+    // current_dir on those invocations. Subsequent commands use --dir with the
+    // .crumbs subdirectory path directly (resolve_dir keeps paths that already
+    // end in ".crumbs" unchanged).
+    let src = tempdir().unwrap();
+    let dst = tempdir().unwrap();
+    let src_store = src.path().join(".crumbs");
+    let dst_store = dst.path().join(".crumbs");
+    // Initialise both stores via the binary (current_dir sets the store root).
+    Command::cargo_bin("crumbs")
+        .unwrap()
+        .current_dir(src.path())
+        .args(["init", "--prefix", "src"])
+        .assert()
+        .success();
+    Command::cargo_bin("crumbs")
+        .unwrap()
+        .current_dir(dst.path())
+        .args(["init", "--prefix", "dst"])
+        .assert()
+        .success();
+    // Create an item in src via the binary.
+    Command::cargo_bin("crumbs")
+        .unwrap()
+        .args([
+            "--dir",
+            src_store.to_str().unwrap(),
+            "create",
+            "CLI Import Me",
+        ])
+        .assert()
+        .success();
+    // Retrieve the generated ID.
+    let src_items = store::load_all(&src_store).unwrap();
+    assert_eq!(src_items.len(), 1);
+    let id = src_items[0].1.id.clone();
+    // Run `crumbs import <id> --from <src_store>` targeting the dst store.
+    Command::cargo_bin("crumbs")
+        .unwrap()
+        .args([
+            "--dir",
+            dst_store.to_str().unwrap(),
+            "import",
+            &id,
+            "--from",
+            src_store.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    // Item must be gone from source.
+    assert!(
+        store::find_by_id(&src_store, &id).unwrap().is_none(),
+        "item must leave src after import"
+    );
+    // Item must appear in destination.
+    let dst_items = store::load_all(&dst_store).unwrap();
+    assert!(
+        dst_items.iter().any(|(_, i)| i.title == "CLI Import Me"),
+        "item must arrive in dst after import"
+    );
 }
 
 // ── delete ───────────────────────────────────────────────────────────────────
@@ -771,4 +901,150 @@ fn update_run_appends_body_when_append_is_true() {
         "expected appended text in description, got: {:?}",
         item.description
     );
+}
+
+// ── list --sort ───────────────────────────────────────────────────────────────
+
+#[test]
+fn sort_by_priority_ascending() {
+    let dir = tempdir().unwrap();
+    let id_low = create_task(dir.path(), "Low priority");
+    let id_high = create_task(dir.path(), "High priority");
+    commands::update::run(
+        dir.path(),
+        &id_low,
+        UpdateArgs {
+            priority: Some(3),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::update::run(
+        dir.path(),
+        &id_high,
+        UpdateArgs {
+            priority: Some(0),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let items = store::load_all(dir.path()).unwrap();
+    let sorted = commands::list::sort_items(items, SortKey::Priority);
+    assert_eq!(sorted[0].1.id, id_high, "priority 0 should come first");
+    assert_eq!(sorted[1].1.id, id_low, "priority 3 should come last");
+}
+
+#[test]
+fn sort_by_title_alphabetical() {
+    let dir = tempdir().unwrap();
+    create_task(dir.path(), "Zebra");
+    create_task(dir.path(), "Apple");
+    let items = store::load_all(dir.path()).unwrap();
+    let sorted = commands::list::sort_items(items, SortKey::Title);
+    assert_eq!(sorted[0].1.title, "Apple");
+    assert_eq!(sorted[1].1.title, "Zebra");
+}
+
+#[test]
+fn sort_by_status_groups_statuses() {
+    let dir = tempdir().unwrap();
+    let id_open = create_task(dir.path(), "Open task");
+    let id_prog = create_task(dir.path(), "In progress task");
+    commands::update::run(
+        dir.path(),
+        &id_prog,
+        UpdateArgs {
+            status: Some("in_progress".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let items = store::load_all(dir.path()).unwrap();
+    let sorted = commands::list::sort_items(items, SortKey::Status);
+    // in_progress sorts before open alphabetically
+    assert_eq!(sorted[0].1.id, id_prog);
+    assert_eq!(sorted[1].1.id, id_open);
+}
+
+#[test]
+fn sort_by_id_default_order() {
+    let dir = tempdir().unwrap();
+    create_task(dir.path(), "First");
+    create_task(dir.path(), "Second");
+    let items = store::load_all(dir.path()).unwrap();
+    let sorted_id = commands::list::sort_items(items.clone(), SortKey::Id);
+    let sorted_default: Vec<_> = {
+        let mut v = items;
+        v.sort_by(|a, b| a.1.id.cmp(&b.1.id));
+        v
+    };
+    let ids_sorted: Vec<_> = sorted_id.iter().map(|(_, i)| &i.id).collect();
+    let ids_default: Vec<_> = sorted_default.iter().map(|(_, i)| &i.id).collect();
+    assert_eq!(ids_sorted, ids_default);
+}
+
+#[test]
+fn sort_by_type_alphabetical() {
+    let dir = tempdir().unwrap();
+    commands::create::run(
+        dir.path(),
+        "A bug".to_string(),
+        ItemType::Bug,
+        2,
+        vec![],
+        String::new(),
+        vec![],
+        None,
+        None,
+    )
+    .unwrap();
+    commands::create::run(
+        dir.path(),
+        "A feature".to_string(),
+        ItemType::Feature,
+        2,
+        vec![],
+        String::new(),
+        vec![],
+        None,
+        None,
+    )
+    .unwrap();
+    let items = store::load_all(dir.path()).unwrap();
+    let sorted = commands::list::sort_items(items, SortKey::Type);
+    assert_eq!(sorted[0].1.item_type, ItemType::Bug);
+    assert_eq!(sorted[1].1.item_type, ItemType::Feature);
+}
+
+#[test]
+fn sort_by_due_undated_items_sort_last() {
+    let dir = tempdir().unwrap();
+    let id_no_due = create_task(dir.path(), "No due date");
+    let id_due = create_task(dir.path(), "Has due date");
+    commands::update::run(
+        dir.path(),
+        &id_due,
+        UpdateArgs {
+            due: Some(NaiveDate::from_ymd_opt(2026, 1, 1).unwrap()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let items = store::load_all(dir.path()).unwrap();
+    let sorted = commands::list::sort_items(items, SortKey::Due);
+    // Dated item must come first; undated item must sort to the end.
+    assert_eq!(sorted[0].1.id, id_due, "dated item should sort first");
+    assert_eq!(sorted[1].1.id, id_no_due, "undated item should sort last");
+}
+
+#[test]
+fn sort_key_from_str_error_on_unknown_field() {
+    let result = "bogus".parse::<SortKey>();
+    assert!(result.is_err());
+    let msg = result.unwrap_err();
+    assert!(
+        msg.contains("unknown sort key"),
+        "error should mention unknown key: {msg}"
+    );
+    assert!(msg.contains("id"), "error should list valid keys: {msg}");
 }
