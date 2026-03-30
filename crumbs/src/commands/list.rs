@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use chrono::Local;
@@ -7,9 +7,62 @@ use console::Style;
 use crate::{
     color,
     commands::start::active_start_ts,
-    item::{ItemType, Status},
+    item::{Item, ItemType, Status},
     store,
 };
+
+/// Fields by which `crumbs list` output can be sorted.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SortKey {
+    Id,
+    Priority,
+    Status,
+    Title,
+    Type,
+    Due,
+    Created,
+    Updated,
+}
+
+impl std::str::FromStr for SortKey {
+    type Err = String;
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "id" => Ok(SortKey::Id),
+            "priority" => Ok(SortKey::Priority),
+            "status" => Ok(SortKey::Status),
+            "title" => Ok(SortKey::Title),
+            "type" => Ok(SortKey::Type),
+            "due" => Ok(SortKey::Due),
+            "created" => Ok(SortKey::Created),
+            "updated" => Ok(SortKey::Updated),
+            other => Err(format!(
+                "unknown sort key {other:?}; valid: id, priority, status, title, type, due, created, updated"
+            )),
+        }
+    }
+}
+
+/// Sort a list of `(path, item)` pairs by the given key.
+pub fn sort_items(mut items: Vec<(PathBuf, Item)>, key: SortKey) -> Vec<(PathBuf, Item)> {
+    match key {
+        SortKey::Id => items.sort_by(|a, b| a.1.id.cmp(&b.1.id)),
+        SortKey::Priority => items.sort_by_key(|(_, i)| i.priority),
+        SortKey::Status => {
+            items.sort_by(|a, b| a.1.status.to_string().cmp(&b.1.status.to_string()))
+        }
+        SortKey::Title => {
+            items.sort_by(|a, b| a.1.title.to_lowercase().cmp(&b.1.title.to_lowercase()))
+        }
+        SortKey::Type => {
+            items.sort_by(|a, b| a.1.item_type.to_string().cmp(&b.1.item_type.to_string()))
+        }
+        SortKey::Due => items.sort_by(|a, b| a.1.due.cmp(&b.1.due)),
+        SortKey::Created => items.sort_by_key(|(_, i)| i.created),
+        SortKey::Updated => items.sort_by_key(|(_, i)| i.updated),
+    }
+    items
+}
 
 pub fn run(
     dir: &Path,
@@ -19,6 +72,7 @@ pub fn run(
     type_filter: Option<ItemType>,
     all: bool,
     verbose: bool,
+    sort: SortKey,
 ) -> Result<()> {
     // Validate the status filter up front so a typo surfaces as an error
     // rather than silently returning "No items found."
@@ -32,7 +86,7 @@ pub fn run(
 
     let items = store::load_all(dir)?;
     let filtered: Vec<_> = items
-        .iter()
+        .into_iter()
         .filter(|(_, item)| {
             // By default hide closed items unless --all or an explicit status filter is given.
             // Blocked and deferred items remain visible by default.
@@ -69,8 +123,9 @@ pub fn run(
         return Ok(());
     }
 
+    let sorted = sort_items(filtered, sort);
     let today = Local::now().date_naive();
-    for (_, item) in filtered {
+    for (_, item) in sorted {
         let icon = color::status_icon_styled(&item.status);
         let p_style = color::priority(item.priority);
         let t_style = color::item_type(&item.item_type);

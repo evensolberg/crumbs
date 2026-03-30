@@ -4,7 +4,7 @@ use anyhow::Result;
 use chrono::NaiveDate;
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::{Shell, generate};
-use crumbs::{commands, config, item::ItemType};
+use crumbs::{commands, commands::list::SortKey, config, item::ItemType};
 
 #[derive(Parser)]
 #[command(name = "crumbs", about = "Flat-folder Markdown task tracker", version)]
@@ -42,6 +42,9 @@ enum Command {
         /// Show first two lines of body text beneath each item
         #[arg(short, long)]
         verbose: bool,
+        /// Sort by field: id (default), priority, status, title, type, due, created, updated
+        #[arg(long, default_value = "id")]
+        sort: String,
     },
     /// Show one or more items
     Show {
@@ -304,6 +307,7 @@ fn main() -> Result<()> {
             r#type,
             all,
             verbose,
+            sort,
         } => {
             let type_filter = r#type
                 .as_deref()
@@ -312,6 +316,7 @@ fn main() -> Result<()> {
                         .map_err(|e: String| anyhow::anyhow!(e))
                 })
                 .transpose()?;
+            let sort_key: SortKey = sort.parse().map_err(|e: String| anyhow::anyhow!(e))?;
             commands::list::run(
                 &dir,
                 status.as_deref(),
@@ -320,6 +325,7 @@ fn main() -> Result<()> {
                 type_filter,
                 all,
                 verbose,
+                sort_key,
             )?;
         }
         Command::Show { ids } => {

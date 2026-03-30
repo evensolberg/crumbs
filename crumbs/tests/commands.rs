@@ -3,6 +3,7 @@ use tempfile::tempdir;
 
 use crumbs::{
     commands,
+    commands::list::SortKey,
     commands::update::UpdateArgs,
     item::{Item, ItemType, Status},
     store,
@@ -327,7 +328,17 @@ fn list_no_filter_does_not_error() {
     let dir = tempdir().unwrap();
     create_task(dir.path(), "List Task 1");
     create_task(dir.path(), "List Task 2");
-    commands::list::run(dir.path(), None, None, None, None, false, false).unwrap();
+    commands::list::run(
+        dir.path(),
+        None,
+        None,
+        None,
+        None,
+        false,
+        false,
+        SortKey::Id,
+    )
+    .unwrap();
 }
 
 #[test]
@@ -804,4 +815,117 @@ fn update_run_appends_body_when_append_is_true() {
         "expected appended text in description, got: {:?}",
         item.description
     );
+}
+
+// ── list --sort ───────────────────────────────────────────────────────────────
+
+#[test]
+fn sort_by_priority_ascending() {
+    let dir = tempdir().unwrap();
+    let id_low = create_task(dir.path(), "Low priority");
+    let id_high = create_task(dir.path(), "High priority");
+    commands::update::run(
+        dir.path(),
+        &id_low,
+        UpdateArgs {
+            priority: Some(3),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::update::run(
+        dir.path(),
+        &id_high,
+        UpdateArgs {
+            priority: Some(0),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let items = store::load_all(dir.path()).unwrap();
+    let sorted = commands::list::sort_items(items, SortKey::Priority);
+    assert_eq!(sorted[0].1.id, id_high, "priority 0 should come first");
+    assert_eq!(sorted[1].1.id, id_low, "priority 3 should come last");
+}
+
+#[test]
+fn sort_by_title_alphabetical() {
+    let dir = tempdir().unwrap();
+    create_task(dir.path(), "Zebra");
+    create_task(dir.path(), "Apple");
+    let items = store::load_all(dir.path()).unwrap();
+    let sorted = commands::list::sort_items(items, SortKey::Title);
+    assert_eq!(sorted[0].1.title, "Apple");
+    assert_eq!(sorted[1].1.title, "Zebra");
+}
+
+#[test]
+fn sort_by_status_groups_statuses() {
+    let dir = tempdir().unwrap();
+    let id_open = create_task(dir.path(), "Open task");
+    let id_prog = create_task(dir.path(), "In progress task");
+    commands::update::run(
+        dir.path(),
+        &id_prog,
+        UpdateArgs {
+            status: Some("in_progress".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let items = store::load_all(dir.path()).unwrap();
+    let sorted = commands::list::sort_items(items, SortKey::Status);
+    // in_progress sorts before open alphabetically
+    assert_eq!(sorted[0].1.id, id_prog);
+    assert_eq!(sorted[1].1.id, id_open);
+}
+
+#[test]
+fn sort_by_id_default_order() {
+    let dir = tempdir().unwrap();
+    create_task(dir.path(), "First");
+    create_task(dir.path(), "Second");
+    let items = store::load_all(dir.path()).unwrap();
+    let sorted_id = commands::list::sort_items(items.clone(), SortKey::Id);
+    let sorted_default: Vec<_> = {
+        let mut v = items;
+        v.sort_by(|a, b| a.1.id.cmp(&b.1.id));
+        v
+    };
+    let ids_sorted: Vec<_> = sorted_id.iter().map(|(_, i)| &i.id).collect();
+    let ids_default: Vec<_> = sorted_default.iter().map(|(_, i)| &i.id).collect();
+    assert_eq!(ids_sorted, ids_default);
+}
+
+#[test]
+fn sort_by_type_alphabetical() {
+    let dir = tempdir().unwrap();
+    commands::create::run(
+        dir.path(),
+        "A bug".to_string(),
+        ItemType::Bug,
+        2,
+        vec![],
+        String::new(),
+        vec![],
+        None,
+        None,
+    )
+    .unwrap();
+    commands::create::run(
+        dir.path(),
+        "A feature".to_string(),
+        ItemType::Feature,
+        2,
+        vec![],
+        String::new(),
+        vec![],
+        None,
+        None,
+    )
+    .unwrap();
+    let items = store::load_all(dir.path()).unwrap();
+    let sorted = commands::list::sort_items(items, SortKey::Type);
+    assert_eq!(sorted[0].1.item_type, ItemType::Bug);
+    assert_eq!(sorted[1].1.item_type, ItemType::Feature);
 }
