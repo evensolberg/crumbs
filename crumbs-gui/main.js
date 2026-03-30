@@ -705,16 +705,16 @@ function renderProps(item) {
     v => doUpdateStatus(item.id, v),
   ));
 
-  propRow('Priority', '').appendChild(makeSelect(
-    Array.from({ length: 5 }, (_, p) => [String(p), `P${p} — ${PRIORITY_LABELS[p]}`]),
-    String(item.priority),
-    v => doUpdatePriority(item.id, Number(v)),
-  ));
-
   propRow('Type', '').appendChild(makeSelect(
     ['task', 'bug', 'feature', 'epic', 'idea'].map(t => [t, t]),
     item.type ?? '',
     v => doUpdateType(item.id, v),
+  ));
+
+  propRow('Priority', '').appendChild(makeSelect(
+    Array.from({ length: 5 }, (_, p) => [String(p), `P${p} — ${PRIORITY_LABELS[p]}`]),
+    String(item.priority),
+    v => doUpdatePriority(item.id, Number(v)),
   ));
 
   propRow('Points', '').appendChild(makeSelect(
