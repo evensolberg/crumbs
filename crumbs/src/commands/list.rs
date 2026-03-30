@@ -48,22 +48,28 @@ impl std::str::FromStr for SortKey {
 pub fn sort_items(mut items: Vec<(PathBuf, Item)>, key: SortKey) -> Vec<(PathBuf, Item)> {
     match key {
         SortKey::Id => items.sort_by(|a, b| a.1.id.cmp(&b.1.id)),
-        SortKey::Priority => items.sort_by_key(|(_, i)| i.priority),
+        SortKey::Priority => {
+            items.sort_by_cached_key(|(_, i)| (i.priority, i.id.clone()));
+        }
         SortKey::Status => {
-            items.sort_by_cached_key(|(_, i)| i.status.to_string());
+            items.sort_by_cached_key(|(_, i)| (i.status.to_string(), i.id.clone()));
         }
         SortKey::Title => {
-            items.sort_by_cached_key(|(_, i)| i.title.to_lowercase());
+            items.sort_by_cached_key(|(_, i)| (i.title.to_lowercase(), i.id.clone()));
         }
         SortKey::Type => {
-            items.sort_by_cached_key(|(_, i)| i.item_type.to_string());
+            items.sort_by_cached_key(|(_, i)| (i.item_type.to_string(), i.id.clone()));
         }
         // Treat None as "no due date" — sort to the end, after all dated items.
         SortKey::Due => {
-            items.sort_by_cached_key(|(_, i)| i.due.unwrap_or(NaiveDate::MAX));
+            items.sort_by_cached_key(|(_, i)| (i.due.unwrap_or(NaiveDate::MAX), i.id.clone()));
         }
-        SortKey::Created => items.sort_by_key(|(_, i)| i.created),
-        SortKey::Updated => items.sort_by_key(|(_, i)| i.updated),
+        SortKey::Created => {
+            items.sort_by_cached_key(|(_, i)| (i.created, i.id.clone()));
+        }
+        SortKey::Updated => {
+            items.sort_by_cached_key(|(_, i)| (i.updated, i.id.clone()));
+        }
     }
     items
 }

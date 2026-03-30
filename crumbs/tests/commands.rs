@@ -1012,7 +1012,6 @@ fn sort_by_due_undated_items_sort_last() {
     let dir = tempdir().unwrap();
     let id_no_due = create_task(dir.path(), "No due date");
     let id_due = create_task(dir.path(), "Has due date");
-    use chrono::NaiveDate;
     commands::update::run(
         dir.path(),
         &id_due,
