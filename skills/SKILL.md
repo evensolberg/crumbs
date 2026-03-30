@@ -46,6 +46,7 @@ crumbs list --status open --priority 0
 crumbs list --tag project/auth
 crumbs list --type bug           # filter by type (task, bug, feature, epic, idea)
 crumbs list --verbose            # show first two body lines beneath each item
+crumbs list --sort priority      # sort by: id (default), priority, status, title, type, due, created, updated
 crumbs next                      # highest-priority actionable item (skips deferred with future until date)
 ```
 
@@ -125,11 +126,11 @@ Start/stop entries are plain lines in the markdown body, interleaved with any no
 
 `crumbs start` errors with "Already started at HH:MM:SS" if an unmatched `[start]` exists.
 
-### Close / delete
+### Close / delete / clean
 ```sh
 crumbs close cr-x7q --reason "fixed in PR #42"
 crumbs delete cr-x7q
-crumbs delete --closed           # purge all closed items
+crumbs clean                     # purge all closed items
 ```
 
 ### Export
@@ -142,9 +143,14 @@ crumbs export --output                 # → crumbs_export.json (default filenam
 crumbs export --format csv --output    # → crumbs_export.csv
 ```
 
+### Edit title and body (TUI)
+```sh
+crumbs body cr-x7q               # inline TUI editor: line 1 = title, rest = body; Ctrl-S saves, Esc exits
+```
+
 ### Edit raw file
 ```sh
-crumbs edit cr-x7q               # opens in $EDITOR; reindexes on exit
+crumbs edit cr-x7q               # opens full .md file in $EDITOR; reindexes on exit
 crumbs reindex                   # rebuild index.csv manually
 ```
 
@@ -181,6 +187,7 @@ Timer entries live in the markdown body alongside other notes:
 - Unlinking restores `open` on targets when no other blockers remain
 - `--tags` and `--depends` on update **replace** the existing list (not append)
 - `--append 'text'` adds to the body with a `[YYYY-MM-DD]` timestamp prefix; `--message 'text'` replaces it
+- `:shortcode:` in body text (message, append, timer comments) is expanded to Unicode at write time — e.g. `:tada:` → 🎉, `:bug:` → 🐛, `:+1:` → 👍; unknown shortcodes pass through unchanged
 - `crumbs defer --until <date>` sets the due date; `crumbs next` skips deferred items with a future until date
 - `crumbs start` / `crumbs stop` append timer entries to the body; `crumbs show` sums elapsed time as "Total tracked"
 - File names are title slugs; collisions get the ID suffix appended

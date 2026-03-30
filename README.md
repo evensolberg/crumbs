@@ -127,6 +127,7 @@ crumbs list --tag project/auth
 crumbs list --priority 0       # P0 items only
 crumbs list --type bug         # filter by type (task, bug, feature, epic, idea)
 crumbs list --verbose          # show first two body lines beneath each item
+crumbs list --sort priority    # sort by: id (default), priority, status, title, type, due, created, updated
 crumbs next                    # highest-priority actionable item (skips deferred with future until date)
 ```
 
@@ -199,7 +200,7 @@ crumbs link bc-x7q blocks bc-y8r --remove    # unlink; restores open if unblocke
 crumbs close bc-x7q
 crumbs close bc-x7q --reason "fixed in PR #42"
 crumbs delete cr-x7q
-crumbs delete --closed            # purge all closed items
+crumbs clean                      # purge all closed items
 ```
 
 ### Export
