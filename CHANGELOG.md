@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+## [0.17.1] - 2026-03-29
+
+### Fix
+
+- GUI: rename 'Depends' → 'Depends on' in Properties panel
+- GUI: remove Unicode symbols from status dropdown (⊘ Blocked → Blocked, ◷ Deferred → Deferred)
+- GUI: remove redundant Status symbols section from help modal
+- GUI: every filter-btn click now fetches fresh data from disk
+- GUI: preserve editor cursor position when metadata is updated (P1)
+- GUI: outline resizer hidden in sync with panel at all toggle sites
+- GUI: outline resize direction corrected (drag left = expand)
+- GUI: use closure variable for localStorage width (avoids offsetWidth=0 when hidden)
+- GUI: guard both anchor and head in cursor-preservation bounds check
+
+### Feat
+
+- GUI: [date] toolbar button and Mod+D keymap inserts [YYYY-MM-DD] at cursor
+- GUI: resizable outline/headings panel with localStorage persistence
+
 ## [0.17.0] - 2026-03-29
 
 ### Chore
