@@ -1,3 +1,4 @@
+use assert_cmd::Command;
 use chrono::NaiveDate;
 use tempfile::tempdir;
 
@@ -435,6 +436,75 @@ fn import_direction_is_src_to_dst_not_dst_to_src() {
     assert!(
         src_items.is_empty(),
         "src must be empty after move (nothing moved into it)"
+    );
+}
+
+#[test]
+fn import_cli_dispatch_moves_item_from_src_to_dst() {
+    // Binary-level regression test for the CLI dispatch bug: `Command::Import`
+    // in main.rs previously called move_::run(&dir, &id, &src) with src/dst
+    // swapped. This test drives the real binary to catch any future regression
+    // at the dispatch layer, which the library-level test above cannot reach.
+    //
+    // `crumbs init` ignores --dir and uses current_dir()/.crumbs, so we set
+    // current_dir on those invocations. Subsequent commands use --dir with the
+    // .crumbs subdirectory path directly (resolve_dir keeps paths that already
+    // end in ".crumbs" unchanged).
+    let src = tempdir().unwrap();
+    let dst = tempdir().unwrap();
+    let src_store = src.path().join(".crumbs");
+    let dst_store = dst.path().join(".crumbs");
+    // Initialise both stores via the binary (current_dir sets the store root).
+    Command::cargo_bin("crumbs")
+        .unwrap()
+        .current_dir(src.path())
+        .args(["init", "--prefix", "src"])
+        .assert()
+        .success();
+    Command::cargo_bin("crumbs")
+        .unwrap()
+        .current_dir(dst.path())
+        .args(["init", "--prefix", "dst"])
+        .assert()
+        .success();
+    // Create an item in src via the binary.
+    Command::cargo_bin("crumbs")
+        .unwrap()
+        .args([
+            "--dir",
+            src_store.to_str().unwrap(),
+            "create",
+            "CLI Import Me",
+        ])
+        .assert()
+        .success();
+    // Retrieve the generated ID.
+    let src_items = store::load_all(&src_store).unwrap();
+    assert_eq!(src_items.len(), 1);
+    let id = src_items[0].1.id.clone();
+    // Run `crumbs import <id> --from <src_store>` targeting the dst store.
+    Command::cargo_bin("crumbs")
+        .unwrap()
+        .args([
+            "--dir",
+            dst_store.to_str().unwrap(),
+            "import",
+            &id,
+            "--from",
+            src_store.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    // Item must be gone from source.
+    assert!(
+        store::find_by_id(&src_store, &id).unwrap().is_none(),
+        "item must leave src after import"
+    );
+    // Item must appear in destination.
+    let dst_items = store::load_all(&dst_store).unwrap();
+    assert!(
+        dst_items.iter().any(|(_, i)| i.title == "CLI Import Me"),
+        "item must arrive in dst after import"
     );
 }
 
