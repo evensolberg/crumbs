@@ -4,7 +4,7 @@ import {
   highlightSpecialChars, placeholder,
 } from './codemirror.bundle.js';
 import { EditorState, Compartment } from './codemirror.bundle.js';
-import { defaultKeymap, history, historyKeymap, indentWithTab, deleteLine, moveLineUp, moveLineDown } from './codemirror.bundle.js';
+import { defaultKeymap, history, historyKeymap, indentWithTab, moveLineUp, moveLineDown } from './codemirror.bundle.js';
 import { closeBrackets, closeBracketsKeymap, snippet } from './codemirror.bundle.js';
 import { search, searchKeymap, highlightSelectionMatches, openSearchPanel } from './codemirror.bundle.js';
 import { syntaxHighlighting, defaultHighlightStyle, HighlightStyle } from './codemirror.bundle.js';
@@ -104,6 +104,7 @@ const detailEditorEl   = document.getElementById('detail-editor');
 const outlinePanel     = document.getElementById('outline-panel');
 const outlineList      = document.getElementById('outline-list');
 const outlineToggleBtn = document.getElementById('outline-toggle-btn');
+const outlineResizer   = document.getElementById('outline-resizer');
 const detailPreview    = document.getElementById('detail-preview');
 const previewBtn       = document.getElementById('preview-btn');
 const emojiBtn         = document.getElementById('emoji-btn');
@@ -184,7 +185,7 @@ const view = new EditorView({
         { key: 'Mod-s',          run: () => { flushAutosave(); return true; } },
         { key: 'Mod-b',          run: () => { wrapInline('**'); return true; } },
         { key: 'Mod-i',          run: () => { wrapInline('*');  return true; } },
-        { key: 'Mod-d',          run: deleteLine },
+        { key: 'Mod-d',          run: () => { insertDate(); return true; } },
         { key: 'Mod-ArrowUp',    run: moveLineUp },
         { key: 'Mod-ArrowDown',  run: moveLineDown },
         { key: 'Mod-0',          run: () => { applyHeading(0); return true; } },
@@ -212,6 +213,7 @@ const view = new EditorView({
 
 // Apply initial outline visibility
 outlinePanel.classList.toggle('hidden', !outlineVisible);
+outlineResizer.classList.toggle('hidden', !outlineVisible);
 outlineToggleBtn.classList.toggle('active', outlineVisible);
 
 // Toolbar action buttons
@@ -304,8 +306,8 @@ const PRIORITY_LABELS = ['critical', 'high', 'normal', 'low', 'backlog'];
 const STATUS_LABELS   = {
   open: 'Open',
   in_progress: 'In Progress',
-  blocked: '⊘ Blocked',
-  deferred: '◷ Deferred',
+  blocked: 'Blocked',
+  deferred: 'Deferred',
   closed: 'Closed',
 };
 
@@ -786,7 +788,7 @@ function renderProps(item) {
     if (e.key === 'Enter') depsInput.blur();
     if (e.key === 'Escape') { depsInput.value = loadedDeps; depsInput.blur(); e.stopPropagation(); }
   });
-  propRow('Depends', '').appendChild(depsInput);
+  propRow('Depends on', '').appendChild(depsInput);
   if ((item.blocks ?? []).length > 0) {
     propRow('Blocks', escHtml(item.blocks.join(', ')));
   }
@@ -804,6 +806,7 @@ function setPreviewMode(on) {
   formatToolbar.classList.toggle('hidden', on);
   detailEditorEl.classList.toggle('hidden', on);
   outlinePanel.classList.toggle('hidden', on || !outlineVisible);
+  outlineResizer.classList.toggle('hidden', on || !outlineVisible);
   detailPreview.classList.toggle('hidden', !on);
   if (on) {
     detailPreview.innerHTML = marked.parse(expandEmoji(view.state.doc.toString()));
@@ -894,6 +897,15 @@ function insertCodeBlock() {
   view.focus();
 }
 
+function insertDate() {
+  const today = new Date().toISOString().slice(0, 10);
+  const text = `[${today}]`;
+  const { from } = view.state.selection.main;
+  view.dispatch({ changes: { from, insert: text },
+                  selection: { anchor: from + text.length } });
+  view.focus();
+}
+
 function insertHR() {
   const { state } = view;
   const line = state.doc.lineAt(state.selection.main.from);
@@ -927,6 +939,7 @@ document.getElementById('fmt-code').addEventListener('click',      () => wrapInl
 document.getElementById('fmt-codeblock').addEventListener('click', () => insertCodeBlock());
 document.getElementById('fmt-quote').addEventListener('click',     () => toggleLinePrefix('> '));
 document.getElementById('fmt-hr').addEventListener('click',        () => insertHR());
+document.getElementById('fmt-date').addEventListener('click',      () => insertDate());
 document.getElementById('fmt-find').addEventListener('click',      () => { openSearchPanel(view); view.focus(); });
 fmtWrapBtn.addEventListener('click', toggleLineWrap);
 fmtWrapBtn.classList.toggle('active', lineWrapOn);
@@ -975,8 +988,36 @@ outlineToggleBtn.addEventListener('click', () => {
   outlineVisible = !outlineVisible;
   localStorage.setItem('outlineVisible', outlineVisible);
   outlinePanel.classList.toggle('hidden', !outlineVisible || previewMode);
+  outlineResizer.classList.toggle('hidden', !outlineVisible || previewMode);
   outlineToggleBtn.classList.toggle('active', outlineVisible);
   if (outlineVisible) renderOutline();
+});
+
+// ── Outline panel resize ───────────────────────────────────────────────────
+
+// Restore saved width on startup.
+const savedOutlineWidth = localStorage.getItem('outlinePanelWidth');
+if (savedOutlineWidth) outlinePanel.style.width = savedOutlineWidth + 'px';
+
+outlineResizer.addEventListener('mousedown', e => {
+  e.preventDefault();
+  const startX = e.clientX;
+  const startW = parseInt(outlinePanel.style.width, 10) || outlinePanel.offsetWidth;
+  outlineResizer.classList.add('dragging');
+  let currentW = startW;
+  function onMove(ev) {
+    // Resizer is left of the panel: drag left expands, drag right shrinks.
+    currentW = Math.max(80, Math.min(400, startW - (ev.clientX - startX)));
+    outlinePanel.style.width = currentW + 'px';
+  }
+  function onUp() {
+    outlineResizer.classList.remove('dragging');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    localStorage.setItem('outlinePanelWidth', currentW);
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
 });
 
 function renderDetail(item) {
@@ -995,9 +1036,14 @@ function renderDetail(item) {
   renderProps(item);
   detailActions.innerHTML = '';
   loadedBody = item.description ?? '';
-  view.dispatch({
-    changes: { from: 0, to: view.state.doc.length, insert: loadedBody },
-  });
+  const currentContent = view.state.doc.toString();
+  if (currentContent !== loadedBody) {
+    const sel = view.state.selection;
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: loadedBody },
+      selection: loadedBody.length >= sel.main.anchor && loadedBody.length >= sel.main.head ? sel : undefined,
+    });
+  }
   setPreviewMode(false);
   renderOutline();
   updateToolbarButtons();
@@ -1872,12 +1918,8 @@ for (const btn of document.querySelectorAll('.filter-btn')) {
     for (const b of document.querySelectorAll('.filter-btn')) b.classList.remove('active');
     btn.classList.add('active');
     filterStatus = btn.dataset.status;
-    if (filterStatus === 'closed' && !showClosedEl.checked) {
-      showClosedEl.checked = true;
-      await loadItems();
-    } else {
-      renderTable();
-    }
+    if (filterStatus === 'closed') showClosedEl.checked = true;
+    await loadItems();
   });
 }
 

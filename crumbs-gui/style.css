@@ -640,9 +640,22 @@ button:disabled {
   overflow: auto;
 }
 
+#outline-resizer {
+  width: 4px;
+  cursor: col-resize;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+#outline-resizer:hover,
+#outline-resizer.dragging {
+  background: var(--accent);
+}
+
 #outline-panel {
   width: 180px;
-  min-width: 180px;
+  min-width: 80px;
+  max-width: 400px;
   flex-shrink: 0;
   border-left: 1px solid var(--border);
   overflow-y: auto;
