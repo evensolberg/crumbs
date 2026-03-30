@@ -47,14 +47,6 @@
         <button type="button" class="filter-btn" data-status="closed">Closed</button>
       </div>
       <div class="toolbar-filter-extras">
-        <select id="filter-priority" class="filter-select" title="Filter by priority">
-          <option value="any">Any priority</option>
-          <option value="0">P0 — Critical</option>
-          <option value="1">P1 — High</option>
-          <option value="2">P2 — Normal</option>
-          <option value="3">P3 — Low</option>
-          <option value="4">P4 — Backlog</option>
-        </select>
         <select id="filter-type" class="filter-select" title="Filter by type">
           <option value="any">Any type</option>
           <option value="task">Task</option>
@@ -62,6 +54,14 @@
           <option value="feature">Feature</option>
           <option value="epic">Epic</option>
           <option value="idea">Idea</option>
+        </select>
+        <select id="filter-priority" class="filter-select" title="Filter by priority">
+          <option value="any">Any priority</option>
+          <option value="0">P0 — Critical</option>
+          <option value="1">P1 — High</option>
+          <option value="2">P2 — Normal</option>
+          <option value="3">P3 — Low</option>
+          <option value="4">P4 — Backlog</option>
         </select>
         <input id="filter-tag" type="text" class="filter-tag-input" placeholder="Tag…" title="Filter by tag (substring match)" autocomplete="off">
         <div class="search-wrap">
