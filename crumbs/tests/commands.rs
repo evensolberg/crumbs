@@ -395,14 +395,18 @@ fn list_tag_filter_only_shows_matching() {
 fn move_transfers_item_to_destination() {
     let src = tempdir().unwrap();
     let dst = tempdir().unwrap();
-    commands::init::run(src.path(), Some("src".to_string())).unwrap();
-    commands::init::run(dst.path(), Some("dst".to_string())).unwrap();
-    let id = create_task(src.path(), "Move Me");
-    commands::move_::run(src.path(), &id, dst.path()).unwrap();
+    // init::run returns early if the dir already exists, so point it at the
+    // .crumbs subdirectory (which doesn't exist yet) so config.toml is written.
+    let src_store = src.path().join(".crumbs");
+    let dst_store = dst.path().join(".crumbs");
+    commands::init::run(&src_store, Some("src".to_string())).unwrap();
+    commands::init::run(&dst_store, Some("dst".to_string())).unwrap();
+    let id = create_task(&src_store, "Move Me");
+    commands::move_::run(&src_store, &id, &dst_store).unwrap();
     // Item is gone from source.
-    assert!(store::find_by_id(src.path(), &id).unwrap().is_none());
+    assert!(store::find_by_id(&src_store, &id).unwrap().is_none());
     // Item appears in destination (with a new ID under the dst prefix).
-    let items = store::load_all(dst.path()).unwrap();
+    let items = store::load_all(&dst_store).unwrap();
     assert!(items.iter().any(|(_, i)| i.title == "Move Me"));
 }
 
@@ -412,27 +416,32 @@ fn import_direction_is_src_to_dst_not_dst_to_src() {
     // was called with src and dst swapped, moving the item the wrong way.
     // This test verifies that run(src, id, dst) moves the item FROM src TO dst,
     // not from dst to src.
+    //
+    // init::run returns early if the dir already exists, so point it at the
+    // .crumbs subdirectory (which doesn't exist yet) so config.toml is written.
     let src = tempdir().unwrap();
     let dst = tempdir().unwrap();
-    commands::init::run(src.path(), Some("src".to_string())).unwrap();
-    commands::init::run(dst.path(), Some("dst".to_string())).unwrap();
-    let id = create_task(src.path(), "Import Me");
+    let src_store = src.path().join(".crumbs");
+    let dst_store = dst.path().join(".crumbs");
+    commands::init::run(&src_store, Some("src".to_string())).unwrap();
+    commands::init::run(&dst_store, Some("dst".to_string())).unwrap();
+    let id = create_task(&src_store, "Import Me");
     // If the args were swapped (bug), run(dst, id, src) would look for "id" in dst
     // (where it doesn't exist) and return an error. Running correctly should succeed.
-    commands::move_::run(src.path(), &id, dst.path()).unwrap();
+    commands::move_::run(&src_store, &id, &dst_store).unwrap();
     // Item is gone from source — confirms directionality.
     assert!(
-        store::find_by_id(src.path(), &id).unwrap().is_none(),
+        store::find_by_id(&src_store, &id).unwrap().is_none(),
         "item must leave src"
     );
     // Item appears in destination — confirms it arrived.
-    let dst_items = store::load_all(dst.path()).unwrap();
+    let dst_items = store::load_all(&dst_store).unwrap();
     assert!(
         dst_items.iter().any(|(_, i)| i.title == "Import Me"),
         "item must arrive in dst"
     );
     // Source is empty — nothing was moved into it.
-    let src_items = store::load_all(src.path()).unwrap();
+    let src_items = store::load_all(&src_store).unwrap();
     assert!(
         src_items.is_empty(),
         "src must be empty after move (nothing moved into it)"
