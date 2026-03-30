@@ -34,6 +34,7 @@ crumbs create 'Fix login bug' --type bug --priority 1 --tags auth
 crumbs create 'Auth redesign' --message 'Covers OAuth and sessions' --due 2026-04-01
 crumbs c 'Quick idea'            # shorthand
 ```
+Title is a positional argument on `create` — there is no `--title` flag. (`--title` is only available on `update`.)
 Use single quotes to avoid shell expansion of `!`, `$`, etc.
 
 ### List & triage

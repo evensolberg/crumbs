@@ -423,7 +423,7 @@ fn main() -> Result<()> {
             } else {
                 config::resolve_dir(Some(PathBuf::from(&from)), false)
             };
-            commands::move_::run(&dir, &id, &src)?;
+            commands::move_::run(&src, &id, &dir)?;
         }
         Command::Link {
             id,

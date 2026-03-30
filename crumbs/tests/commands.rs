@@ -387,6 +387,39 @@ fn list_tag_filter_only_shows_matching() {
     assert_eq!(with_tag[0].1.title, "Tagged");
 }
 
+// ── move / import ────────────────────────────────────────────────────────────
+
+#[test]
+fn move_transfers_item_to_destination() {
+    let src = tempdir().unwrap();
+    let dst = tempdir().unwrap();
+    commands::init::run(src.path(), Some("src".to_string())).unwrap();
+    commands::init::run(dst.path(), Some("dst".to_string())).unwrap();
+    let id = create_task(src.path(), "Move Me");
+    commands::move_::run(src.path(), &id, dst.path()).unwrap();
+    // Item is gone from source.
+    assert!(store::find_by_id(src.path(), &id).unwrap().is_none());
+    // Item appears in destination (with a new ID under the dst prefix).
+    let items = store::load_all(dst.path()).unwrap();
+    assert!(items.iter().any(|(_, i)| i.title == "Move Me"));
+}
+
+#[test]
+fn import_transfers_item_from_source_to_current() {
+    let src = tempdir().unwrap();
+    let dst = tempdir().unwrap();
+    commands::init::run(src.path(), Some("src".to_string())).unwrap();
+    commands::init::run(dst.path(), Some("dst".to_string())).unwrap();
+    let id = create_task(src.path(), "Import Me");
+    // import is move_::run(src, id, dst) — source first, destination second.
+    commands::move_::run(src.path(), &id, dst.path()).unwrap();
+    // Item is gone from source.
+    assert!(store::find_by_id(src.path(), &id).unwrap().is_none());
+    // Item appears in destination.
+    let items = store::load_all(dst.path()).unwrap();
+    assert!(items.iter().any(|(_, i)| i.title == "Import Me"));
+}
+
 // ── delete ───────────────────────────────────────────────────────────────────
 
 #[test]

@@ -60,6 +60,17 @@ Before implementing a feature or fix, attach the implementation plan to the rele
 - Refresh author before committing: `git mit es`
 - `cargo fmt` runs automatically in the pre-commit hook and re-stages reformatted files
 
+## Crumbs File Editing
+
+- When closing a crumb (changing status to `done`, `cancelled`, etc.), **only change the `status` field** in the YAML frontmatter. Do not add, remove, or reorder any other fields.
+- Never inject fields like `description`, `updated_at`, or anything else not already present in the file.
+
+## GUI / Frontend (Tauri + WKWebView)
+
+- **No HTML5 drag-and-drop.** `dragover` events don't fire reliably in Tauri's WKWebView and `dataTransfer.getData()` returns empty on `drop`. Always use `mousedown`/`mousemove`/`mouseup` + `document.elementFromPoint()` for drag interactions. Give ghost elements `pointer-events: none` so `elementFromPoint` sees through them. See `startRowDrag()` in `crumbs-gui/main.js` for the reference implementation.
+- **Check for duplicate declarations before committing JS changes.** WKWebView fails silently (or with a SyntaxError) on duplicate `const`/`let`/`var` declarations across script blocks. After any edit to `main.js`, scan for redeclared names before committing.
+- **CSS variables must be defined before use.** Don't reference a `--var` in component styles unless it is defined in `:root` in `style.css`.
+
 ## Rust guidelines
 
 Follow the **Pragmatic Rust Guidelines** (Microsoft, MIT licence) when writing or reviewing Rust code:
