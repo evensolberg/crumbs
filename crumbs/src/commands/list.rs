@@ -12,7 +12,7 @@ use crate::{
 };
 
 /// Fields by which `crumbs list` output can be sorted.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SortKey {
     Id,
     Priority,
@@ -28,14 +28,14 @@ impl std::str::FromStr for SortKey {
     type Err = String;
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "id" => Ok(SortKey::Id),
-            "priority" => Ok(SortKey::Priority),
-            "status" => Ok(SortKey::Status),
-            "title" => Ok(SortKey::Title),
-            "type" => Ok(SortKey::Type),
-            "due" => Ok(SortKey::Due),
-            "created" => Ok(SortKey::Created),
-            "updated" => Ok(SortKey::Updated),
+            "id" => Ok(Self::Id),
+            "priority" => Ok(Self::Priority),
+            "status" => Ok(Self::Status),
+            "title" => Ok(Self::Title),
+            "type" => Ok(Self::Type),
+            "due" => Ok(Self::Due),
+            "created" => Ok(Self::Created),
+            "updated" => Ok(Self::Updated),
             other => Err(format!(
                 "unknown sort key {other:?}; valid: id, priority, status, title, type, due, created, updated"
             )),
@@ -44,18 +44,19 @@ impl std::str::FromStr for SortKey {
 }
 
 /// Sort a list of `(path, item)` pairs by the given key.
+#[must_use]
 pub fn sort_items(mut items: Vec<(PathBuf, Item)>, key: SortKey) -> Vec<(PathBuf, Item)> {
     match key {
         SortKey::Id => items.sort_by(|a, b| a.1.id.cmp(&b.1.id)),
         SortKey::Priority => items.sort_by_key(|(_, i)| i.priority),
         SortKey::Status => {
-            items.sort_by(|a, b| a.1.status.to_string().cmp(&b.1.status.to_string()))
+            items.sort_by(|a, b| a.1.status.to_string().cmp(&b.1.status.to_string()));
         }
         SortKey::Title => {
-            items.sort_by(|a, b| a.1.title.to_lowercase().cmp(&b.1.title.to_lowercase()))
+            items.sort_by(|a, b| a.1.title.to_lowercase().cmp(&b.1.title.to_lowercase()));
         }
         SortKey::Type => {
-            items.sort_by(|a, b| a.1.item_type.to_string().cmp(&b.1.item_type.to_string()))
+            items.sort_by(|a, b| a.1.item_type.to_string().cmp(&b.1.item_type.to_string()));
         }
         // Treat None as "no due date" — sort to the end, after all dated items.
         SortKey::Due => items.sort_by(|a, b| {
@@ -81,6 +82,10 @@ pub struct ListArgs {
     pub sort: Option<SortKey>,
 }
 
+/// # Errors
+///
+/// Returns an error if the status filter value is not a recognised [`Status`]
+/// variant, or if the store directory cannot be read.
 pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
     let ListArgs {
         status_filter,
@@ -159,10 +164,9 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
             Some(d) => format!(" due:{d}"),
             None => String::new(),
         };
-        let points_marker = match item.story_points {
-            Some(sp) => format!(" [{sp}sp]"),
-            None => String::new(),
-        };
+        let points_marker = item
+            .story_points
+            .map_or_else(String::new, |sp| format!(" [{sp}sp]"));
         let timer_marker = if active_start_ts(&item.description).is_some() {
             " ▶"
         } else {
