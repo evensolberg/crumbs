@@ -4,7 +4,7 @@ import {
   highlightSpecialChars, placeholder,
 } from './codemirror.bundle.js';
 import { EditorState, Compartment } from './codemirror.bundle.js';
-import { defaultKeymap, history, historyKeymap, indentWithTab, deleteLine, moveLineUp, moveLineDown } from './codemirror.bundle.js';
+import { defaultKeymap, history, historyKeymap, indentWithTab, moveLineUp, moveLineDown } from './codemirror.bundle.js';
 import { closeBrackets, closeBracketsKeymap, snippet } from './codemirror.bundle.js';
 import { search, searchKeymap, highlightSelectionMatches, openSearchPanel } from './codemirror.bundle.js';
 import { syntaxHighlighting, defaultHighlightStyle, HighlightStyle } from './codemirror.bundle.js';
@@ -184,7 +184,7 @@ const view = new EditorView({
         { key: 'Mod-s',          run: () => { flushAutosave(); return true; } },
         { key: 'Mod-b',          run: () => { wrapInline('**'); return true; } },
         { key: 'Mod-i',          run: () => { wrapInline('*');  return true; } },
-        { key: 'Mod-d',          run: deleteLine },
+        { key: 'Mod-d',          run: () => { insertDate(); return true; } },
         { key: 'Mod-ArrowUp',    run: moveLineUp },
         { key: 'Mod-ArrowDown',  run: moveLineDown },
         { key: 'Mod-0',          run: () => { applyHeading(0); return true; } },
@@ -894,6 +894,15 @@ function insertCodeBlock() {
   view.focus();
 }
 
+function insertDate() {
+  const today = new Date().toISOString().slice(0, 10);
+  const text = `[${today}]`;
+  const { from } = view.state.selection.main;
+  view.dispatch({ changes: { from, insert: text },
+                  selection: { anchor: from + text.length } });
+  view.focus();
+}
+
 function insertHR() {
   const { state } = view;
   const line = state.doc.lineAt(state.selection.main.from);
@@ -927,6 +936,7 @@ document.getElementById('fmt-code').addEventListener('click',      () => wrapInl
 document.getElementById('fmt-codeblock').addEventListener('click', () => insertCodeBlock());
 document.getElementById('fmt-quote').addEventListener('click',     () => toggleLinePrefix('> '));
 document.getElementById('fmt-hr').addEventListener('click',        () => insertHR());
+document.getElementById('fmt-date').addEventListener('click',      () => insertDate());
 document.getElementById('fmt-find').addEventListener('click',      () => { openSearchPanel(view); view.focus(); });
 fmtWrapBtn.addEventListener('click', toggleLineWrap);
 fmtWrapBtn.classList.toggle('active', lineWrapOn);
@@ -977,6 +987,33 @@ outlineToggleBtn.addEventListener('click', () => {
   outlinePanel.classList.toggle('hidden', !outlineVisible || previewMode);
   outlineToggleBtn.classList.toggle('active', outlineVisible);
   if (outlineVisible) renderOutline();
+});
+
+// ── Outline panel resize ───────────────────────────────────────────────────
+
+const outlineResizer = document.getElementById('outline-resizer');
+
+// Restore saved width on startup.
+const savedOutlineWidth = localStorage.getItem('outlinePanelWidth');
+if (savedOutlineWidth) outlinePanel.style.width = savedOutlineWidth + 'px';
+
+outlineResizer.addEventListener('mousedown', e => {
+  e.preventDefault();
+  const startX = e.clientX;
+  const startW = outlinePanel.offsetWidth;
+  outlineResizer.classList.add('dragging');
+  function onMove(e) {
+    const w = Math.max(80, Math.min(400, startW + (e.clientX - startX)));
+    outlinePanel.style.width = w + 'px';
+  }
+  function onUp() {
+    outlineResizer.classList.remove('dragging');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    localStorage.setItem('outlinePanelWidth', outlinePanel.offsetWidth);
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
 });
 
 function renderDetail(item) {
