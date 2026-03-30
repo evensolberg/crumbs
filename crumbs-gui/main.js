@@ -104,6 +104,7 @@ const detailEditorEl   = document.getElementById('detail-editor');
 const outlinePanel     = document.getElementById('outline-panel');
 const outlineList      = document.getElementById('outline-list');
 const outlineToggleBtn = document.getElementById('outline-toggle-btn');
+const outlineResizer   = document.getElementById('outline-resizer');
 const detailPreview    = document.getElementById('detail-preview');
 const previewBtn       = document.getElementById('preview-btn');
 const emojiBtn         = document.getElementById('emoji-btn');
@@ -212,6 +213,7 @@ const view = new EditorView({
 
 // Apply initial outline visibility
 outlinePanel.classList.toggle('hidden', !outlineVisible);
+outlineResizer.classList.toggle('hidden', !outlineVisible);
 outlineToggleBtn.classList.toggle('active', outlineVisible);
 
 // Toolbar action buttons
@@ -804,6 +806,7 @@ function setPreviewMode(on) {
   formatToolbar.classList.toggle('hidden', on);
   detailEditorEl.classList.toggle('hidden', on);
   outlinePanel.classList.toggle('hidden', on || !outlineVisible);
+  outlineResizer.classList.toggle('hidden', on || !outlineVisible);
   detailPreview.classList.toggle('hidden', !on);
   if (on) {
     detailPreview.innerHTML = marked.parse(expandEmoji(view.state.doc.toString()));
@@ -985,13 +988,12 @@ outlineToggleBtn.addEventListener('click', () => {
   outlineVisible = !outlineVisible;
   localStorage.setItem('outlineVisible', outlineVisible);
   outlinePanel.classList.toggle('hidden', !outlineVisible || previewMode);
+  outlineResizer.classList.toggle('hidden', !outlineVisible || previewMode);
   outlineToggleBtn.classList.toggle('active', outlineVisible);
   if (outlineVisible) renderOutline();
 });
 
 // ── Outline panel resize ───────────────────────────────────────────────────
-
-const outlineResizer = document.getElementById('outline-resizer');
 
 // Restore saved width on startup.
 const savedOutlineWidth = localStorage.getItem('outlinePanelWidth');
@@ -1000,17 +1002,19 @@ if (savedOutlineWidth) outlinePanel.style.width = savedOutlineWidth + 'px';
 outlineResizer.addEventListener('mousedown', e => {
   e.preventDefault();
   const startX = e.clientX;
-  const startW = outlinePanel.offsetWidth;
+  const startW = parseInt(outlinePanel.style.width, 10) || outlinePanel.offsetWidth;
   outlineResizer.classList.add('dragging');
-  function onMove(e) {
-    const w = Math.max(80, Math.min(400, startW + (e.clientX - startX)));
-    outlinePanel.style.width = w + 'px';
+  let currentW = startW;
+  function onMove(ev) {
+    // Resizer is left of the panel: drag left expands, drag right shrinks.
+    currentW = Math.max(80, Math.min(400, startW - (ev.clientX - startX)));
+    outlinePanel.style.width = currentW + 'px';
   }
   function onUp() {
     outlineResizer.classList.remove('dragging');
     document.removeEventListener('mousemove', onMove);
     document.removeEventListener('mouseup', onUp);
-    localStorage.setItem('outlinePanelWidth', outlinePanel.offsetWidth);
+    localStorage.setItem('outlinePanelWidth', currentW);
   }
   document.addEventListener('mousemove', onMove);
   document.addEventListener('mouseup', onUp);
@@ -1037,7 +1041,7 @@ function renderDetail(item) {
     const sel = view.state.selection;
     view.dispatch({
       changes: { from: 0, to: view.state.doc.length, insert: loadedBody },
-      selection: loadedBody.length >= sel.main.anchor ? sel : undefined,
+      selection: loadedBody.length >= sel.main.anchor && loadedBody.length >= sel.main.head ? sel : undefined,
     });
   }
   setPreviewMode(false);
