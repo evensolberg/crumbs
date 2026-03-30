@@ -2,12 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.17.1] - 2026-03-30
+## [unreleased]
+
+## [0.17.1] - 2026-03-29
+
+### Fix
+
+- GUI: rename 'Depends' → 'Depends on' in Properties panel
+- GUI: remove Unicode symbols from status dropdown (⊘ Blocked → Blocked, ◷ Deferred → Deferred)
+- GUI: remove redundant Status symbols section from help modal
+- GUI: every filter-btn click now fetches fresh data from disk
+- GUI: preserve editor cursor position when metadata is updated (P1)
+- GUI: outline resizer hidden in sync with panel at all toggle sites
+- GUI: outline resize direction corrected (drag left = expand)
+- GUI: use closure variable for localStorage width (avoids offsetWidth=0 when hidden)
+- GUI: guard both anchor and head in cursor-preservation bounds check
+
+### Feat
+
+- GUI: [date] toolbar button and Mod+D keymap inserts [YYYY-MM-DD] at cursor
+- GUI: resizable outline/headings panel with localStorage persistence
+
+## [0.17.0] - 2026-03-29
 
 ### Chore
 
 - Merge chrono imports and add append subcommand test
-- Bump version to 0.17.1
+- Fix all addressable clippy warnings across 27 files
 
 ### Docs
 
@@ -16,7 +37,7 @@ All notable changes to this project will be documented in this file.
 ### Feat
 
 - Add append subcommand and bold ID in create output
-- GUI polish, cursor fix, date button, resizable outline panel (#5)
+- Add `crumbs list --sort` with sort keys: id, priority, status, title, type, due, created, updated
 
 ### Fix
 
@@ -27,6 +48,8 @@ All notable changes to this project will be documented in this file.
 - Move output_label out of UpdateArgs into a run() parameter
 - Restore run() signature; add run_labeled() for append subcommand
 - Hide run_labeled from API docs; collapse version bumps in changelog
+- Fix import direction: `crumbs import --from` was moving items backwards
+- Use sort_by_cached_key for string-keyed sorts in list command
 
 ## [0.16.5] - 2026-03-16
 
