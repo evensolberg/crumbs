@@ -995,9 +995,14 @@ function renderDetail(item) {
   renderProps(item);
   detailActions.innerHTML = '';
   loadedBody = item.description ?? '';
-  view.dispatch({
-    changes: { from: 0, to: view.state.doc.length, insert: loadedBody },
-  });
+  const currentContent = view.state.doc.toString();
+  if (currentContent !== loadedBody) {
+    const sel = view.state.selection;
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: loadedBody },
+      selection: loadedBody.length >= sel.main.anchor ? sel : undefined,
+    });
+  }
   setPreviewMode(false);
   renderOutline();
   updateToolbarButtons();
@@ -1872,12 +1877,8 @@ for (const btn of document.querySelectorAll('.filter-btn')) {
     for (const b of document.querySelectorAll('.filter-btn')) b.classList.remove('active');
     btn.classList.add('active');
     filterStatus = btn.dataset.status;
-    if (filterStatus === 'closed' && !showClosedEl.checked) {
-      showClosedEl.checked = true;
-      await loadItems();
-    } else {
-      renderTable();
-    }
+    if (filterStatus === 'closed') showClosedEl.checked = true;
+    await loadItems();
   });
 }
 
