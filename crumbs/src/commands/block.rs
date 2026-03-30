@@ -7,6 +7,10 @@ use crate::{item::Status, store};
 
 /// `crumbs block <source> <targets>` — link source→targets and mark targets as blocked.
 /// `crumbs block <source> <targets> --remove` — unlink and reopen targets if no other blockers.
+///
+/// # Errors
+///
+/// Returns an error if any item cannot be found or the store cannot be updated.
 pub fn run(dir: &Path, source_id: &str, target_ids: &[String], remove: bool) -> Result<()> {
     let (src_path, mut src_item) = store::find_by_id(dir, source_id)?
         .ok_or_else(|| anyhow::anyhow!("no item found with id: {source_id}"))?;
@@ -54,6 +58,10 @@ pub fn run(dir: &Path, source_id: &str, target_ids: &[String], remove: bool) -> 
 }
 
 /// `crumbs block --status <id>` — directly set an item's status to blocked (no link).
+///
+/// # Errors
+///
+/// Returns an error if the item is not found, already blocked, or the store cannot be updated.
 pub fn run_set(dir: &Path, id: &str) -> Result<()> {
     let (path, mut item) = store::find_by_id(dir, id)?
         .ok_or_else(|| anyhow::anyhow!("no item found with id: {id}"))?;

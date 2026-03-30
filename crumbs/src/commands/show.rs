@@ -19,14 +19,14 @@ fn total_tracked_secs(description: &str) -> i64 {
             {
                 current_start = Some(dt);
             }
-        } else if t.starts_with("[stop]") {
-            if let Some(start_dt) = current_start.take() {
-                let rest = t.trim_start_matches("[stop]").trim();
-                if let Ok(stop_dt) =
-                    NaiveDateTime::parse_from_str(&rest[..rest.len().min(19)], "%Y-%m-%d %H:%M:%S")
-                {
-                    total += (stop_dt - start_dt).num_seconds().max(0);
-                }
+        } else if t.starts_with("[stop]")
+            && let Some(start_dt) = current_start.take()
+        {
+            let rest = t.trim_start_matches("[stop]").trim();
+            if let Ok(stop_dt) =
+                NaiveDateTime::parse_from_str(&rest[..rest.len().min(19)], "%Y-%m-%d %H:%M:%S")
+            {
+                total += (stop_dt - start_dt).num_seconds().max(0);
             }
         }
     }
@@ -99,14 +99,13 @@ fn show_one(dir: &Path, id: &str) -> Result<()> {
                 let live_secs = active_ts
                     .as_deref()
                     .and_then(|ts| NaiveDateTime::parse_from_str(ts, "%Y-%m-%d %H:%M:%S").ok())
-                    .map(|start| {
+                    .map_or(0, |start| {
                         Local::now()
                             .naive_local()
                             .signed_duration_since(start)
                             .num_seconds()
                             .max(0)
-                    })
-                    .unwrap_or(0);
+                    });
                 let tracked = total_tracked_secs(&item.description) + live_secs;
                 if tracked > 0 {
                     let running_marker = if active_ts.is_some() {
@@ -129,6 +128,9 @@ fn show_one(dir: &Path, id: &str) -> Result<()> {
     Ok(())
 }
 
+/// # Errors
+///
+/// Returns an error if any item cannot be found or the store cannot be read.
 pub fn run(dir: &Path, ids: &[String]) -> Result<()> {
     for (i, id) in ids.iter().enumerate() {
         if i > 0 {

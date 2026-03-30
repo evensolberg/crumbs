@@ -5,6 +5,10 @@ use anyhow::Result;
 use crate::{item::Item, store};
 
 /// Serialize `items` to the requested format string without any I/O.
+///
+/// # Errors
+///
+/// Returns an error if serialization fails or `format` is unrecognized.
 pub fn items_to_string(items: &[Item], format: &str) -> Result<String> {
     match format {
         "json" => Ok(serde_json::to_string_pretty(items)?),
@@ -51,11 +55,18 @@ pub fn items_to_string(items: &[Item], format: &str) -> Result<String> {
 }
 
 /// Load all items from `dir` and serialize them to the requested format.
+///
+/// # Errors
+///
+/// Returns an error if items cannot be loaded or serialization fails.
 pub fn to_string(dir: &Path, format: &str) -> Result<String> {
     let items: Vec<_> = store::load_all(dir)?.into_iter().map(|(_, i)| i).collect();
     items_to_string(&items, format)
 }
 
+/// # Errors
+///
+/// Returns an error if export fails or the output file cannot be written.
 pub fn run(dir: &Path, format: &str, output: Option<&Path>) -> Result<()> {
     let content = to_string(dir, format)?;
     match output {

@@ -25,6 +25,10 @@ pub struct UpdateArgs {
 }
 
 /// Update an item. Prints `"Updated <id>"` on success.
+///
+/// # Errors
+///
+/// Returns an error if the item is not found or the store cannot be updated.
 pub fn run(dir: &Path, id: &str, args: UpdateArgs) -> Result<()> {
     run_labeled(dir, id, args, None)
 }
@@ -91,8 +95,7 @@ pub fn run_labeled(
                 let trimmed = body.trim_start_matches('\n');
                 trimmed
                     .split_once('\n')
-                    .map(|(_, rest)| rest.trim_matches('\n'))
-                    .unwrap_or("")
+                    .map_or("", |(_, rest)| rest.trim_matches('\n'))
                     .to_string()
             };
             // Build the new description:

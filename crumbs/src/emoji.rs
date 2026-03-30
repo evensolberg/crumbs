@@ -7,6 +7,7 @@
 /// skipped — their contents pass through unchanged.
 ///
 /// Unknown shortcodes (`:notreal:`) are preserved as-is.
+#[must_use]
 pub fn expand_shortcodes(text: &str) -> std::borrow::Cow<'_, str> {
     if !text.contains(':') {
         return std::borrow::Cow::Borrowed(text);
@@ -99,7 +100,7 @@ pub fn expand_shortcodes(text: &str) -> std::borrow::Cow<'_, str> {
                 j += 1;
             }
             let name_len = j - name_start;
-            if name_len >= 1 && name_len <= 64 && j < len && chars[j] == ':' {
+            if (1..=64).contains(&name_len) && j < len && chars[j] == ':' {
                 // Valid shortcode syntax — attempt lookup.
                 let name: String = chars[name_start..j].iter().collect();
                 if let Some(emoji) = emojis::get_by_shortcode(&name) {
@@ -134,7 +135,7 @@ pub fn expand_shortcodes(text: &str) -> std::borrow::Cow<'_, str> {
 }
 
 #[inline]
-fn is_shortcode_char(c: char) -> bool {
+const fn is_shortcode_char(c: char) -> bool {
     c.is_ascii_alphanumeric() || c == '_' || c == '+' || c == '-'
 }
 

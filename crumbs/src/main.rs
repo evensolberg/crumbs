@@ -136,7 +136,7 @@ enum Command {
     },
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
-    /// Start a timer for an item (appends [start] entry, sets status to in_progress)
+    /// Start a timer for an item (appends `[start]` entry, sets status to `in_progress`)
     Start {
         id: String,
         /// Optional comment to record with the start entry
@@ -227,7 +227,7 @@ enum Command {
         /// Output format: csv, json, or toon
         #[arg(short, long, default_value = "json")]
         format: String,
-        /// Write output to a file; omit value for crumbs_export.<ext> (default: stdout)
+        /// Write output to a file; omit value for `crumbs_export.<ext>` (default: stdout)
         #[arg(short, long, num_args = 0..=1, default_missing_value = "crumbs_export")]
         output: Option<PathBuf>,
     },
@@ -279,7 +279,7 @@ fn main() -> Result<()> {
     }
 
     match cli.command {
-        Command::Init { .. } => unreachable!(),
+        Command::Init { .. } | Command::Completions { .. } => unreachable!(),
         Command::Create {
             title,
             item_type,
@@ -471,7 +471,6 @@ fn main() -> Result<()> {
             });
             commands::export::run(&dir, &format, output.as_deref())?;
         }
-        Command::Completions { .. } => unreachable!(),
     }
 
     Ok(())

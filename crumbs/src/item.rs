@@ -104,6 +104,7 @@ pub struct Item {
 
 pub const FIBONACCI: &[u8] = &[1, 2, 3, 5, 8, 13, 21];
 
+#[must_use]
 pub fn is_fibonacci(n: u8) -> bool {
     FIBONACCI.contains(&n)
 }

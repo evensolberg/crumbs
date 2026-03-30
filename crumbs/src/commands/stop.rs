@@ -5,6 +5,7 @@ use chrono::{Local, NaiveDateTime};
 
 use crate::store;
 
+#[must_use]
 pub fn format_elapsed(secs: i64) -> String {
     if secs < 60 {
         format!("{secs}s")
@@ -15,6 +16,10 @@ pub fn format_elapsed(secs: i64) -> String {
     }
 }
 
+/// # Errors
+///
+/// Returns an error if the item is not found, no active timer exists, or the store cannot be
+/// updated.
 pub fn run(dir: &Path, id: &str, comment: Option<&str>) -> Result<()> {
     let (path, mut item) = store::find_by_id(dir, id)?
         .ok_or_else(|| anyhow::anyhow!("no item found with id: {id}"))?;
@@ -28,8 +33,7 @@ pub fn run(dir: &Path, id: &str, comment: Option<&str>) -> Result<()> {
         let trimmed = body.trim_start_matches('\n');
         trimmed
             .split_once('\n')
-            .map(|(_, rest)| rest.trim_matches('\n'))
-            .unwrap_or("")
+            .map_or("", |(_, rest)| rest.trim_matches('\n'))
             .to_string()
     };
 

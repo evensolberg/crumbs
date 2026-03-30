@@ -5,6 +5,9 @@ use chrono::Local;
 
 use crate::{item::Status, store};
 
+/// # Errors
+///
+/// Returns an error if the item is not found or the store cannot be updated.
 pub fn run(dir: &Path, id: &str, reason: Option<String>) -> Result<()> {
     match store::find_by_id(dir, id)? {
         None => bail!("no item found with id: {id}"),

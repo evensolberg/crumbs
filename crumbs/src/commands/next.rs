@@ -5,6 +5,9 @@ use chrono::Local;
 
 use crate::{item::Status, store};
 
+/// # Errors
+///
+/// Returns an error if the store cannot be read.
 pub fn run(dir: &Path) -> Result<()> {
     let today = Local::now().date_naive();
     let items = store::load_all(dir)?;
@@ -15,10 +18,10 @@ pub fn run(dir: &Path) -> Result<()> {
                 return false;
             }
             // Skip deferred items with a future until date.
-            if item.status == Status::Deferred {
-                if let Some(due) = item.due {
-                    return due <= today;
-                }
+            if item.status == Status::Deferred
+                && let Some(due) = item.due
+            {
+                return due <= today;
             }
             true
         })

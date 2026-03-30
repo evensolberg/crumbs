@@ -7,6 +7,7 @@ use crate::{item::Status, store};
 
 /// Returns the start timestamp ("YYYY-MM-DD HH:MM:SS") if an unmatched
 /// `[start]` entry exists in the description.
+#[must_use]
 pub fn active_start_ts(description: &str) -> Option<String> {
     let mut last: Option<String> = None;
     for line in description.lines() {
@@ -21,6 +22,10 @@ pub fn active_start_ts(description: &str) -> Option<String> {
     last
 }
 
+/// # Errors
+///
+/// Returns an error if the item is not found, a timer is already active, or the store cannot be
+/// updated.
 pub fn run(dir: &Path, id: &str, comment: Option<&str>) -> Result<()> {
     let (path, mut item) = store::find_by_id(dir, id)?
         .ok_or_else(|| anyhow::anyhow!("no item found with id: {id}"))?;
@@ -34,8 +39,7 @@ pub fn run(dir: &Path, id: &str, comment: Option<&str>) -> Result<()> {
         let trimmed = body.trim_start_matches('\n');
         trimmed
             .split_once('\n')
-            .map(|(_, rest)| rest.trim_matches('\n'))
-            .unwrap_or("")
+            .map_or("", |(_, rest)| rest.trim_matches('\n'))
             .to_string()
     };
 

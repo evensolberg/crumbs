@@ -10,6 +10,10 @@ use crate::item::Item;
 ///
 /// Writes to a sibling temp file then renames, so a mid-write crash or kill
 /// leaves the original file intact.
+///
+/// # Errors
+///
+/// Returns an error if the temp file cannot be created, written, or renamed.
 pub fn atomic_write(path: &Path, content: &str) -> Result<()> {
     let dir = path.parent().context("item path has no parent directory")?;
     let mut tmp = tempfile::NamedTempFile::new_in(dir).context("create temp file")?;
@@ -23,6 +27,10 @@ pub fn atomic_write(path: &Path, content: &str) -> Result<()> {
 }
 
 /// Rewrite the YAML frontmatter of an existing item file, preserving the body verbatim.
+///
+/// # Errors
+///
+/// Returns an error if the item cannot be serialized or the file cannot be written.
 pub fn rewrite_frontmatter(path: &Path, item: &Item) -> Result<()> {
     let mut fm = item.clone();
     fm.description.clear();
@@ -35,6 +43,7 @@ pub fn rewrite_frontmatter(path: &Path, item: &Item) -> Result<()> {
     atomic_write(path, &format!("---\n{frontmatter}---\n{body}"))
 }
 
+#[must_use]
 pub fn item_path(dir: &Path, item: &Item) -> PathBuf {
     let slug = slugify!(&item.title, max_length = 60);
     dir.join(format!("{slug}.md"))
@@ -43,10 +52,13 @@ pub fn item_path(dir: &Path, item: &Item) -> PathBuf {
 /// Build the fallback path (slug + ID suffix) used when the base slug collides.
 fn fallback_path(dir: &Path, item: &Item) -> PathBuf {
     let slug = slugify!(&item.title, max_length = 50);
-    let id_suffix = item.id.split_once('-').map(|x| x.1).unwrap_or(&item.id);
+    let id_suffix = item.id.split_once('-').map_or(item.id.as_str(), |x| x.1);
     dir.join(format!("{slug}-{id_suffix}.md"))
 }
 
+/// # Errors
+///
+/// Returns an error if the item cannot be serialized or the file cannot be created.
 pub fn write_item(dir: &Path, item: &Item) -> Result<PathBuf> {
     // description lives in the markdown body, not the frontmatter.
     // Clear it before YAML serialization so it never leaks into the front matter.
@@ -89,11 +101,17 @@ pub fn write_item(dir: &Path, item: &Item) -> Result<PathBuf> {
     Ok(path)
 }
 
+/// # Errors
+///
+/// Returns an error if the file cannot be read or parsed.
 pub fn read_item(path: &Path) -> Result<Item> {
     let raw = std::fs::read_to_string(path).context("read item file")?;
     parse_item(&raw).context("parse item")
 }
 
+/// # Errors
+///
+/// Returns an error if the raw string lacks frontmatter delimiters or contains invalid YAML.
 pub fn parse_item(raw: &str) -> Result<Item> {
     let (fm, body) = raw
         .strip_prefix("---\n")
@@ -119,6 +137,9 @@ pub fn parse_item(raw: &str) -> Result<Item> {
     Ok(item)
 }
 
+/// # Errors
+///
+/// Returns an error if the directory cannot be read.
 pub fn load_all(dir: &Path) -> Result<Vec<(PathBuf, Item)>> {
     let mut items = Vec::new();
     let mut skipped = 0usize;
@@ -142,6 +163,9 @@ pub fn load_all(dir: &Path) -> Result<Vec<(PathBuf, Item)>> {
     Ok(items)
 }
 
+/// # Errors
+///
+/// Returns an error if items cannot be loaded or the CSV index cannot be written.
 pub fn reindex(dir: &Path) -> Result<()> {
     let items = load_all(dir)?;
     let index_path = dir.join("index.csv");
@@ -179,6 +203,9 @@ pub fn reindex(dir: &Path) -> Result<()> {
     Ok(())
 }
 
+/// # Errors
+///
+/// Returns an error if the store cannot be read.
 pub fn find_by_id(dir: &Path, id: &str) -> Result<Option<(PathBuf, Item)>> {
     let items = load_all(dir)?;
     let id_lower = id.to_lowercase();
