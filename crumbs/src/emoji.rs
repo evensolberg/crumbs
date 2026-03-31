@@ -60,7 +60,7 @@ pub fn expand_shortcodes(text: &str) -> std::borrow::Cow<'_, str> {
                 result.push_str(&text[..char_byte_offset(&chars, i)]);
                 modified = true;
             }
-            i = skip_inline_code_span(&chars, i, len, &mut result);
+            i = skip_inline_code_span(&chars, i, &mut result);
             continue;
         }
 
@@ -107,8 +107,10 @@ pub fn expand_shortcodes(text: &str) -> std::borrow::Cow<'_, str> {
 }
 
 /// Emit an inline backtick code span starting at `chars[i]` into `result`.
-/// Returns the index immediately after the closing ticks.
-fn skip_inline_code_span(chars: &[char], mut i: usize, len: usize, result: &mut String) -> usize {
+/// Returns the index immediately after the closing ticks, or `chars.len()` if
+/// no matching closing delimiter is found.
+fn skip_inline_code_span(chars: &[char], mut i: usize, result: &mut String) -> usize {
+    let len = chars.len();
     let mut tick_count = 0;
     while i + tick_count < len && chars[i + tick_count] == '`' {
         tick_count += 1;
