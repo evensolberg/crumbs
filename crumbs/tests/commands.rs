@@ -4,6 +4,7 @@ use tempfile::tempdir;
 
 use crumbs::{
     commands,
+    commands::create::CreateArgs,
     commands::list::{ListArgs, SortKey},
     commands::update::UpdateArgs,
     item::{Item, ItemType, Status},
@@ -15,14 +16,10 @@ use crumbs::{
 fn create_task(dir: &std::path::Path, title: &str) -> String {
     commands::create::run(
         dir,
-        title.to_string(),
-        ItemType::Task,
-        2,
-        vec![],
-        String::new(),
-        vec![],
-        None,
-        None,
+        CreateArgs {
+            title: title.to_string(),
+            ..Default::default()
+        },
     )
     .unwrap();
 
@@ -33,6 +30,31 @@ fn create_task(dir: &std::path::Path, title: &str) -> String {
         .unwrap()
         .1
         .id
+}
+
+// ── create (CreateArgs) ───────────────────────────────────────────────────────
+
+#[test]
+fn create_run_accepts_create_args_struct() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("ts".to_string())).unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "Test via CreateArgs".to_string(),
+            item_type: ItemType::Task,
+            priority: 2,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let items = store::load_all(&d).unwrap();
+    assert!(
+        items
+            .into_iter()
+            .any(|(_, i)| i.title == "Test via CreateArgs")
+    );
 }
 
 // ── init ─────────────────────────────────────────────────────────────────────
@@ -61,14 +83,10 @@ fn create_produces_md_file() {
     let dir = tempdir().unwrap();
     commands::create::run(
         dir.path(),
-        "My Task".to_string(),
-        ItemType::Task,
-        2,
-        vec![],
-        String::new(),
-        vec![],
-        None,
-        None,
+        CreateArgs {
+            title: "My Task".to_string(),
+            ..Default::default()
+        },
     )
     .unwrap();
     let md_files: Vec<_> = std::fs::read_dir(dir.path())
@@ -84,14 +102,13 @@ fn create_writes_correct_frontmatter() {
     let dir = tempdir().unwrap();
     commands::create::run(
         dir.path(),
-        "Frontmatter Check".to_string(),
-        ItemType::Bug,
-        1,
-        vec!["project/foo".to_string()],
-        String::new(),
-        vec![],
-        None,
-        None,
+        CreateArgs {
+            title: "Frontmatter Check".to_string(),
+            item_type: ItemType::Bug,
+            priority: 1,
+            tags: vec!["project/foo".to_string()],
+            ..Default::default()
+        },
     )
     .unwrap();
     let items = store::load_all(dir.path()).unwrap();
@@ -110,14 +127,10 @@ fn create_also_writes_index_csv() {
     let dir = tempdir().unwrap();
     commands::create::run(
         dir.path(),
-        "CSV Test".to_string(),
-        ItemType::Task,
-        2,
-        vec![],
-        String::new(),
-        vec![],
-        None,
-        None,
+        CreateArgs {
+            title: "CSV Test".to_string(),
+            ..Default::default()
+        },
     )
     .unwrap();
     assert!(dir.path().join("index.csv").exists());
@@ -128,14 +141,11 @@ fn create_with_description_stores_body() {
     let dir = tempdir().unwrap();
     commands::create::run(
         dir.path(),
-        "Described Task".to_string(),
-        ItemType::Task,
-        2,
-        vec![],
-        "This is more detail.".to_string(),
-        vec![],
-        None,
-        None,
+        CreateArgs {
+            title: "Described Task".to_string(),
+            description: "This is more detail.".to_string(),
+            ..Default::default()
+        },
     )
     .unwrap();
     let items = store::load_all(dir.path()).unwrap();
@@ -148,14 +158,11 @@ fn create_with_description_appears_in_md_body() {
     let dir = tempdir().unwrap();
     commands::create::run(
         dir.path(),
-        "Body Task".to_string(),
-        ItemType::Task,
-        2,
-        vec![],
-        "Extra context here.".to_string(),
-        vec![],
-        None,
-        None,
+        CreateArgs {
+            title: "Body Task".to_string(),
+            description: "Extra context here.".to_string(),
+            ..Default::default()
+        },
     )
     .unwrap();
     let md: Vec<_> = std::fs::read_dir(dir.path())
@@ -172,14 +179,11 @@ fn description_not_in_frontmatter() {
     let dir = tempdir().unwrap();
     commands::create::run(
         dir.path(),
-        "Frontmatter Check".to_string(),
-        ItemType::Task,
-        2,
-        vec![],
-        "Should be body only.".to_string(),
-        vec![],
-        None,
-        None,
+        CreateArgs {
+            title: "Frontmatter Check".to_string(),
+            description: "Should be body only.".to_string(),
+            ..Default::default()
+        },
     )
     .unwrap();
     let md: Vec<_> = std::fs::read_dir(dir.path())
@@ -204,14 +208,10 @@ fn create_without_description_has_empty_description() {
     let dir = tempdir().unwrap();
     commands::create::run(
         dir.path(),
-        "No Desc".to_string(),
-        ItemType::Task,
-        2,
-        vec![],
-        String::new(),
-        vec![],
-        None,
-        None,
+        CreateArgs {
+            title: "No Desc".to_string(),
+            ..Default::default()
+        },
     )
     .unwrap();
     let items = store::load_all(dir.path()).unwrap();
@@ -357,26 +357,19 @@ fn list_tag_filter_only_shows_matching() {
     let dir = tempdir().unwrap();
     commands::create::run(
         dir.path(),
-        "Tagged".to_string(),
-        ItemType::Task,
-        2,
-        vec!["project/x".to_string()],
-        String::new(),
-        vec![],
-        None,
-        None,
+        CreateArgs {
+            title: "Tagged".to_string(),
+            tags: vec!["project/x".to_string()],
+            ..Default::default()
+        },
     )
     .unwrap();
     commands::create::run(
         dir.path(),
-        "Untagged".to_string(),
-        ItemType::Task,
-        2,
-        vec![],
-        String::new(),
-        vec![],
-        None,
-        None,
+        CreateArgs {
+            title: "Untagged".to_string(),
+            ..Default::default()
+        },
     )
     .unwrap();
 
@@ -562,14 +555,11 @@ fn create_with_dependencies_stores_them() {
     let dep_id = create_task(dir.path(), "Dep Task");
     commands::create::run(
         dir.path(),
-        "Dependent Task".to_string(),
-        ItemType::Task,
-        2,
-        vec![],
-        String::new(),
-        vec![dep_id.clone()],
-        None,
-        None,
+        CreateArgs {
+            title: "Dependent Task".to_string(),
+            dependencies: vec![dep_id.clone()],
+            ..Default::default()
+        },
     )
     .unwrap();
     let items = store::load_all(dir.path()).unwrap();
@@ -745,14 +735,11 @@ fn update_title_preserves_existing_description() {
     let dir = tempdir().unwrap();
     commands::create::run(
         dir.path(),
-        "Old Title".to_string(),
-        ItemType::Task,
-        2,
-        vec![],
-        "Body text to keep.".to_string(),
-        vec![],
-        None,
-        None,
+        CreateArgs {
+            title: "Old Title".to_string(),
+            description: "Body text to keep.".to_string(),
+            ..Default::default()
+        },
     )
     .unwrap();
     let items = store::load_all(dir.path()).unwrap();
@@ -827,14 +814,11 @@ fn emoji_shortcodes_expanded_on_create() {
     let dir = tempdir().unwrap();
     commands::create::run(
         dir.path(),
-        "Emoji test".to_string(),
-        ItemType::Task,
-        2,
-        vec![],
-        ":tada:".to_string(),
-        vec![],
-        None,
-        None,
+        CreateArgs {
+            title: "Emoji test".to_string(),
+            description: ":tada:".to_string(),
+            ..Default::default()
+        },
     )
     .unwrap();
     let items = store::load_all(dir.path()).unwrap();
@@ -988,26 +972,20 @@ fn sort_by_type_alphabetical() {
     let dir = tempdir().unwrap();
     commands::create::run(
         dir.path(),
-        "A bug".to_string(),
-        ItemType::Bug,
-        2,
-        vec![],
-        String::new(),
-        vec![],
-        None,
-        None,
+        CreateArgs {
+            title: "A bug".to_string(),
+            item_type: ItemType::Bug,
+            ..Default::default()
+        },
     )
     .unwrap();
     commands::create::run(
         dir.path(),
-        "A feature".to_string(),
-        ItemType::Feature,
-        2,
-        vec![],
-        String::new(),
-        vec![],
-        None,
-        None,
+        CreateArgs {
+            title: "A feature".to_string(),
+            item_type: ItemType::Feature,
+            ..Default::default()
+        },
     )
     .unwrap();
     let items = store::load_all(dir.path()).unwrap();

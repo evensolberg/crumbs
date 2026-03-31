@@ -10,23 +10,39 @@ use crate::{
     store, store_config,
 };
 
+pub struct CreateArgs {
+    pub title: String,
+    pub item_type: ItemType,
+    pub priority: u8,
+    pub tags: Vec<String>,
+    pub description: String,
+    pub dependencies: Vec<String>,
+    pub due: Option<NaiveDate>,
+    pub story_points: Option<u8>,
+}
+
+impl Default for CreateArgs {
+    fn default() -> Self {
+        Self {
+            title: String::new(),
+            item_type: ItemType::Task,
+            priority: 2,
+            tags: Vec::new(),
+            description: String::new(),
+            dependencies: Vec::new(),
+            due: None,
+            story_points: None,
+        }
+    }
+}
+
 /// # Errors
 ///
 /// Returns an error if the store cannot be read, a unique ID cannot be generated,
 /// or the new item cannot be written.
-pub fn run(
-    dir: &Path,
-    title: String,
-    item_type: ItemType,
-    priority: u8,
-    tags: Vec<String>,
-    description: String,
-    dependencies: Vec<String>,
-    due: Option<NaiveDate>,
-    story_points: Option<u8>,
-) -> Result<()> {
-    let description = crate::emoji::expand_shortcodes(&description).into_owned();
-    if let Some(sp) = story_points
+pub fn run(dir: &Path, args: CreateArgs) -> Result<()> {
+    let description = crate::emoji::expand_shortcodes(&args.description).into_owned();
+    if let Some(sp) = args.story_points
         && !is_fibonacci(sp)
     {
         anyhow::bail!("story_points must be a Fibonacci number (1, 2, 3, 5, 8, 13, 21); got {sp}");
@@ -43,20 +59,20 @@ pub fn run(
         id: id::generate(&prefix, |candidate| {
             existing_ids.contains(&candidate.to_lowercase())
         })?,
-        title,
+        title: args.title,
         status: Status::Open,
-        item_type,
-        priority,
-        tags,
+        item_type: args.item_type,
+        priority: args.priority,
+        tags: args.tags,
         created: today,
         updated: today,
         closed_reason: String::new(),
-        dependencies,
+        dependencies: args.dependencies,
         blocks: Vec::new(),
         blocked_by: Vec::new(),
-        due,
+        due: args.due,
         description,
-        story_points,
+        story_points: args.story_points,
     };
     let path = store::write_item(dir, &item)?;
     store::reindex(dir)?;
