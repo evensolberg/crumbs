@@ -6,6 +6,7 @@ use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::{Shell, generate};
 use crumbs::{
     commands,
+    commands::create::CreateArgs,
     commands::list::{ListArgs, SortKey},
     config,
     item::ItemType,
@@ -290,19 +291,18 @@ fn main() -> Result<()> {
             due,
             points,
         } => {
-            let item_type: ItemType = item_type.parse().map_err(|e: String| anyhow::anyhow!(e))?;
-            let tags = tags.map(|t| split_csv(&t)).unwrap_or_default();
-            let dependencies = depends.map(|d| split_csv(&d)).unwrap_or_default();
             commands::create::run(
                 &dir,
-                title,
-                item_type,
-                priority,
-                tags,
-                message.unwrap_or_default(),
-                dependencies,
-                due,
-                points,
+                CreateArgs {
+                    title,
+                    item_type: item_type.parse().map_err(|e: String| anyhow::anyhow!(e))?,
+                    priority,
+                    tags: tags.map(|t| split_csv(&t)).unwrap_or_default(),
+                    description: message.unwrap_or_default(),
+                    dependencies: depends.map(|d| split_csv(&d)).unwrap_or_default(),
+                    due,
+                    story_points: points,
+                },
             )?;
         }
         Command::List {

@@ -2,10 +2,11 @@ use std::path::PathBuf;
 
 use crumbs::{
     commands::{
-        clean, close, create, delete, export, link, start, stop, update, update::UpdateArgs,
+        clean, close, create, create::CreateArgs, delete, export, link, start, stop, update,
+        update::UpdateArgs,
     },
     config::global_dir,
-    item::{Item, ItemType, Status},
+    item::{Item, Status},
     store, store_config,
 };
 
@@ -278,14 +279,10 @@ pub fn create_item(dir: String, title: String) -> Result<(), String> {
     let path = to_path(&dir);
     create::run(
         &path,
-        title,
-        ItemType::Task,
-        2,
-        vec![],
-        String::new(),
-        vec![],
-        None,
-        None,
+        CreateArgs {
+            title,
+            ..Default::default()
+        },
     )
     .map_err(|e| e.to_string())
 }
