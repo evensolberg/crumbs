@@ -43,8 +43,6 @@ fn create_run_accepts_create_args_struct() {
         &d,
         CreateArgs {
             title: "Test via CreateArgs".to_string(),
-            item_type: ItemType::Task,
-            priority: 2,
             ..Default::default()
         },
     )
