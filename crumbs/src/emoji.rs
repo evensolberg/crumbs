@@ -56,39 +56,11 @@ pub fn expand_shortcodes(text: &str) -> std::borrow::Cow<'_, str> {
 
         // Skip inline code spans delimited by backticks.
         if chars[i] == '`' {
-            // Count opening backticks.
-            let mut tick_count = 0;
-            while i + tick_count < len && chars[i + tick_count] == '`' {
-                tick_count += 1;
-            }
             if !modified {
                 result.push_str(&text[..char_byte_offset(&chars, i)]);
                 modified = true;
             }
-            // Emit opening ticks.
-            for _ in 0..tick_count {
-                result.push('`');
-            }
-            i += tick_count;
-            // Emit content until matching closing ticks.
-            while i < len {
-                if chars[i] == '`' {
-                    let mut close_count = 0;
-                    while i + close_count < len && chars[i + close_count] == '`' {
-                        close_count += 1;
-                    }
-                    for _ in 0..close_count {
-                        result.push('`');
-                    }
-                    i += close_count;
-                    if close_count == tick_count {
-                        break;
-                    }
-                } else {
-                    result.push(chars[i]);
-                    i += 1;
-                }
-            }
+            i = skip_inline_code_span(&chars, i, len, &mut result);
             continue;
         }
 
@@ -132,6 +104,39 @@ pub fn expand_shortcodes(text: &str) -> std::borrow::Cow<'_, str> {
     } else {
         std::borrow::Cow::Borrowed(text)
     }
+}
+
+/// Emit an inline backtick code span starting at `chars[i]` into `result`.
+/// Returns the index immediately after the closing ticks.
+fn skip_inline_code_span(chars: &[char], i: usize, len: usize, result: &mut String) -> usize {
+    let mut i = i;
+    let mut tick_count = 0;
+    while i + tick_count < len && chars[i + tick_count] == '`' {
+        tick_count += 1;
+    }
+    for _ in 0..tick_count {
+        result.push('`');
+    }
+    i += tick_count;
+    while i < len {
+        if chars[i] == '`' {
+            let mut close_count = 0;
+            while i + close_count < len && chars[i + close_count] == '`' {
+                close_count += 1;
+            }
+            for _ in 0..close_count {
+                result.push('`');
+            }
+            i += close_count;
+            if close_count == tick_count {
+                break;
+            }
+        } else {
+            result.push(chars[i]);
+            i += 1;
+        }
+    }
+    i
 }
 
 #[inline]

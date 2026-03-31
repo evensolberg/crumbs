@@ -245,6 +245,183 @@ fn split_csv(s: &str) -> Vec<String> {
     s.split(',').map(|p| p.trim().to_string()).collect()
 }
 
+/// Dispatch commands whose CLI args require non-trivial parsing before calling into the library.
+fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()> {
+    match command {
+        Command::Create {
+            title,
+            item_type,
+            priority,
+            tags,
+            message,
+            depends,
+            due,
+            points,
+        } => {
+            commands::create::run(
+                dir,
+                CreateArgs {
+                    title,
+                    item_type: item_type.parse().map_err(|e: String| anyhow::anyhow!(e))?,
+                    priority,
+                    tags: tags.map(|t| split_csv(&t)).unwrap_or_default(),
+                    description: message.unwrap_or_default(),
+                    dependencies: depends.map(|d| split_csv(&d)).unwrap_or_default(),
+                    due,
+                    story_points: points,
+                },
+            )?;
+        }
+        Command::List {
+            status,
+            tag,
+            priority,
+            r#type,
+            all,
+            verbose,
+            sort,
+        } => {
+            let type_filter = r#type
+                .as_deref()
+                .map(|t| {
+                    t.parse::<ItemType>()
+                        .map_err(|e: String| anyhow::anyhow!(e))
+                })
+                .transpose()?;
+            let sort_key: SortKey = sort.parse().map_err(|e: String| anyhow::anyhow!(e))?;
+            commands::list::run(
+                dir,
+                ListArgs {
+                    status_filter: status,
+                    tag_filter: tag,
+                    priority_filter: priority,
+                    type_filter,
+                    all,
+                    verbose,
+                    sort: Some(sort_key),
+                },
+            )?;
+        }
+        Command::Update {
+            id,
+            title,
+            status,
+            priority,
+            tags,
+            item_type,
+            depends,
+            due,
+            clear_due,
+            message,
+            append,
+            points,
+            clear_points,
+        } => {
+            // --append wins over --message when both are supplied.
+            let (final_message, final_append) = match (message, append) {
+                (_, Some(a)) => (Some(a), true),
+                (m, None) => (m, false),
+            };
+            commands::update::run(
+                dir,
+                &id,
+                commands::update::UpdateArgs {
+                    status,
+                    priority,
+                    tags: tags.map(|t| split_csv(&t)),
+                    item_type,
+                    dependencies: depends.map(|d| split_csv(&d)),
+                    due,
+                    clear_due,
+                    message: final_message,
+                    append: final_append,
+                    story_points: points,
+                    clear_points,
+                    title,
+                },
+            )?;
+        }
+        _ => unreachable!(),
+    }
+    Ok(())
+}
+
+fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
+    match command {
+        Command::Init { .. } | Command::Completions { .. } => unreachable!(),
+        cmd @ (Command::Create { .. } | Command::List { .. } | Command::Update { .. }) => {
+            run_structured_commands(dir, cmd)?;
+        }
+        Command::Show { ids } => commands::show::run(dir, &ids)?,
+        Command::Edit { id } => commands::edit::run(dir, &id)?,
+        Command::Stats => commands::stats::run(dir)?,
+        Command::Next => commands::next::run(dir)?,
+        Command::Body { id } => commands::body::run(dir, &id)?,
+        Command::Append { id, text } => commands::update::run_labeled(
+            dir,
+            &id,
+            commands::update::UpdateArgs {
+                message: Some(text),
+                append: true,
+                ..Default::default()
+            },
+            Some("Appended to"),
+        )?,
+        Command::Block {
+            id,
+            targets,
+            remove,
+        } => {
+            if let Some(targets) = targets {
+                commands::block::run(dir, &id, &split_csv(&targets), remove)?;
+            } else {
+                commands::block::run_set(dir, &id)?;
+            }
+        }
+        Command::Defer { id, reopen, until } => commands::defer::run(dir, &id, reopen, until)?,
+        Command::Start { id, comment } => commands::start::run(dir, &id, comment.as_deref())?,
+        Command::Stop { id, comment } => commands::stop::run(dir, &id, comment.as_deref())?,
+        Command::Move { id, to } => {
+            let dst = if to == "global" {
+                config::global_dir()
+            } else {
+                config::resolve_dir(Some(PathBuf::from(&to)), false)
+            };
+            commands::move_::run(dir, &id, &dst)?;
+        }
+        Command::Import { id, from } => {
+            let src = if from == "global" {
+                config::global_dir()
+            } else {
+                config::resolve_dir(Some(PathBuf::from(&from)), false)
+            };
+            commands::move_::run(&src, &id, dir)?;
+        }
+        Command::Link {
+            id,
+            relation,
+            targets,
+            remove,
+        } => commands::link::run(dir, &id, &relation, &split_csv(&targets), remove)?,
+        Command::Close { id, reason } => commands::close::run(dir, &id, reason)?,
+        Command::Delete { id } => commands::delete::run(dir, &id)?,
+        Command::Clean => commands::clean::run(dir)?,
+        Command::Reindex => commands::reindex::run(dir)?,
+        Command::Search { query } => commands::search::run(dir, &query)?,
+        Command::Export { format, output } => {
+            let output = output.map(|p| {
+                if p.as_os_str() == "crumbs_export" {
+                    PathBuf::from(format!("crumbs_export.{format}"))
+                } else {
+                    p
+                }
+            });
+            commands::export::run(dir, &format, output.as_deref())?;
+        }
+    }
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -279,199 +456,5 @@ fn main() -> Result<()> {
         anyhow::bail!(hint);
     }
 
-    match cli.command {
-        Command::Init { .. } | Command::Completions { .. } => unreachable!(),
-        Command::Create {
-            title,
-            item_type,
-            priority,
-            tags,
-            message,
-            depends,
-            due,
-            points,
-        } => {
-            commands::create::run(
-                &dir,
-                CreateArgs {
-                    title,
-                    item_type: item_type.parse().map_err(|e: String| anyhow::anyhow!(e))?,
-                    priority,
-                    tags: tags.map(|t| split_csv(&t)).unwrap_or_default(),
-                    description: message.unwrap_or_default(),
-                    dependencies: depends.map(|d| split_csv(&d)).unwrap_or_default(),
-                    due,
-                    story_points: points,
-                },
-            )?;
-        }
-        Command::List {
-            status,
-            tag,
-            priority,
-            r#type,
-            all,
-            verbose,
-            sort,
-        } => {
-            let type_filter = r#type
-                .as_deref()
-                .map(|t| {
-                    t.parse::<ItemType>()
-                        .map_err(|e: String| anyhow::anyhow!(e))
-                })
-                .transpose()?;
-            let sort_key: SortKey = sort.parse().map_err(|e: String| anyhow::anyhow!(e))?;
-            commands::list::run(
-                &dir,
-                ListArgs {
-                    status_filter: status,
-                    tag_filter: tag,
-                    priority_filter: priority,
-                    type_filter,
-                    all,
-                    verbose,
-                    sort: Some(sort_key),
-                },
-            )?;
-        }
-        Command::Show { ids } => {
-            commands::show::run(&dir, &ids)?;
-        }
-        Command::Edit { id } => {
-            commands::edit::run(&dir, &id)?;
-        }
-        Command::Stats => {
-            commands::stats::run(&dir)?;
-        }
-        Command::Next => {
-            commands::next::run(&dir)?;
-        }
-        Command::Update {
-            id,
-            title,
-            status,
-            priority,
-            tags,
-            item_type,
-            depends,
-            due,
-            clear_due,
-            message,
-            append,
-            points,
-            clear_points,
-        } => {
-            // --append 'text' sets append mode; --message 'text' sets replace mode.
-            // If both are given, --append wins.
-            let (final_message, final_append) = match (message, append) {
-                (_, Some(a)) => (Some(a), true),
-                (m, None) => (m, false),
-            };
-            commands::update::run(
-                &dir,
-                &id,
-                commands::update::UpdateArgs {
-                    status,
-                    priority,
-                    tags: tags.map(|t| split_csv(&t)),
-                    item_type,
-                    dependencies: depends.map(|d| split_csv(&d)),
-                    due,
-                    clear_due,
-                    message: final_message,
-                    append: final_append,
-                    story_points: points,
-                    clear_points,
-                    title,
-                },
-            )?;
-        }
-        Command::Body { id } => {
-            commands::body::run(&dir, &id)?;
-        }
-        Command::Append { id, text } => {
-            commands::update::run_labeled(
-                &dir,
-                &id,
-                commands::update::UpdateArgs {
-                    message: Some(text),
-                    append: true,
-                    ..Default::default()
-                },
-                Some("Appended to"),
-            )?;
-        }
-        Command::Block {
-            id,
-            targets,
-            remove,
-        } => {
-            if let Some(targets) = targets {
-                commands::block::run(&dir, &id, &split_csv(&targets), remove)?;
-            } else {
-                commands::block::run_set(&dir, &id)?;
-            }
-        }
-        Command::Defer { id, reopen, until } => {
-            commands::defer::run(&dir, &id, reopen, until)?;
-        }
-        Command::Start { id, comment } => {
-            commands::start::run(&dir, &id, comment.as_deref())?;
-        }
-        Command::Stop { id, comment } => {
-            commands::stop::run(&dir, &id, comment.as_deref())?;
-        }
-        Command::Move { id, to } => {
-            let dst = if to == "global" {
-                config::global_dir()
-            } else {
-                config::resolve_dir(Some(PathBuf::from(&to)), false)
-            };
-            commands::move_::run(&dir, &id, &dst)?;
-        }
-        Command::Import { id, from } => {
-            let src = if from == "global" {
-                config::global_dir()
-            } else {
-                config::resolve_dir(Some(PathBuf::from(&from)), false)
-            };
-            commands::move_::run(&src, &id, &dir)?;
-        }
-        Command::Link {
-            id,
-            relation,
-            targets,
-            remove,
-        } => {
-            commands::link::run(&dir, &id, &relation, &split_csv(&targets), remove)?;
-        }
-        Command::Close { id, reason } => {
-            commands::close::run(&dir, &id, reason)?;
-        }
-        Command::Delete { id } => {
-            commands::delete::run(&dir, &id)?;
-        }
-        Command::Clean => {
-            commands::clean::run(&dir)?;
-        }
-        Command::Reindex => {
-            commands::reindex::run(&dir)?;
-        }
-        Command::Search { query } => {
-            commands::search::run(&dir, &query)?;
-        }
-        Command::Export { format, output } => {
-            let output = output.map(|p| {
-                if p.as_os_str() == "crumbs_export" {
-                    PathBuf::from(format!("crumbs_export.{format}"))
-                } else {
-                    p
-                }
-            });
-            commands::export::run(&dir, &format, output.as_deref())?;
-        }
-    }
-
-    Ok(())
+    run_command(&dir, cli.command)
 }
