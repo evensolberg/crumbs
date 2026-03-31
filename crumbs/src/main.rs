@@ -426,8 +426,13 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     // Completions require no store.
-    if let Command::Completions { shell } = cli.command {
-        generate(shell, &mut Cli::command(), "crumbs", &mut std::io::stdout());
+    if let Command::Completions { shell } = &cli.command {
+        generate(
+            *shell,
+            &mut Cli::command(),
+            "crumbs",
+            &mut std::io::stdout(),
+        );
         return Ok(());
     }
 
