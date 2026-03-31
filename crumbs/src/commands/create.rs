@@ -10,6 +10,7 @@ use crate::{
     store, store_config,
 };
 
+#[derive(Debug)]
 pub struct CreateArgs {
     pub title: String,
     pub item_type: ItemType,

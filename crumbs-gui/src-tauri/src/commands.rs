@@ -6,7 +6,7 @@ use crumbs::{
         update::UpdateArgs,
     },
     config::global_dir,
-    item::{Item, ItemType, Status},
+    item::{Item, Status},
     store, store_config,
 };
 
@@ -281,8 +281,6 @@ pub fn create_item(dir: String, title: String) -> Result<(), String> {
         &path,
         CreateArgs {
             title,
-            item_type: ItemType::Task,
-            priority: 2,
             ..Default::default()
         },
     )
