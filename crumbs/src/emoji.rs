@@ -108,8 +108,7 @@ pub fn expand_shortcodes(text: &str) -> std::borrow::Cow<'_, str> {
 
 /// Emit an inline backtick code span starting at `chars[i]` into `result`.
 /// Returns the index immediately after the closing ticks.
-fn skip_inline_code_span(chars: &[char], i: usize, len: usize, result: &mut String) -> usize {
-    let mut i = i;
+fn skip_inline_code_span(chars: &[char], mut i: usize, len: usize, result: &mut String) -> usize {
     let mut tick_count = 0;
     while i + tick_count < len && chars[i + tick_count] == '`' {
         tick_count += 1;
