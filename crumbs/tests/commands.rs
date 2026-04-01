@@ -1024,3 +1024,14 @@ fn sort_key_from_str_error_on_unknown_field() {
     );
     assert!(msg.contains("id"), "error should list valid keys: {msg}");
 }
+
+#[test]
+fn sort_key_value_enum_has_all_variants() {
+    use clap::ValueEnum as _;
+    let variants = SortKey::value_variants();
+    assert_eq!(
+        variants.len(),
+        8,
+        "SortKey should expose 8 variants via ValueEnum"
+    );
+}

@@ -49,8 +49,8 @@ enum Command {
         #[arg(short, long)]
         verbose: bool,
         /// Sort by field: id (default), priority, status, title, type, due, created, updated
-        #[arg(long, default_value = "id")]
-        sort: String,
+        #[arg(long, default_value_t = SortKey::Id)]
+        sort: SortKey,
     },
     /// Show one or more items
     Show {
@@ -288,7 +288,6 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
                         .map_err(|e: String| anyhow::anyhow!(e))
                 })
                 .transpose()?;
-            let sort_key: SortKey = sort.parse().map_err(|e: String| anyhow::anyhow!(e))?;
             commands::list::run(
                 dir,
                 ListArgs {
@@ -298,7 +297,7 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
                     type_filter,
                     all,
                     verbose,
-                    sort: Some(sort_key),
+                    sort: Some(sort),
                 },
             )?;
         }
