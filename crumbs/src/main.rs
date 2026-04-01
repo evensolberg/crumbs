@@ -246,6 +246,15 @@ fn split_csv(s: &str) -> Vec<String> {
 }
 
 /// Dispatch commands whose CLI args require non-trivial parsing before calling into the library.
+///
+/// # Invariant
+///
+/// Only `Create`, `List`, and `Update` are valid inputs. The sole caller
+/// (`run_command`) guards the call with an `@`-binding that restricts to
+/// exactly those three variants, so the `_ => unreachable!()` arm below
+/// can never fire at runtime. If a new "structured" command is added,
+/// **both** the `@`-binding in `run_command` and a matching arm here must
+/// be updated — the compiler will not warn if only one side changes.
 fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()> {
     match command {
         Command::Create {
