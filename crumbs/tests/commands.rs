@@ -1034,7 +1034,7 @@ fn sort_key_value_enum_has_all_variants() {
         .collect();
     assert_eq!(
         names,
-        &[
+        vec![
             "id", "priority", "status", "title", "type", "due", "created", "updated"
         ],
     );
