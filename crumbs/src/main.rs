@@ -245,42 +245,9 @@ fn split_csv(s: &str) -> Vec<String> {
     s.split(',').map(|p| p.trim().to_string()).collect()
 }
 
-fn main() -> Result<()> {
-    let cli = Cli::parse();
-
-    // Completions require no store.
-    if let Command::Completions { shell } = cli.command {
-        generate(shell, &mut Cli::command(), "crumbs", &mut std::io::stdout());
-        return Ok(());
-    }
-
-    // For Init: --global initializes the global store; otherwise use cwd/.crumbs.
-    if let Command::Init { prefix } = &cli.command {
-        let target = if cli.global {
-            config::global_dir()
-        } else {
-            std::env::current_dir()?.join(".crumbs")
-        };
-        return commands::init::run(&target, prefix.clone());
-    }
-
-    let dir = config::resolve_dir(cli.dir.clone(), cli.global);
-    if !dir.is_dir() {
-        let hint = if cli.dir.is_some() {
-            format!("directory not found: {}", dir.display())
-        } else if cli.global {
-            format!(
-                "global store not initialized — run: crumbs init --global\n  (expected: {})",
-                dir.display()
-            )
-        } else {
-            "no crumbs store found — run: crumbs init".to_string()
-        };
-        anyhow::bail!(hint);
-    }
-
-    match cli.command {
-        Command::Init { .. } | Command::Completions { .. } => unreachable!(),
+/// Dispatch commands whose CLI args require non-trivial parsing before calling into the library.
+fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()> {
+    match command {
         Command::Create {
             title,
             item_type,
@@ -292,7 +259,7 @@ fn main() -> Result<()> {
             points,
         } => {
             commands::create::run(
-                &dir,
+                dir,
                 CreateArgs {
                     title,
                     item_type: item_type.parse().map_err(|e: String| anyhow::anyhow!(e))?,
@@ -323,7 +290,7 @@ fn main() -> Result<()> {
                 .transpose()?;
             let sort_key: SortKey = sort.parse().map_err(|e: String| anyhow::anyhow!(e))?;
             commands::list::run(
-                &dir,
+                dir,
                 ListArgs {
                     status_filter: status,
                     tag_filter: tag,
@@ -334,18 +301,6 @@ fn main() -> Result<()> {
                     sort: Some(sort_key),
                 },
             )?;
-        }
-        Command::Show { ids } => {
-            commands::show::run(&dir, &ids)?;
-        }
-        Command::Edit { id } => {
-            commands::edit::run(&dir, &id)?;
-        }
-        Command::Stats => {
-            commands::stats::run(&dir)?;
-        }
-        Command::Next => {
-            commands::next::run(&dir)?;
         }
         Command::Update {
             id,
@@ -362,14 +317,13 @@ fn main() -> Result<()> {
             points,
             clear_points,
         } => {
-            // --append 'text' sets append mode; --message 'text' sets replace mode.
-            // If both are given, --append wins.
+            // --append wins over --message when both are supplied.
             let (final_message, final_append) = match (message, append) {
                 (_, Some(a)) => (Some(a), true),
                 (m, None) => (m, false),
             };
             commands::update::run(
-                &dir,
+                dir,
                 &id,
                 commands::update::UpdateArgs {
                     status,
@@ -387,48 +341,53 @@ fn main() -> Result<()> {
                 },
             )?;
         }
-        Command::Body { id } => {
-            commands::body::run(&dir, &id)?;
+        _ => unreachable!(),
+    }
+    Ok(())
+}
+
+fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
+    match command {
+        Command::Init { .. } | Command::Completions { .. } => unreachable!(),
+        cmd @ (Command::Create { .. } | Command::List { .. } | Command::Update { .. }) => {
+            run_structured_commands(dir, cmd)?;
         }
-        Command::Append { id, text } => {
-            commands::update::run_labeled(
-                &dir,
-                &id,
-                commands::update::UpdateArgs {
-                    message: Some(text),
-                    append: true,
-                    ..Default::default()
-                },
-                Some("Appended to"),
-            )?;
-        }
+        Command::Show { ids } => commands::show::run(dir, &ids)?,
+        Command::Edit { id } => commands::edit::run(dir, &id)?,
+        Command::Stats => commands::stats::run(dir)?,
+        Command::Next => commands::next::run(dir)?,
+        Command::Body { id } => commands::body::run(dir, &id)?,
+        Command::Append { id, text } => commands::update::run_labeled(
+            dir,
+            &id,
+            commands::update::UpdateArgs {
+                message: Some(text),
+                append: true,
+                ..Default::default()
+            },
+            Some("Appended to"),
+        )?,
         Command::Block {
             id,
             targets,
             remove,
         } => {
             if let Some(targets) = targets {
-                commands::block::run(&dir, &id, &split_csv(&targets), remove)?;
+                commands::block::run(dir, &id, &split_csv(&targets), remove)?;
             } else {
-                commands::block::run_set(&dir, &id)?;
+                commands::block::run_set(dir, &id)?;
             }
         }
-        Command::Defer { id, reopen, until } => {
-            commands::defer::run(&dir, &id, reopen, until)?;
-        }
-        Command::Start { id, comment } => {
-            commands::start::run(&dir, &id, comment.as_deref())?;
-        }
-        Command::Stop { id, comment } => {
-            commands::stop::run(&dir, &id, comment.as_deref())?;
-        }
+        Command::Defer { id, reopen, until } => commands::defer::run(dir, &id, reopen, until)?,
+        Command::Start { id, comment } => commands::start::run(dir, &id, comment.as_deref())?,
+        Command::Stop { id, comment } => commands::stop::run(dir, &id, comment.as_deref())?,
         Command::Move { id, to } => {
             let dst = if to == "global" {
                 config::global_dir()
             } else {
                 config::resolve_dir(Some(PathBuf::from(&to)), false)
             };
-            commands::move_::run(&dir, &id, &dst)?;
+            commands::move_::run(dir, &id, &dst)?;
         }
         Command::Import { id, from } => {
             let src = if from == "global" {
@@ -436,31 +395,19 @@ fn main() -> Result<()> {
             } else {
                 config::resolve_dir(Some(PathBuf::from(&from)), false)
             };
-            commands::move_::run(&src, &id, &dir)?;
+            commands::move_::run(&src, &id, dir)?;
         }
         Command::Link {
             id,
             relation,
             targets,
             remove,
-        } => {
-            commands::link::run(&dir, &id, &relation, &split_csv(&targets), remove)?;
-        }
-        Command::Close { id, reason } => {
-            commands::close::run(&dir, &id, reason)?;
-        }
-        Command::Delete { id } => {
-            commands::delete::run(&dir, &id)?;
-        }
-        Command::Clean => {
-            commands::clean::run(&dir)?;
-        }
-        Command::Reindex => {
-            commands::reindex::run(&dir)?;
-        }
-        Command::Search { query } => {
-            commands::search::run(&dir, &query)?;
-        }
+        } => commands::link::run(dir, &id, &relation, &split_csv(&targets), remove)?,
+        Command::Close { id, reason } => commands::close::run(dir, &id, reason)?,
+        Command::Delete { id } => commands::delete::run(dir, &id)?,
+        Command::Clean => commands::clean::run(dir)?,
+        Command::Reindex => commands::reindex::run(dir)?,
+        Command::Search { query } => commands::search::run(dir, &query)?,
         Command::Export { format, output } => {
             let output = output.map(|p| {
                 if p.as_os_str() == "crumbs_export" {
@@ -469,9 +416,50 @@ fn main() -> Result<()> {
                     p
                 }
             });
-            commands::export::run(&dir, &format, output.as_deref())?;
+            commands::export::run(dir, &format, output.as_deref())?;
         }
     }
-
     Ok(())
+}
+
+fn main() -> Result<()> {
+    let cli = Cli::parse();
+
+    // Completions require no store.
+    if let Command::Completions { shell } = &cli.command {
+        generate(
+            *shell,
+            &mut Cli::command(),
+            "crumbs",
+            &mut std::io::stdout(),
+        );
+        return Ok(());
+    }
+
+    // For Init: --global initializes the global store; otherwise use cwd/.crumbs.
+    if let Command::Init { prefix } = &cli.command {
+        let target = if cli.global {
+            config::global_dir()
+        } else {
+            std::env::current_dir()?.join(".crumbs")
+        };
+        return commands::init::run(&target, prefix.clone());
+    }
+
+    let dir = config::resolve_dir(cli.dir.clone(), cli.global);
+    if !dir.is_dir() {
+        let hint = if cli.dir.is_some() {
+            format!("directory not found: {}", dir.display())
+        } else if cli.global {
+            format!(
+                "global store not initialized — run: crumbs init --global\n  (expected: {})",
+                dir.display()
+            )
+        } else {
+            "no crumbs store found — run: crumbs init".to_string()
+        };
+        anyhow::bail!(hint);
+    }
+
+    run_command(&dir, cli.command)
 }
