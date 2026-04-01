@@ -1039,3 +1039,202 @@ fn sort_key_value_enum_has_all_variants() {
         ],
     );
 }
+
+#[test]
+fn reopen_moves_closed_reason_to_body() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("ts".to_string())).unwrap();
+    let id = create_task(&d, "Reopen me");
+
+    // Close with a reason.
+    commands::close::run(&d, &id, Some("fixed in PR #1".to_string())).unwrap();
+    let (_, closed) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert_eq!(closed.status, Status::Closed);
+    assert_eq!(closed.closed_reason, "fixed in PR #1");
+
+    // Reopen.
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            status: Some("open".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let (path, reopened) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert_eq!(reopened.status, Status::Open);
+    // closed_reason must be cleared from frontmatter.
+    assert!(
+        reopened.closed_reason.is_empty(),
+        "closed_reason should be empty after reopen"
+    );
+    // The old reason must appear in the body.
+    let raw = std::fs::read_to_string(&path).unwrap();
+    assert!(
+        raw.contains("fixed in PR #1"),
+        "closed_reason should be preserved in body"
+    );
+    assert!(
+        raw.contains("Reopened"),
+        "body should note that the item was reopened"
+    );
+}
+
+#[test]
+fn reopen_without_closed_reason_leaves_body_unchanged() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("ts".to_string())).unwrap();
+    let id = create_task(&d, "No reason close");
+
+    // Close without a reason.
+    commands::close::run(&d, &id, None).unwrap();
+
+    // Reopen.
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            status: Some("open".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let (path, reopened) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert_eq!(reopened.status, Status::Open);
+    let raw = std::fs::read_to_string(&path).unwrap();
+    assert!(
+        !raw.contains("Reopened"),
+        "body should not gain a reopen note when closed_reason was empty"
+    );
+}
+
+#[test]
+fn reopen_with_existing_body_appends_note_after_content() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("ts".to_string())).unwrap();
+    let id = create_task(&d, "Body close");
+
+    // Add body content, then close with a reason.
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            message: Some("original body text".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::close::run(&d, &id, Some("done".to_string())).unwrap();
+
+    // Reopen.
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            status: Some("open".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let (path, reopened) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert_eq!(reopened.status, Status::Open);
+    let raw = std::fs::read_to_string(&path).unwrap();
+    assert!(
+        raw.contains("original body text"),
+        "existing body should be preserved"
+    );
+    // Reopen note must come after existing content.
+    let body_pos = raw.find("original body text").unwrap();
+    let note_pos = raw.find("Reopened").unwrap();
+    assert!(
+        note_pos > body_pos,
+        "reopen note should appear after existing body content"
+    );
+}
+
+#[test]
+fn reopen_with_simultaneous_message_includes_both() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("ts".to_string())).unwrap();
+    let id = create_task(&d, "Message reopen");
+
+    commands::close::run(&d, &id, Some("not needed yet".to_string())).unwrap();
+
+    // Reopen with a replacement message.
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            status: Some("open".to_string()),
+            message: Some("back in scope".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let (path, reopened) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert_eq!(reopened.status, Status::Open);
+    let raw = std::fs::read_to_string(&path).unwrap();
+    assert!(
+        raw.contains("back in scope"),
+        "new message should appear in body"
+    );
+    assert!(
+        raw.contains("Reopened"),
+        "reopen note should also appear in body"
+    );
+    assert!(
+        raw.contains("not needed yet"),
+        "original closed_reason should be in reopen note"
+    );
+}
+
+#[test]
+fn reopen_with_append_note_comes_after_appended_text() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("ts".to_string())).unwrap();
+    let id = create_task(&d, "Append reopen");
+
+    commands::close::run(&d, &id, Some("blocked by infra".to_string())).unwrap();
+
+    // Reopen with --append.
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            status: Some("open".to_string()),
+            message: Some("picking this back up".to_string()),
+            append: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let (path, reopened) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert_eq!(reopened.status, Status::Open);
+    let raw = std::fs::read_to_string(&path).unwrap();
+    assert!(
+        raw.contains("picking this back up"),
+        "appended text should appear in body"
+    );
+    assert!(
+        raw.contains("Reopened"),
+        "reopen note should appear in body"
+    );
+    // Appended text must precede the reopen note.
+    let append_pos = raw.find("picking this back up").unwrap();
+    let note_pos = raw.find("Reopened").unwrap();
+    assert!(
+        append_pos < note_pos,
+        "appended text should come before the reopen note"
+    );
+}

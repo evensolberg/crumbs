@@ -4,9 +4,39 @@ use anyhow::{Result, bail};
 use chrono::{Local, NaiveDate};
 
 use crate::{
-    item::{ItemType, is_fibonacci},
+    item::{Item, ItemType, Status, is_fibonacci},
     store,
 };
+
+/// Apply a new status string to `item`.
+///
+/// If the item is transitioning from `closed` to any other status and has a
+/// non-empty `closed_reason`, the reason is moved into a timestamped reopen
+/// note (returned as `Some(note)`) and `closed_reason` is cleared. Otherwise
+/// returns `None`.
+///
+/// # Errors
+///
+/// Returns an error if `new_status` is not a valid status string.
+fn apply_status(item: &mut Item, new_status: &str) -> Result<Option<String>> {
+    let status: Status = new_status.parse().map_err(|e: String| anyhow::anyhow!(e))?;
+    let reopen_note = if matches!(item.status, Status::Closed)
+        && !matches!(status, Status::Closed)
+        && !item.closed_reason.is_empty()
+    {
+        let timestamp = Local::now().format("%Y-%m-%d");
+        let note = format!(
+            "[{timestamp}] Reopened (was closed: {})",
+            item.closed_reason
+        );
+        item.closed_reason.clear();
+        Some(note)
+    } else {
+        None
+    };
+    item.status = status;
+    Ok(reopen_note)
+}
 
 #[derive(Default)]
 pub struct UpdateArgs {
@@ -45,9 +75,11 @@ pub fn run_labeled(
     match store::find_by_id(dir, id)? {
         None => bail!("no item found with id: {id}"),
         Some((path, mut item)) => {
-            if let Some(s) = args.status {
-                item.status = s.parse().map_err(|e: String| anyhow::anyhow!(e))?;
-            }
+            let reopen_note = if let Some(s) = args.status {
+                apply_status(&mut item, &s)?
+            } else {
+                None
+            };
             if let Some(p) = args.priority {
                 item.priority = p;
             }
@@ -102,6 +134,7 @@ pub fn run_labeled(
             // - append mode: timestamp + new text appended after existing content
             // - replace mode: new message replaces existing content
             // - no message: preserve existing content (heading still updated for title renames)
+            // - reopen_note (if any) is always appended after existing content.
             let desc = match &args.message {
                 Some(msg) if args.append => {
                     let timestamp = Local::now().format("%Y-%m-%d");
@@ -113,6 +146,15 @@ pub fn run_labeled(
                 }
                 Some(msg) => msg.trim().to_string(),
                 None => existing_desc,
+            };
+            let desc = if let Some(note) = reopen_note {
+                if desc.is_empty() {
+                    note
+                } else {
+                    format!("{desc}\n\n{note}")
+                }
+            } else {
+                desc
             };
             let desc = crate::emoji::expand_shortcodes(&desc).into_owned();
             let new_body = if desc.is_empty() {
