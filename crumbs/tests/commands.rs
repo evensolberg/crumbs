@@ -1196,3 +1196,45 @@ fn reopen_with_simultaneous_message_includes_both() {
         "original closed_reason should be in reopen note"
     );
 }
+
+#[test]
+fn reopen_with_append_note_comes_after_appended_text() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("ts".to_string())).unwrap();
+    let id = create_task(&d, "Append reopen");
+
+    commands::close::run(&d, &id, Some("blocked by infra".to_string())).unwrap();
+
+    // Reopen with --append.
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            status: Some("open".to_string()),
+            message: Some("picking this back up".to_string()),
+            append: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let (path, reopened) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert_eq!(reopened.status, Status::Open);
+    let raw = std::fs::read_to_string(&path).unwrap();
+    assert!(
+        raw.contains("picking this back up"),
+        "appended text should appear in body"
+    );
+    assert!(
+        raw.contains("Reopened"),
+        "reopen note should appear in body"
+    );
+    // Appended text must precede the reopen note.
+    let append_pos = raw.find("picking this back up").unwrap();
+    let note_pos = raw.find("Reopened").unwrap();
+    assert!(
+        append_pos < note_pos,
+        "appended text should come before the reopen note"
+    );
+}

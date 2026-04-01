@@ -87,7 +87,7 @@ pub struct Item {
     pub tags: Vec<String>,
     pub created: NaiveDate,
     pub updated: NaiveDate,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub closed_reason: String,
     #[serde(default)]
     pub dependencies: Vec<String>,
