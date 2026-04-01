@@ -45,6 +45,27 @@ pub fn run_labeled(
     match store::find_by_id(dir, id)? {
         None => bail!("no item found with id: {id}"),
         Some((path, mut item)) => {
+            // Detect closed → non-closed transition before applying the new status.
+            let reopen_note: Option<String> = if let Some(s) = &args.status {
+                let new_status: crate::item::Status =
+                    s.parse().map_err(|e: String| anyhow::anyhow!(e))?;
+                if matches!(item.status, crate::item::Status::Closed)
+                    && !matches!(new_status, crate::item::Status::Closed)
+                    && !item.closed_reason.is_empty()
+                {
+                    let timestamp = Local::now().format("%Y-%m-%d");
+                    let note = format!(
+                        "[{timestamp}] Reopened (was closed: {})",
+                        item.closed_reason
+                    );
+                    item.closed_reason.clear();
+                    Some(note)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
             if let Some(s) = args.status {
                 item.status = s.parse().map_err(|e: String| anyhow::anyhow!(e))?;
             }
@@ -102,6 +123,7 @@ pub fn run_labeled(
             // - append mode: timestamp + new text appended after existing content
             // - replace mode: new message replaces existing content
             // - no message: preserve existing content (heading still updated for title renames)
+            // - reopen_note (if any) is always appended after existing content.
             let desc = match &args.message {
                 Some(msg) if args.append => {
                     let timestamp = Local::now().format("%Y-%m-%d");
@@ -113,6 +135,15 @@ pub fn run_labeled(
                 }
                 Some(msg) => msg.trim().to_string(),
                 None => existing_desc,
+            };
+            let desc = if let Some(note) = reopen_note {
+                if desc.is_empty() {
+                    note
+                } else {
+                    format!("{desc}\n\n{note}")
+                }
+            } else {
+                desc
             };
             let desc = crate::emoji::expand_shortcodes(&desc).into_owned();
             let new_body = if desc.is_empty() {

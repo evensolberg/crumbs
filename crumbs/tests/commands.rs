@@ -1039,3 +1039,46 @@ fn sort_key_value_enum_has_all_variants() {
         ],
     );
 }
+
+#[test]
+fn reopen_moves_closed_reason_to_body() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("ts".to_string())).unwrap();
+    let id = create_task(&d, "Reopen me");
+
+    // Close with a reason.
+    commands::close::run(&d, &id, Some("fixed in PR #1".to_string())).unwrap();
+    let (_, closed) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert_eq!(closed.status, Status::Closed);
+    assert_eq!(closed.closed_reason, "fixed in PR #1");
+
+    // Reopen.
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            status: Some("open".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let (path, reopened) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert_eq!(reopened.status, Status::Open);
+    // closed_reason must be cleared from frontmatter.
+    assert!(
+        reopened.closed_reason.is_empty(),
+        "closed_reason should be empty after reopen"
+    );
+    // The old reason must appear in the body.
+    let raw = std::fs::read_to_string(&path).unwrap();
+    assert!(
+        raw.contains("fixed in PR #1"),
+        "closed_reason should be preserved in body"
+    );
+    assert!(
+        raw.contains("Reopened"),
+        "body should note that the item was reopened"
+    );
+}
