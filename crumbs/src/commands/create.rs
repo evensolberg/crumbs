@@ -22,6 +22,7 @@ pub struct CreateArgs {
     pub story_points: Option<u8>,
 }
 
+// Manual Default: priority 2 = "normal" (not 0 = "critical" which derive would give).
 impl Default for CreateArgs {
     fn default() -> Self {
         Self {

@@ -12,7 +12,8 @@ use crate::{
 };
 
 /// Fields by which `crumbs list` output can be sorted.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, clap::ValueEnum)]
+#[value(rename_all = "lowercase")]
 pub enum SortKey {
     Id,
     Priority,
@@ -22,6 +23,22 @@ pub enum SortKey {
     Due,
     Created,
     Updated,
+}
+
+impl std::fmt::Display for SortKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Id => "id",
+            Self::Priority => "priority",
+            Self::Status => "status",
+            Self::Title => "title",
+            Self::Type => "type",
+            Self::Due => "due",
+            Self::Created => "created",
+            Self::Updated => "updated",
+        };
+        f.write_str(s)
+    }
 }
 
 impl std::str::FromStr for SortKey {

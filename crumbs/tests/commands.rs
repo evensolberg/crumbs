@@ -1024,3 +1024,18 @@ fn sort_key_from_str_error_on_unknown_field() {
     );
     assert!(msg.contains("id"), "error should list valid keys: {msg}");
 }
+
+#[test]
+fn sort_key_value_enum_has_all_variants() {
+    use clap::ValueEnum as _;
+    let names: Vec<String> = SortKey::value_variants()
+        .iter()
+        .map(|v| v.to_possible_value().unwrap().get_name().to_owned())
+        .collect();
+    assert_eq!(
+        names,
+        vec![
+            "id", "priority", "status", "title", "type", "due", "created", "updated"
+        ],
+    );
+}
