@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use chrono::{Local, NaiveDate};
+use clap::ValueEnum as _;
 use console::Style;
 
 use crate::{
@@ -27,16 +28,10 @@ pub enum SortKey {
 
 impl std::fmt::Display for SortKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Id => write!(f, "id"),
-            Self::Priority => write!(f, "priority"),
-            Self::Status => write!(f, "status"),
-            Self::Title => write!(f, "title"),
-            Self::Type => write!(f, "type"),
-            Self::Due => write!(f, "due"),
-            Self::Created => write!(f, "created"),
-            Self::Updated => write!(f, "updated"),
-        }
+        self.to_possible_value()
+            .expect("no skipped variants")
+            .get_name()
+            .fmt(f)
     }
 }
 

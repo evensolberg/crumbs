@@ -1028,10 +1028,14 @@ fn sort_key_from_str_error_on_unknown_field() {
 #[test]
 fn sort_key_value_enum_has_all_variants() {
     use clap::ValueEnum as _;
-    let variants = SortKey::value_variants();
+    let names: Vec<String> = SortKey::value_variants()
+        .iter()
+        .map(|v| v.to_possible_value().unwrap().get_name().to_owned())
+        .collect();
     assert_eq!(
-        variants.len(),
-        8,
-        "SortKey should expose 8 variants via ValueEnum"
+        names,
+        &[
+            "id", "priority", "status", "title", "type", "due", "created", "updated"
+        ],
     );
 }
