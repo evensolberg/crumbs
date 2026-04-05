@@ -58,7 +58,7 @@ const ALL_COLUMNS = [
   { key: 'due',          label: 'Due',      width: '90px',  sortable: true,  default: true  },
   { key: 'tags',         label: 'Tags',     width: '140px', sortable: true,  default: true  },
   { key: 'story_points', label: 'SP',       width: '44px',  sortable: true,  default: false },
-  { key: 'phase',        label: 'Phase',   width: '100px', sortable: true,  default: false },
+  { key: 'phase',        label: 'Phase',    width: '100px', sortable: true,  default: false },
   { key: 'created',      label: 'Created', width: '90px',  sortable: true,  default: false },
   { key: 'updated',      label: 'Updated', width: '90px',  sortable: true,  default: false },
 ];
@@ -455,7 +455,7 @@ function sortedItems() {
       case 'due':      av = a.due ?? '9999'; bv = b.due ?? '9999'; break;
       case 'tags':         av = (a.tags ?? []).join(); bv = (b.tags ?? []).join(); break;
       case 'story_points': av = a.story_points ?? 999; bv = b.story_points ?? 999; break;
-      case 'phase':        av = a.phase ?? ''; bv = b.phase ?? ''; break;
+      case 'phase':        av = a.phase || '\uFFFF'; bv = b.phase || '\uFFFF'; break;
       case 'created':      av = a.created ?? ''; bv = b.created ?? ''; break;
       case 'updated':      av = a.updated ?? ''; bv = b.updated ?? ''; break;
       default:             av = a.priority; bv = b.priority;

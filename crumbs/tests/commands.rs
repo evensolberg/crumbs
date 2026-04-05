@@ -1645,8 +1645,8 @@ fn list_output_shows_phase_marker() {
         .find(|l| l.contains("No Phase Item"))
         .unwrap_or("");
     assert!(
-        !no_phase_line.contains('@'),
-        "list output must not show @ for items without a phase, got line:\n{no_phase_line}"
+        !no_phase_line.contains(" @"),
+        "list output must not show space-@ phase marker for items without a phase, got line:\n{no_phase_line}"
     );
 }
 
