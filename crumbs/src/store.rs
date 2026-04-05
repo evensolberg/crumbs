@@ -198,7 +198,7 @@ pub fn reindex(dir: &Path) -> Result<()> {
                 .story_points
                 .map(|sp| sp.to_string())
                 .unwrap_or_default(),
-            item.phase.as_deref().unwrap_or(""),
+            &item.phase,
         ])?;
     }
     wtr.flush()?;
@@ -253,7 +253,7 @@ mod tests {
             due: None,
             description: String::new(),
             story_points: None,
-            phase: None,
+            phase: String::new(),
         }
     }
 

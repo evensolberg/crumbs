@@ -175,7 +175,7 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
                 return false;
             }
             if let Some(ref p) = phase_filter
-                && item.phase.as_deref() != Some(p.as_str())
+                && item.phase != *p
             {
                 return false;
             }

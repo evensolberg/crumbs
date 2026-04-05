@@ -20,7 +20,7 @@ pub struct CreateArgs {
     pub dependencies: Vec<String>,
     pub due: Option<NaiveDate>,
     pub story_points: Option<u8>,
-    pub phase: Option<String>,
+    pub phase: String,
 }
 
 // Manual Default: priority 2 = "normal" (not 0 = "critical" which derive would give).
@@ -35,7 +35,7 @@ impl Default for CreateArgs {
             dependencies: Vec::new(),
             due: None,
             story_points: None,
-            phase: None,
+            phase: String::new(),
         }
     }
 }

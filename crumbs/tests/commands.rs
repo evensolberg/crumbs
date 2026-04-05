@@ -798,7 +798,7 @@ fn show_bare_suffix_expands_with_store_prefix() {
             due: None,
             description: String::new(),
             story_points: None,
-            phase: None,
+            phase: String::new(),
         },
     )
     .unwrap();
@@ -1446,7 +1446,7 @@ fn create_with_phase_stores_field() {
         &d,
         CreateArgs {
             title: "Phase Task".to_string(),
-            phase: Some("phase-1".to_string()),
+            phase: "phase-1".to_string(),
             ..Default::default()
         },
     )
@@ -1457,7 +1457,7 @@ fn create_with_phase_stores_field() {
         .find(|(_, i)| i.title == "Phase Task")
         .unwrap()
         .1;
-    assert_eq!(item.phase, Some("phase-1".to_string()));
+    assert_eq!(item.phase, "phase-1");
 }
 
 #[test]
@@ -1476,7 +1476,7 @@ fn update_phase_sets_field() {
     )
     .unwrap();
     let (_, item) = store::find_by_id(&d, &id).unwrap().unwrap();
-    assert_eq!(item.phase, Some("2026-Q2".to_string()));
+    assert_eq!(item.phase, "2026-Q2");
 }
 
 #[test]
@@ -1504,7 +1504,10 @@ fn update_clear_phase_removes_field() {
     )
     .unwrap();
     let (_, item) = store::find_by_id(&d, &id).unwrap().unwrap();
-    assert_eq!(item.phase, None);
+    assert!(
+        item.phase.is_empty(),
+        "clear_phase should leave phase as empty string"
+    );
 }
 
 #[test]
@@ -1516,7 +1519,7 @@ fn list_phase_filter_shows_matching_items_only() {
         &d,
         CreateArgs {
             title: "In Phase One".to_string(),
-            phase: Some("phase-1".to_string()),
+            phase: "phase-1".to_string(),
             ..Default::default()
         },
     )
@@ -1525,7 +1528,7 @@ fn list_phase_filter_shows_matching_items_only() {
         &d,
         CreateArgs {
             title: "In Phase Two".to_string(),
-            phase: Some("phase-2".to_string()),
+            phase: "phase-2".to_string(),
             ..Default::default()
         },
     )
@@ -1561,6 +1564,22 @@ fn list_phase_filter_shows_matching_items_only() {
 }
 
 #[test]
+fn phase_always_written_to_frontmatter() {
+    // Even without a phase value, the key must appear in the raw YAML so
+    // external tools can grep and bulk-edit it without touching every item.
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "No Phase Item");
+    let (path, _) = store::find_by_id(&d, &id).unwrap().unwrap();
+    let raw = std::fs::read_to_string(&path).unwrap();
+    assert!(
+        raw.contains("phase:"),
+        "phase key must be present in frontmatter even when empty, got:\n{raw}"
+    );
+}
+
+#[test]
 fn phase_round_trips_through_file() {
     let dir = tempdir().unwrap();
     let d = dir.path().join(".crumbs");
@@ -1577,8 +1596,7 @@ fn phase_round_trips_through_file() {
     .unwrap();
     let (_, item) = store::find_by_id(&d, &id).unwrap().unwrap();
     assert_eq!(
-        item.phase,
-        Some("2026-Q3".to_string()),
+        item.phase, "2026-Q3",
         "phase should survive a write/read round-trip"
     );
 }

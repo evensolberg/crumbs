@@ -92,8 +92,8 @@ fn show_one(dir: &Path, id: &str) -> Result<()> {
             if let Some(sp) = item.story_points {
                 println!("  Points:   {sp}");
             }
-            if let Some(ref p) = item.phase {
-                println!("  Phase:    {p}");
+            if !item.phase.is_empty() {
+                println!("  Phase:    {}", item.phase);
             }
             if !item.description.is_empty() {
                 println!();

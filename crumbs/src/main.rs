@@ -291,7 +291,7 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
                     dependencies: depends.map(|d| split_csv(&d)).unwrap_or_default(),
                     due,
                     story_points: points,
-                    phase,
+                    phase: phase.unwrap_or_default(),
                 },
             )?;
         }

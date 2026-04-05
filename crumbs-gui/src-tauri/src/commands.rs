@@ -207,27 +207,15 @@ pub fn update_dependencies(dir: String, id: String, dependencies: String) -> Res
 /// Update an item's phase label. Empty string clears the phase.
 #[tauri::command]
 pub fn update_phase(dir: String, id: String, phase: String) -> Result<(), String> {
-    if phase.is_empty() {
-        update::run(
-            &to_path(&dir),
-            &id,
-            UpdateArgs {
-                clear_phase: true,
-                ..Default::default()
-            },
-        )
-        .map_err(|e| e.to_string())
-    } else {
-        update::run(
-            &to_path(&dir),
-            &id,
-            UpdateArgs {
-                phase: Some(phase),
-                ..Default::default()
-            },
-        )
-        .map_err(|e| e.to_string())
-    }
+    update::run(
+        &to_path(&dir),
+        &id,
+        UpdateArgs {
+            phase: Some(phase),
+            ..Default::default()
+        },
+    )
+    .map_err(|e| e.to_string())
 }
 
 /// Update an item's tags. Empty string clears all tags.

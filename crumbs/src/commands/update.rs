@@ -118,9 +118,9 @@ pub fn run_labeled(
                 item.story_points = Some(sp);
             }
             if args.clear_phase {
-                item.phase = None;
-            } else if args.phase.is_some() {
-                item.phase = args.phase;
+                item.phase = String::new();
+            } else if let Some(p) = args.phase {
+                item.phase = p;
             }
             item.updated = Local::now().date_naive();
 

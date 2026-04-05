@@ -101,8 +101,8 @@ pub struct Item {
     pub description: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub story_points: Option<u8>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub phase: Option<String>,
+    #[serde(default)]
+    pub phase: String,
 }
 
 pub const FIBONACCI: &[u8] = &[1, 2, 3, 5, 8, 13, 21];
