@@ -1,0 +1,20 @@
+---
+id: cr-rxy
+title: 'Export: grouped markdown format for roadmap documents'
+status: open
+type: feature
+priority: 3
+tags:
+- cli
+- export
+- planning
+created: 2026-04-04
+updated: 2026-04-04
+dependencies: []
+---
+
+# Export: grouped markdown format for roadmap documents
+
+crumbs export --format toon is good for LLM context but there is no format that produces a human-readable grouped document. Add crumbs export --format markdown --group-by type,priority (or --group-by milestone,priority) that outputs a markdown table or section-per-group layout. Would make the production-grade-roadmap.md style document auto-generatable from the crumbs store rather than maintained by hand.
+
+[2026-04-04] See /Volumes/SSD/Source/vsm-studio/docs/plans/production-grade-roadmap.md for an example.

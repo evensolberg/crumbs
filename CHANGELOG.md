@@ -4,31 +4,58 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
-## [0.17.1] - 2026-03-29
+## [0.17.3] - 2026-04-05
+
+### Chore
+
+- Bump version to 0.17.3
 
 ### Fix
 
-- GUI: rename 'Depends' → 'Depends on' in Properties panel
-- GUI: remove Unicode symbols from status dropdown (⊘ Blocked → Blocked, ◷ Deferred → Deferred)
-- GUI: remove redundant Status symbols section from help modal
-- GUI: every filter-btn click now fetches fresh data from disk
-- GUI: preserve editor cursor position when metadata is updated (P1)
-- GUI: outline resizer hidden in sync with panel at all toggle sites
-- GUI: outline resize direction corrected (drag left = expand)
-- GUI: use closure variable for localStorage width (avoids offsetWidth=0 when hidden)
-- GUI: guard both anchor and head in cursor-preservation bounds check
+- `crumbs next` now skips items whose blockers are still open (cr-tbd)
+- `crumbs list --tag` now uses AND semantics for comma-separated values (cr-vfb)
+- GUI: markdown preview now renders top-aligned instead of vertically centred (cr-99g)
+
+## [0.17.2] - 2026-03-31
+
+### Chore
+
+- Bump flatted from 3.4.1 to 3.4.2 in /crumbs-gui
+- Bump version to 0.17.2
+
+### Docs
+
+- Sync README and skill with current CLI
+- Tighten --sort help; annotate CreateArgs default
+- Document run_structured_commands invariant (cr-mvk)
 
 ### Feat
 
-- GUI: [date] toolbar button and Mod+D keymap inserts [YYYY-MM-DD] at cursor
-- GUI: resizable outline/headings panel with localStorage persistence
+- Add ValueEnum to SortKey for shell completions
 
-## [0.17.0] - 2026-03-29
+### Fix
+
+- Swap Type and Priority order in Properties panel
+- Swap Type and Priority filter order in toolbar
+- Mirror Type/Priority swap in dist files; restore CHANGELOG
+- Make SortKey Display infallible (Copilot review on PR #10)
+- Use vec! for ValueEnum test comparison (Copilot review on PR #10)
+- Move closed_reason to body when reopening a crumb
+- Skip serializing empty closed_reason; add append+reopen test
+
+### Refactor
+
+- Bundle create::run args into CreateArgs struct (#8)
+- Split expand_shortcodes and main() to fix too_many_lines (#9)
+- Tighten SortKey Display and test per review
+- Extract apply_status helper; add edge-case tests
+
+## [0.17.1] - 2026-03-30
 
 ### Chore
 
 - Merge chrono imports and add append subcommand test
-- Fix all addressable clippy warnings across 27 files
+- Bump version to 0.17.1
 
 ### Docs
 
@@ -37,7 +64,7 @@ All notable changes to this project will be documented in this file.
 ### Feat
 
 - Add append subcommand and bold ID in create output
-- Add `crumbs list --sort` with sort keys: id, priority, status, title, type, due, created, updated
+- GUI polish, cursor fix, date button, resizable outline panel (#5)
 
 ### Fix
 
@@ -48,8 +75,6 @@ All notable changes to this project will be documented in this file.
 - Move output_label out of UpdateArgs into a run() parameter
 - Restore run() signature; add run_labeled() for append subcommand
 - Hide run_labeled from API docs; collapse version bumps in changelog
-- Fix import direction: `crumbs import --from` was moving items backwards
-- Use sort_by_cached_key for string-keyed sorts in list command
 
 ## [0.16.5] - 2026-03-16
 

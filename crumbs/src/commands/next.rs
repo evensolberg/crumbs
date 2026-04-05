@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::Path;
 
 use anyhow::Result;
@@ -11,17 +12,31 @@ use crate::{item::Status, store};
 pub fn run(dir: &Path) -> Result<()> {
     let today = Local::now().date_naive();
     let items = store::load_all(dir)?;
+
+    // Build a lookup of status by ID to check whether blockers are resolved.
+    let status_by_id: HashMap<String, Status> = items
+        .iter()
+        .map(|(_, item)| (item.id.to_lowercase(), item.status.clone()))
+        .collect();
+
     let candidate = items
         .into_iter()
         .filter(|(_, item)| {
             if item.status == Status::Closed {
                 return false;
             }
-            // Skip deferred items with a future until date.
-            if item.status == Status::Deferred
-                && let Some(due) = item.due
+            // Skip deferred items whose wake-up date is still in the future.
+            if item.status == Status::Deferred && item.due.is_some_and(|due| due > today) {
+                return false;
+            }
+            // Skip items that have at least one blocker not yet closed.
+            // Unknown IDs (dangling references) are treated as still blocking.
+            if item
+                .blocked_by
+                .iter()
+                .any(|id| !matches!(status_by_id.get(&id.to_lowercase()), Some(Status::Closed)))
             {
-                return due <= today;
+                return false;
             }
             true
         })

@@ -128,6 +128,18 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
         ),
     };
 
+    // Parse comma-separated tag filter once before iteration.
+    // AND semantics: all non-empty parts must each match at least one tag.
+    // Empty parts (e.g. trailing comma) are ignored so "--tag alpha," == "--tag alpha".
+    let tag_parts: Option<Vec<&str>> = tag_filter.as_deref().and_then(|s| {
+        let parts: Vec<&str> = s
+            .split(',')
+            .map(str::trim)
+            .filter(|p| !p.is_empty())
+            .collect();
+        if parts.is_empty() { None } else { Some(parts) }
+    });
+
     let items = store::load_all(dir)?;
     let filtered: Vec<_> = items
         .into_iter()
@@ -143,10 +155,13 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
             {
                 return false;
             }
-            if let Some(tag) = tag_filter.as_deref()
-                && !item.tags.iter().any(|t| t.contains(tag))
-            {
-                return false;
+            if let Some(parts) = &tag_parts {
+                if !parts
+                    .iter()
+                    .all(|req| item.tags.iter().any(|t| t.contains(req)))
+                {
+                    return false;
+                }
             }
             if let Some(p) = priority_filter
                 && item.priority != p
