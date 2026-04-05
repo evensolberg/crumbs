@@ -174,6 +174,7 @@ pub fn reindex(dir: &Path) -> Result<()> {
         "id",
         "title",
         "status",
+        "phase",
         "type",
         "priority",
         "tags",
@@ -181,13 +182,13 @@ pub fn reindex(dir: &Path) -> Result<()> {
         "updated",
         "closed_reason",
         "story_points",
-        "phase",
     ])?;
     for (_, item) in &items {
         wtr.write_record([
             &item.id,
             &item.title,
             &item.status.to_string(),
+            &item.phase,
             &item.item_type.to_string(),
             &item.priority.to_string(),
             &item.tags.join("|"),
@@ -198,7 +199,6 @@ pub fn reindex(dir: &Path) -> Result<()> {
                 .story_points
                 .map(|sp| sp.to_string())
                 .unwrap_or_default(),
-            &item.phase,
         ])?;
     }
     wtr.flush()?;
