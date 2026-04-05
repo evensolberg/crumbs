@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use chrono::{Local, NaiveDate};
-use console::Style;
+use console::{Style, measure_text_width};
 
 use crate::{
     color,
@@ -201,7 +201,12 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
 
     let sorted = sort_items(filtered, sort);
     // Pad all phase badges to the widest phase so the type column aligns.
-    let max_phase = sorted.iter().map(|(_, i)| i.phase.len()).max().unwrap_or(0);
+    // Use display width (via console) so multi-byte Unicode phases align correctly.
+    let max_phase = sorted
+        .iter()
+        .map(|(_, i)| measure_text_width(&i.phase))
+        .max()
+        .unwrap_or(0);
     let today = Local::now().date_naive();
     for (_, item) in sorted {
         let icon = color::status_icon_styled(&item.status);
@@ -222,8 +227,11 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
         let points_marker = item
             .story_points
             .map_or_else(String::new, |sp| format!(" [{sp}sp]"));
-        // Pad phase to max_phase width so the type badge column stays aligned.
-        let phase_badge = format!("[{:<max_phase$}]", item.phase);
+        // Pad phase to max_phase display-width so the type badge column stays aligned.
+        // Because {:<N$} counts bytes, compute extra space padding for non-ASCII phases.
+        let display_w = measure_text_width(&item.phase);
+        let padding = max_phase.saturating_sub(display_w);
+        let phase_badge = format!("[{}{}]", item.phase, " ".repeat(padding));
         let timer_marker = if active_start_ts(&item.description).is_some() {
             " ▶"
         } else {

@@ -1701,15 +1701,16 @@ fn list_output_shows_phase_badge() {
         "phase badge must appear before type badge, got line:\n{phased_line}"
     );
 
-    // The no-phase item line must show a spaces-only phase badge (padded to
-    // match the widest phase in the list — "2026-Q2" = 7 chars here).
+    // The no-phase item line must show a badge padded to the widest phase width.
+    // "2026-Q2" is 7 chars, so the empty badge should be "[       ]" (7 spaces).
     let no_phase_line = stdout
         .lines()
         .find(|l| l.contains("No Phase Item"))
         .unwrap_or("");
+    let expected_empty = format!("[{}]", " ".repeat("2026-Q2".len()));
     assert!(
-        no_phase_line.contains("[ "),
-        "list output must show a space-padded phase badge for items without a phase, got line:\n{no_phase_line}"
+        no_phase_line.contains(&expected_empty),
+        "list output must show empty badge padded to max phase width, got line:\n{no_phase_line}"
     );
 }
 
