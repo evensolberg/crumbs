@@ -774,7 +774,7 @@ function renderProps(item) {
   const phaseInput = document.createElement('input');
   phaseInput.type = 'text';
   phaseInput.placeholder = 'e.g. phase-1, 2026-Q2';
-  phaseInput.value = item.phase ?? '';
+  phaseInput.value = item.phase;
   phaseInput.style.cssText = 'width:100%;font:inherit;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:2px 4px;outline:none;box-sizing:border-box;';
   let loadedPhase = phaseInput.value;
   phaseInput.addEventListener('focus', () => { phaseInput.style.borderColor = 'var(--accent)'; });

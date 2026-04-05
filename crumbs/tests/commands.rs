@@ -1564,6 +1564,35 @@ fn list_phase_filter_shows_matching_items_only() {
 }
 
 #[test]
+fn create_with_empty_phase_writes_key_to_frontmatter() {
+    // Passing phase: "" (or omitting --phase) must still produce `phase:` in
+    // the YAML so external tools can always grep for the key.
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "Empty Phase".to_string(),
+            phase: String::new(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let items = store::load_all(&d).unwrap();
+    let (path, item) = items
+        .into_iter()
+        .find(|(_, i)| i.title == "Empty Phase")
+        .unwrap();
+    assert!(item.phase.is_empty(), "phase should be empty string");
+    let raw = std::fs::read_to_string(&path).unwrap();
+    assert!(
+        raw.contains("phase:"),
+        "phase key must be in frontmatter even when empty, got:\n{raw}"
+    );
+}
+
+#[test]
 fn phase_always_written_to_frontmatter() {
     // Even without a phase value, the key must appear in the raw YAML so
     // external tools can grep and bulk-edit it without touching every item.
