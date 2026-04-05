@@ -23,6 +23,7 @@ pub enum SortKey {
     Due,
     Created,
     Updated,
+    Phase,
 }
 
 impl std::fmt::Display for SortKey {
@@ -36,6 +37,7 @@ impl std::fmt::Display for SortKey {
             Self::Due => "due",
             Self::Created => "created",
             Self::Updated => "updated",
+            Self::Phase => "phase",
         };
         f.write_str(s)
     }
@@ -53,8 +55,9 @@ impl std::str::FromStr for SortKey {
             "due" => Ok(Self::Due),
             "created" => Ok(Self::Created),
             "updated" => Ok(Self::Updated),
+            "phase" => Ok(Self::Phase),
             other => Err(format!(
-                "unknown sort key {other:?}; valid: id, priority, status, title, type, due, created, updated"
+                "unknown sort key {other:?}; valid: id, priority, status, title, type, due, created, updated, phase"
             )),
         }
     }
@@ -86,6 +89,17 @@ pub fn sort_items(mut items: Vec<(PathBuf, Item)>, key: SortKey) -> Vec<(PathBuf
         }
         SortKey::Updated => {
             items.sort_by_cached_key(|(_, i)| (i.updated, i.id.clone()));
+        }
+        // Items without a phase sort to the end; within a phase, sort by id.
+        SortKey::Phase => {
+            items.sort_by_cached_key(|(_, i)| {
+                let p = if i.phase.is_empty() {
+                    "\u{FFFF}".to_string()
+                } else {
+                    i.phase.to_lowercase()
+                };
+                (p, i.id.clone())
+            });
         }
     }
     items
@@ -209,13 +223,18 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
         let points_marker = item
             .story_points
             .map_or_else(String::new, |sp| format!(" [{sp}sp]"));
+        let phase_marker = if item.phase.is_empty() {
+            String::new()
+        } else {
+            format!(" @{}", item.phase)
+        };
         let timer_marker = if active_start_ts(&item.description).is_some() {
             " ▶"
         } else {
             ""
         };
         println!(
-            "{icon} {} {} {} {}{timer_marker}{tags}{due_marker}{points_marker}",
+            "{icon} {} {} {} {}{timer_marker}{tags}{due_marker}{points_marker}{phase_marker}",
             item.id,
             p_style.apply_to(format!("[P{}]", item.priority)),
             t_style.apply_to(format!("[{}]", item.item_type)),

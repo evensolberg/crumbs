@@ -47,7 +47,7 @@ crumbs list --tag project/auth
 crumbs list --type bug           # filter by type (task, bug, feature, epic, idea)
 crumbs list --phase phase-1      # filter by phase label
 crumbs list --verbose            # show first two body lines beneath each item
-crumbs list --sort priority      # sort by: id (default), priority, status, title, type, due, created, updated
+crumbs list --sort priority      # sort by: id (default), priority, status, title, type, due, created, updated, phase
 crumbs next                      # highest-priority actionable item (skips deferred with future until date)
 ```
 

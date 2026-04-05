@@ -35,6 +35,7 @@ let filterStatus   = 'all';
 let filterPriority = 'any';
 let filterType     = 'any';
 let filterTag      = '';
+let filterPhase    = '';
 let previewMode = false;
 let pendingCloseId = '';
 let autosaveTimer = null;
@@ -57,6 +58,7 @@ const ALL_COLUMNS = [
   { key: 'due',          label: 'Due',      width: '90px',  sortable: true,  default: true  },
   { key: 'tags',         label: 'Tags',     width: '140px', sortable: true,  default: true  },
   { key: 'story_points', label: 'SP',       width: '44px',  sortable: true,  default: false },
+  { key: 'phase',        label: 'Phase',   width: '100px', sortable: true,  default: false },
   { key: 'created',      label: 'Created', width: '90px',  sortable: true,  default: false },
   { key: 'updated',      label: 'Updated', width: '90px',  sortable: true,  default: false },
 ];
@@ -434,6 +436,7 @@ function filteredItems() {
     if (filterPriority !== 'any' && String(item.priority) !== filterPriority) return false;
     if (filterType !== 'any' && (item.type ?? 'task') !== filterType) return false;
     if (filterTag && !(item.tags ?? []).some(t => t.toLowerCase().includes(filterTag.toLowerCase()))) return false;
+    if (filterPhase && !(item.phase ?? '').toLowerCase().includes(filterPhase.toLowerCase())) return false;
     return true;
   });
 }
@@ -452,6 +455,7 @@ function sortedItems() {
       case 'due':      av = a.due ?? '9999'; bv = b.due ?? '9999'; break;
       case 'tags':         av = (a.tags ?? []).join(); bv = (b.tags ?? []).join(); break;
       case 'story_points': av = a.story_points ?? 999; bv = b.story_points ?? 999; break;
+      case 'phase':        av = a.phase ?? ''; bv = b.phase ?? ''; break;
       case 'created':      av = a.created ?? ''; bv = b.created ?? ''; break;
       case 'updated':      av = a.updated ?? ''; bv = b.updated ?? ''; break;
       default:             av = a.priority; bv = b.priority;
@@ -516,6 +520,7 @@ function cellFor(item, colKey) {
     case 'due':          return `<td>${dueHtml(item.due)}</td>`;
     case 'tags':         return `<td class="item-tags">${escHtml((item.tags ?? []).join(', '))}</td>`;
     case 'story_points': return `<td style="text-align:center;font-size:11px;color:var(--text-dim)">${item.story_points != null ? item.story_points : '—'}</td>`;
+    case 'phase':        return `<td style="font-size:11px;color:var(--text-dim)">${escHtml(item.phase ?? '')}</td>`;
     case 'created':      return `<td style="font-size:11px;color:var(--text-dim)">${escHtml(item.created ?? '')}</td>`;
     case 'updated':      return `<td style="font-size:11px;color:var(--text-dim)">${escHtml(item.updated ?? '')}</td>`;
     default:             return '<td></td>';
@@ -1958,6 +1963,7 @@ for (const btn of document.querySelectorAll('.filter-btn')) {
 document.getElementById('filter-priority').addEventListener('change', e => { filterPriority = e.target.value; renderTable(); });
 document.getElementById('filter-type').addEventListener('change', e => { filterType = e.target.value; renderTable(); });
 document.getElementById('filter-tag').addEventListener('input', e => { filterTag = e.target.value.trim(); renderTable(); });
+document.getElementById('filter-phase').addEventListener('input', e => { filterPhase = e.target.value.trim(); renderTable(); });
 
 // Column picker
 const colPickerBtn  = document.getElementById('col-picker-btn');

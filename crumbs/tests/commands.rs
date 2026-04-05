@@ -1210,6 +1210,39 @@ fn sort_by_due_undated_items_sort_last() {
 }
 
 #[test]
+fn sort_by_phase_alphabetical_no_phase_last() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id_b = create_task(&d, "Phase B item");
+    let id_a = create_task(&d, "Phase A item");
+    let id_none = create_task(&d, "No phase item");
+    commands::update::run(
+        &d,
+        &id_a,
+        UpdateArgs {
+            phase: Some("alpha".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::update::run(
+        &d,
+        &id_b,
+        UpdateArgs {
+            phase: Some("beta".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let items = store::load_all(&d).unwrap();
+    let sorted = commands::list::sort_items(items, SortKey::Phase);
+    assert_eq!(sorted[0].1.id, id_a, "alpha should sort first");
+    assert_eq!(sorted[1].1.id, id_b, "beta should sort second");
+    assert_eq!(sorted[2].1.id, id_none, "no-phase item should sort last");
+}
+
+#[test]
 fn sort_key_from_str_error_on_unknown_field() {
     let result = "bogus".parse::<SortKey>();
     assert!(result.is_err());
@@ -1231,7 +1264,7 @@ fn sort_key_value_enum_has_all_variants() {
     assert_eq!(
         names,
         vec![
-            "id", "priority", "status", "title", "type", "due", "created", "updated"
+            "id", "priority", "status", "title", "type", "due", "created", "updated", "phase"
         ],
     );
 }
@@ -1560,6 +1593,60 @@ fn list_phase_filter_shows_matching_items_only() {
     assert!(
         !stdout.contains("No Phase"),
         "phase filter must exclude items with no phase, got:\n{stdout}"
+    );
+}
+
+#[test]
+fn list_output_shows_phase_marker() {
+    // Items with a phase set should show a @phase marker in list output;
+    // items without a phase should not show one.
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "Has Phase".to_string(),
+            phase: "2026-Q2".to_string(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "No Phase Item".to_string(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("crumbs")
+        .unwrap()
+        .args(["--dir", d.to_str().unwrap(), "list"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    // The phased item line must include the @phase marker
+    let phased_line = stdout
+        .lines()
+        .find(|l| l.contains("Has Phase"))
+        .unwrap_or("");
+    assert!(
+        phased_line.contains("@2026-Q2"),
+        "list output must show @phase marker for items with a phase, got line:\n{phased_line}"
+    );
+
+    // The no-phase item line must NOT include a @ marker
+    let no_phase_line = stdout
+        .lines()
+        .find(|l| l.contains("No Phase Item"))
+        .unwrap_or("");
+    assert!(
+        !no_phase_line.contains('@'),
+        "list output must not show @ for items without a phase, got line:\n{no_phase_line}"
     );
 }
 
