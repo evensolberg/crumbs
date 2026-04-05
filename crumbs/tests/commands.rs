@@ -805,6 +805,181 @@ fn show_bare_suffix_expands_with_store_prefix() {
     commands::show::run(&store_dir, &["b01".to_string()]).unwrap();
 }
 
+// ── next ─────────────────────────────────────────────────────────────────────
+
+#[test]
+fn next_skips_item_whose_blocker_is_open() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+
+    // "Critical" has priority 0 (highest) but will be blocked by "Blocker" (P1).
+    // Without the fix, next returns "Critical" because it has lowest priority value.
+    // With the fix, next returns "Blocker" because "Critical"'s blocker is still open.
+    let id_blocker = create_task(&d, "Blocker");
+    commands::update::run(
+        &d,
+        &id_blocker,
+        UpdateArgs {
+            priority: Some(1),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let id_critical = create_task(&d, "Critical");
+    commands::update::run(
+        &d,
+        &id_critical,
+        UpdateArgs {
+            priority: Some(0),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::link::run(&d, &id_blocker, "blocks", &[id_critical.clone()], false).unwrap();
+
+    let output = Command::cargo_bin("crumbs")
+        .unwrap()
+        .args(["--dir", d.to_str().unwrap(), "next"])
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        stdout.contains("Blocker"),
+        "next should return the open blocker, got:\n{stdout}"
+    );
+    assert!(
+        !stdout.contains("Critical"),
+        "next must not return an item with an open blocker, got:\n{stdout}"
+    );
+}
+
+#[test]
+fn next_returns_item_once_blocker_is_closed() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+
+    let id_blocker = create_task(&d, "Now Closed");
+    let id_target = create_task(&d, "Ready To Do");
+    commands::update::run(
+        &d,
+        &id_target,
+        UpdateArgs {
+            priority: Some(0),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::link::run(&d, &id_blocker, "blocks", &[id_target.clone()], false).unwrap();
+    commands::close::run(&d, &id_blocker, Some("done".to_string())).unwrap();
+
+    let output = Command::cargo_bin("crumbs")
+        .unwrap()
+        .args(["--dir", d.to_str().unwrap(), "next"])
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        stdout.contains("Ready To Do"),
+        "next should surface the target once its blocker is closed, got:\n{stdout}"
+    );
+}
+
+// ── list --tag AND semantics ──────────────────────────────────────────────────
+
+#[test]
+fn list_tag_filter_comma_is_and_semantics() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "Both Tags".to_string(),
+            tags: vec!["alpha".to_string(), "beta".to_string()],
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "Only Alpha".to_string(),
+            tags: vec!["alpha".to_string()],
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "Neither".to_string(),
+            tags: vec!["gamma".to_string()],
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("crumbs")
+        .unwrap()
+        .args(["--dir", d.to_str().unwrap(), "list", "--tag", "alpha,beta"])
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        stdout.contains("Both Tags"),
+        "AND filter should include item with both tags, got:\n{stdout}"
+    );
+    assert!(
+        !stdout.contains("Only Alpha"),
+        "AND filter must exclude item missing one tag, got:\n{stdout}"
+    );
+    assert!(
+        !stdout.contains("Neither"),
+        "AND filter must exclude item with neither tag, got:\n{stdout}"
+    );
+}
+
+#[test]
+fn list_tag_filter_single_tag_unchanged() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "Has Tag".to_string(),
+            tags: vec!["project/auth".to_string()],
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "No Tag".to_string(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("crumbs")
+        .unwrap()
+        .args(["--dir", d.to_str().unwrap(), "list", "--tag", "auth"])
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        stdout.contains("Has Tag"),
+        "single tag filter should match via substring, got:\n{stdout}"
+    );
+    assert!(
+        !stdout.contains("No Tag"),
+        "single tag filter must exclude untagged items, got:\n{stdout}"
+    );
+}
+
 // ── Emoji shortcode expansion ─────────────────────────────────────────────────
 
 #[test]

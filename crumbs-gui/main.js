@@ -101,6 +101,7 @@ const formatToolbar    = document.getElementById('format-toolbar');
 const headingSelect    = document.getElementById('heading-select');
 const fmtWrapBtn       = document.getElementById('fmt-wrap');
 const detailEditorEl   = document.getElementById('detail-editor');
+const editorArea       = document.getElementById('editor-area');
 const outlinePanel     = document.getElementById('outline-panel');
 const outlineList      = document.getElementById('outline-list');
 const outlineToggleBtn = document.getElementById('outline-toggle-btn');
@@ -804,7 +805,7 @@ function setPreviewMode(on) {
   previewMode = on;
   previewBtn.textContent = on ? 'Edit' : 'Preview';
   formatToolbar.classList.toggle('hidden', on);
-  detailEditorEl.classList.toggle('hidden', on);
+  editorArea.classList.toggle('hidden', on);
   outlinePanel.classList.toggle('hidden', on || !outlineVisible);
   outlineResizer.classList.toggle('hidden', on || !outlineVisible);
   detailPreview.classList.toggle('hidden', !on);

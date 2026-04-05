@@ -128,6 +128,13 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
         ),
     };
 
+    // Parse comma-separated tag filter once before iteration.
+    // Comma-separated values use AND semantics: each part must
+    // match at least one of the item's tags (substring match).
+    let tag_parts: Option<Vec<&str>> = tag_filter
+        .as_deref()
+        .map(|s| s.split(',').map(str::trim).collect());
+
     let items = store::load_all(dir)?;
     let filtered: Vec<_> = items
         .into_iter()
@@ -143,10 +150,13 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
             {
                 return false;
             }
-            if let Some(tag) = tag_filter.as_deref()
-                && !item.tags.iter().any(|t| t.contains(tag))
-            {
-                return false;
+            if let Some(parts) = &tag_parts {
+                if !parts
+                    .iter()
+                    .all(|req| item.tags.iter().any(|t| t.contains(req)))
+                {
+                    return false;
+                }
             }
             if let Some(p) = priority_filter
                 && item.priority != p
