@@ -1,7 +1,7 @@
 ---
 id: cr-w0h
 title: Add milestone / phase field for roadmap grouping
-status: in_progress
+status: closed
 type: feature
 priority: 2
 tags:
@@ -9,7 +9,9 @@ tags:
 - planning
 created: 2026-04-04
 updated: 2026-04-05
+closed_reason: 'Implemented in PR #13 (v0.18.0)'
 dependencies: []
+phase: ''
 ---
 
 # Add milestone / phase field for roadmap grouping
