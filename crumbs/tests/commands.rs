@@ -1701,14 +1701,85 @@ fn list_output_shows_phase_badge() {
         "phase badge must appear before type badge, got line:\n{phased_line}"
     );
 
-    // The no-phase item line must show [ ] empty badge
+    // The no-phase item line must show a spaces-only phase badge (padded to
+    // match the widest phase in the list — "2026-Q2" = 7 chars here).
     let no_phase_line = stdout
         .lines()
         .find(|l| l.contains("No Phase Item"))
         .unwrap_or("");
     assert!(
-        no_phase_line.contains("[ ]"),
-        "list output must show [ ] badge for items without a phase, got line:\n{no_phase_line}"
+        no_phase_line.contains("[ "),
+        "list output must show a space-padded phase badge for items without a phase, got line:\n{no_phase_line}"
+    );
+}
+
+#[test]
+fn list_phase_badge_padded_to_widest_phase() {
+    // When items have phases of different lengths, all phase badges must be
+    // padded to the width of the longest phase so columns align.
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "Short Phase".to_string(),
+            phase: "p1".to_string(), // 2 chars
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "Long Phase".to_string(),
+            phase: "2026-Q2".to_string(), // 7 chars — widest
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "No Phase".to_string(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("crumbs")
+        .unwrap()
+        .args(["--dir", d.to_str().unwrap(), "list"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    let short_line = stdout
+        .lines()
+        .find(|l| l.contains("Short Phase"))
+        .unwrap_or("");
+    let long_line = stdout
+        .lines()
+        .find(|l| l.contains("Long Phase"))
+        .unwrap_or("");
+    let none_line = stdout
+        .lines()
+        .find(|l| l.contains("No Phase"))
+        .unwrap_or("");
+
+    // All badges must be padded to width 7 (longest phase)
+    assert!(
+        short_line.contains("[p1     ]"),
+        "short phase must be padded to max width, got:\n{short_line}"
+    );
+    assert!(
+        long_line.contains("[2026-Q2]"),
+        "longest phase must be unpadded, got:\n{long_line}"
+    );
+    assert!(
+        none_line.contains("[       ]"),
+        "no-phase must be padded to max width with spaces, got:\n{none_line}"
     );
 }
 

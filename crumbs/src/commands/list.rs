@@ -200,6 +200,8 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
     }
 
     let sorted = sort_items(filtered, sort);
+    // Pad all phase badges to the widest phase so the type column aligns.
+    let max_phase = sorted.iter().map(|(_, i)| i.phase.len()).max().unwrap_or(0);
     let today = Local::now().date_naive();
     for (_, item) in sorted {
         let icon = color::status_icon_styled(&item.status);
@@ -220,13 +222,8 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
         let points_marker = item
             .story_points
             .map_or_else(String::new, |sp| format!(" [{sp}sp]"));
-        // Always emit a bracket pair so the column appears even for unphased items.
-        // [ ] keeps the priority → phase → type visual column consistent.
-        let phase_badge = if item.phase.is_empty() {
-            "[ ]".to_string()
-        } else {
-            format!("[{}]", item.phase)
-        };
+        // Pad phase to max_phase width so the type badge column stays aligned.
+        let phase_badge = format!("[{:<max_phase$}]", item.phase);
         let timer_marker = if active_start_ts(&item.description).is_some() {
             " ▶"
         } else {

@@ -134,6 +134,8 @@ crumbs list --sort priority                # sort by: id (default), priority, st
 crumbs next                                # highest-priority actionable item (skips deferred with future until date; skips items with open blockers)
 ```
 
+Each row is formatted as `icon id [Px] [phase] [type] title [tags] due:… [Nsp]`. The phase badge is padded to the widest phase in the current view; items without a phase show spaces.
+
 ### Inspect
 
 ```sh
