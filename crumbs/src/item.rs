@@ -101,6 +101,13 @@ pub struct Item {
     pub description: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub story_points: Option<u8>,
+    /// Free-form phase or milestone label (e.g. "phase-1", "2026-Q2").
+    ///
+    /// Intentionally `String` (not `Option<String>`) with only `#[serde(default)]`
+    /// so the key is **always** written to YAML frontmatter as `phase: ''` when
+    /// unset. This allows external tools (`sd`, `yq`, grep) to bulk-edit phase
+    /// assignments without needing to add the key first. Old items without the
+    /// field deserialise cleanly as `""`.
     #[serde(default)]
     pub phase: String,
 }

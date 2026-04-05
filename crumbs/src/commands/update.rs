@@ -120,7 +120,7 @@ pub fn run_labeled(
             if args.clear_phase {
                 item.phase = String::new();
             } else if let Some(p) = args.phase {
-                item.phase = p;
+                item.phase = p.trim().to_string();
             }
             item.updated = Local::now().date_naive();
 

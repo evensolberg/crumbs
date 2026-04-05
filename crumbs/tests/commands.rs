@@ -1513,7 +1513,7 @@ fn update_phase_sets_field() {
 }
 
 #[test]
-fn update_clear_phase_removes_field() {
+fn update_clear_phase_clears_value() {
     let dir = tempdir().unwrap();
     let d = dir.path().join(".crumbs");
     commands::init::run(&d, Some("cr".to_string())).unwrap();
@@ -1541,6 +1541,27 @@ fn update_clear_phase_removes_field() {
         item.phase.is_empty(),
         "clear_phase should leave phase as empty string"
     );
+}
+
+#[test]
+fn update_phase_trims_whitespace() {
+    // Phase values with leading/trailing whitespace must be stored trimmed so
+    // that `list --phase` can match them reliably with an exact comparison.
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "Whitespace Phase");
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            phase: Some("  phase-1  ".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (_, item) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert_eq!(item.phase, "phase-1", "phase should be stored trimmed");
 }
 
 #[test]
