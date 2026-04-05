@@ -28,6 +28,7 @@ pub fn items_to_string(items: &[Item], format: &str) -> Result<String> {
                 "dependencies",
                 "due",
                 "story_points",
+                "phase",
             ])?;
             for item in items {
                 wtr.write_record([
@@ -46,6 +47,7 @@ pub fn items_to_string(items: &[Item], format: &str) -> Result<String> {
                         .story_points
                         .map(|sp| sp.to_string())
                         .unwrap_or_default(),
+                    item.phase.as_deref().unwrap_or(""),
                 ])?;
             }
             Ok(String::from_utf8(wtr.into_inner()?)?)
