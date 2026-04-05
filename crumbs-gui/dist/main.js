@@ -53,12 +53,12 @@ const ALL_COLUMNS = [
   { key: 'id',           label: 'ID',       width: '90px',  sortable: true,  default: true  },
   { key: 'title',        label: 'Title',    width: null,    sortable: true,  default: true  },
   { key: 'status',       label: 'Status',   width: '110px', sortable: true,  default: true  },
+  { key: 'phase',        label: 'Phase',    width: '100px', sortable: true,  default: false },
   { key: 'type',         label: 'Type',     width: '70px',  sortable: true,  default: true  },
   { key: 'priority',     label: 'Priority', width: '110px', sortable: true,  default: true  },
   { key: 'due',          label: 'Due',      width: '90px',  sortable: true,  default: true  },
   { key: 'tags',         label: 'Tags',     width: '140px', sortable: true,  default: true  },
   { key: 'story_points', label: 'SP',       width: '44px',  sortable: true,  default: false },
-  { key: 'phase',        label: 'Phase',    width: '100px', sortable: true,  default: false },
   { key: 'created',      label: 'Created', width: '90px',  sortable: true,  default: false },
   { key: 'updated',      label: 'Updated', width: '90px',  sortable: true,  default: false },
 ];
@@ -711,6 +711,26 @@ function renderProps(item) {
     v => doUpdateStatus(item.id, v),
   ));
 
+  const phaseInput = document.createElement('input');
+  phaseInput.type = 'text';
+  phaseInput.placeholder = 'e.g. phase-1, 2026-Q2';
+  phaseInput.value = item.phase;
+  phaseInput.style.cssText = 'width:100%;font:inherit;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:2px 4px;outline:none;box-sizing:border-box;';
+  let loadedPhase = phaseInput.value;
+  phaseInput.addEventListener('focus', () => { phaseInput.style.borderColor = 'var(--accent)'; });
+  phaseInput.addEventListener('blur', () => {
+    phaseInput.style.borderColor = 'var(--border)';
+    if (phaseInput.value !== loadedPhase) {
+      loadedPhase = phaseInput.value;
+      doUpdatePhase(item.id, phaseInput.value);
+    }
+  });
+  phaseInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') phaseInput.blur();
+    if (e.key === 'Escape') { phaseInput.value = loadedPhase; phaseInput.blur(); e.stopPropagation(); }
+  });
+  propRow('Phase', '').appendChild(phaseInput);
+
   propRow('Type', '').appendChild(makeSelect(
     ['task', 'bug', 'feature', 'epic', 'idea'].map(t => [t, t]),
     item.type ?? '',
@@ -775,26 +795,6 @@ function renderProps(item) {
     if (e.key === 'Escape') { tagsInput.value = loadedTags; tagsInput.blur(); e.stopPropagation(); }
   });
   propRow('Tags', '').appendChild(tagsInput);
-
-  const phaseInput = document.createElement('input');
-  phaseInput.type = 'text';
-  phaseInput.placeholder = 'e.g. phase-1, 2026-Q2';
-  phaseInput.value = item.phase;
-  phaseInput.style.cssText = 'width:100%;font:inherit;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:2px 4px;outline:none;box-sizing:border-box;';
-  let loadedPhase = phaseInput.value;
-  phaseInput.addEventListener('focus', () => { phaseInput.style.borderColor = 'var(--accent)'; });
-  phaseInput.addEventListener('blur', () => {
-    phaseInput.style.borderColor = 'var(--border)';
-    if (phaseInput.value !== loadedPhase) {
-      loadedPhase = phaseInput.value;
-      doUpdatePhase(item.id, phaseInput.value);
-    }
-  });
-  phaseInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter') phaseInput.blur();
-    if (e.key === 'Escape') { phaseInput.value = loadedPhase; phaseInput.blur(); e.stopPropagation(); }
-  });
-  propRow('Phase', '').appendChild(phaseInput);
 
   const depsInput = document.createElement('input');
   depsInput.type = 'text';

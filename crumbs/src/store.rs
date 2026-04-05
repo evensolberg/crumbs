@@ -181,6 +181,8 @@ pub fn reindex(dir: &Path) -> Result<()> {
         "created",
         "updated",
         "closed_reason",
+        "dependencies",
+        "due",
         "story_points",
     ])?;
     for (_, item) in &items {
@@ -195,6 +197,8 @@ pub fn reindex(dir: &Path) -> Result<()> {
             &item.created.to_string(),
             &item.updated.to_string(),
             &item.closed_reason,
+            &item.dependencies.join("|"),
+            &item.due.map(|d| d.to_string()).unwrap_or_default(),
             &item
                 .story_points
                 .map(|sp| sp.to_string())
