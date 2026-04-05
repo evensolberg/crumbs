@@ -50,6 +50,9 @@ fn show_one(dir: &Path, id: &str) -> Result<()> {
                 "  Status:   {}",
                 color::status_icon_styled(&item.status) + " " + &item.status.to_string()
             );
+            if !item.phase.is_empty() {
+                println!("  Phase:    {}", item.phase);
+            }
             println!("  Type:     {}", t_style.apply_to(&item.item_type));
             println!(
                 "  Priority: {}",
@@ -91,9 +94,6 @@ fn show_one(dir: &Path, id: &str) -> Result<()> {
             }
             if let Some(sp) = item.story_points {
                 println!("  Points:   {sp}");
-            }
-            if !item.phase.is_empty() {
-                println!("  Phase:    {}", item.phase);
             }
             if !item.description.is_empty() {
                 println!();

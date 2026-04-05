@@ -19,6 +19,7 @@ pub fn items_to_string(items: &[Item], format: &str) -> Result<String> {
                 "id",
                 "title",
                 "status",
+                "phase",
                 "type",
                 "priority",
                 "tags",
@@ -28,13 +29,13 @@ pub fn items_to_string(items: &[Item], format: &str) -> Result<String> {
                 "dependencies",
                 "due",
                 "story_points",
-                "phase",
             ])?;
             for item in items {
                 wtr.write_record([
                     &item.id,
                     &item.title,
                     &item.status.to_string(),
+                    &item.phase,
                     &item.item_type.to_string(),
                     &item.priority.to_string(),
                     &item.tags.join("|"),
@@ -47,7 +48,6 @@ pub fn items_to_string(items: &[Item], format: &str) -> Result<String> {
                         .story_points
                         .map(|sp| sp.to_string())
                         .unwrap_or_default(),
-                    &item.phase,
                 ])?;
             }
             Ok(String::from_utf8(wtr.into_inner()?)?)
