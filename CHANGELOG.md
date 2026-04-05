@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+## [0.17.3] - 2026-04-05
+
 ### Chore
 
 - Bump version to 0.17.3

@@ -30,11 +30,12 @@ pub fn run(dir: &Path) -> Result<()> {
                 return false;
             }
             // Skip items that have at least one blocker not yet closed.
-            if item.blocked_by.iter().any(|id| {
-                status_by_id
-                    .get(&id.to_lowercase())
-                    .is_some_and(|s| *s != Status::Closed)
-            }) {
+            // Unknown IDs (dangling references) are treated as still blocking.
+            if item
+                .blocked_by
+                .iter()
+                .any(|id| !matches!(status_by_id.get(&id.to_lowercase()), Some(Status::Closed)))
+            {
                 return false;
             }
             true

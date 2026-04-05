@@ -843,6 +843,11 @@ fn next_skips_item_whose_blocker_is_open() {
         .args(["--dir", d.to_str().unwrap(), "next"])
         .output()
         .unwrap();
+    assert!(
+        output.status.success(),
+        "crumbs next failed\nstderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(
         stdout.contains("Blocker"),
@@ -879,6 +884,11 @@ fn next_returns_item_once_blocker_is_closed() {
         .args(["--dir", d.to_str().unwrap(), "next"])
         .output()
         .unwrap();
+    assert!(
+        output.status.success(),
+        "crumbs next failed\nstderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(
         stdout.contains("Ready To Do"),
@@ -926,6 +936,11 @@ fn list_tag_filter_comma_is_and_semantics() {
         .args(["--dir", d.to_str().unwrap(), "list", "--tag", "alpha,beta"])
         .output()
         .unwrap();
+    assert!(
+        output.status.success(),
+        "crumbs list failed\nstderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(
         stdout.contains("Both Tags"),
@@ -969,6 +984,11 @@ fn list_tag_filter_single_tag_unchanged() {
         .args(["--dir", d.to_str().unwrap(), "list", "--tag", "auth"])
         .output()
         .unwrap();
+    assert!(
+        output.status.success(),
+        "crumbs list failed\nstderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(
         stdout.contains("Has Tag"),
