@@ -207,6 +207,8 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
         .map(|(_, i)| measure_text_width(&i.phase))
         .max()
         .unwrap_or(0);
+    // Precompute a single spaces string; sliced per item to avoid per-row allocation.
+    let spaces = " ".repeat(max_phase);
     let today = Local::now().date_naive();
     for (_, item) in sorted {
         let icon = color::status_icon_styled(&item.status);
@@ -228,10 +230,10 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
             .story_points
             .map_or_else(String::new, |sp| format!(" [{sp}sp]"));
         // Pad phase to max_phase display-width so the type badge column stays aligned.
-        // Because {:<N$} counts bytes, compute extra space padding for non-ASCII phases.
+        // Slice the precomputed spaces string (single-byte, so index == byte offset).
         let display_w = measure_text_width(&item.phase);
         let padding = max_phase.saturating_sub(display_w);
-        let phase_badge = format!("[{}{}]", item.phase, " ".repeat(padding));
+        let phase_badge = format!("[{}{}]", item.phase, &spaces[..padding]);
         let timer_marker = if active_start_ts(&item.description).is_some() {
             " ▶"
         } else {

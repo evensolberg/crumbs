@@ -1785,6 +1785,61 @@ fn list_phase_badge_padded_to_widest_phase() {
 }
 
 #[test]
+fn list_phase_badge_unicode_width_padding() {
+    // CJK characters have display width 2. "日本" has display width 4.
+    // An ASCII phase "ab" (display width 2) must be padded by 2 spaces to match.
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "CJK Phase".to_string(),
+            phase: "日本".to_string(), // display width 4
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "ASCII Phase".to_string(),
+            phase: "ab".to_string(), // display width 2
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("crumbs")
+        .unwrap()
+        .args(["--dir", d.to_str().unwrap(), "list"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    let cjk_line = stdout
+        .lines()
+        .find(|l| l.contains("CJK Phase"))
+        .unwrap_or("");
+    let ascii_line = stdout
+        .lines()
+        .find(|l| l.contains("ASCII Phase"))
+        .unwrap_or("");
+
+    // CJK phase is the widest (display width 4); no padding needed
+    assert!(
+        cjk_line.contains("[日本]"),
+        "CJK phase badge must not be padded, got:\n{cjk_line}"
+    );
+    // ASCII phase display width 2 must be padded by 2 spaces to reach display width 4
+    assert!(
+        ascii_line.contains("[ab  ]"),
+        "ASCII phase must be padded to CJK display width, got:\n{ascii_line}"
+    );
+}
+
+#[test]
 fn create_with_empty_phase_writes_key_to_frontmatter() {
     // Passing phase: "" (or omitting --phase) must still produce `phase:` in
     // the YAML so external tools can always grep for the key.
