@@ -170,7 +170,7 @@ crumbs reindex                   # rebuild index.csv manually
 | `dependencies` | comma-separated IDs |
 | `blocks` / `blocked_by` | set via `link` or `block` command |
 | `story_points` | optional integer; conventional Fibonacci values: 1, 2, 3, 5, 8, 13, 21 |
-| `phase` | optional string; free-form label, e.g. `phase-1`, `2026-Q2` |
+| `phase` | free-form label, e.g. `phase-1`, `2026-Q2`; always written to frontmatter (as `''` when unset) |
 
 ## Time tracking format
 

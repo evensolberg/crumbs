@@ -295,7 +295,7 @@ blocks: []
 blocked_by: []
 due: 2026-04-01     # optional
 story_points: ~     # optional integer; conventional values: 1, 2, 3, 5, 8, 13, 21 (Fibonacci)
-phase: ~            # optional string; free-form label, e.g. "phase-1", "2026-Q2"
+phase: ''           # free-form label, e.g. "phase-1", "2026-Q2"; always present, empty until set
 ---
 
 # Example item
