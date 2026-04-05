@@ -91,14 +91,11 @@ pub fn sort_items(mut items: Vec<(PathBuf, Item)>, key: SortKey) -> Vec<(PathBuf
             items.sort_by_cached_key(|(_, i)| (i.updated, i.id.clone()));
         }
         // Items without a phase sort to the end; within a phase, sort by id.
+        // The bool tuple makes the "empty last" intent explicit and correct for
+        // all Unicode phase labels (is_empty=false < is_empty=true).
         SortKey::Phase => {
             items.sort_by_cached_key(|(_, i)| {
-                let p = if i.phase.is_empty() {
-                    "\u{FFFF}".to_string()
-                } else {
-                    i.phase.to_lowercase()
-                };
-                (p, i.id.clone())
+                (i.phase.is_empty(), i.phase.to_lowercase(), i.id.clone())
             });
         }
     }
@@ -189,7 +186,7 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
                 return false;
             }
             if let Some(ref p) = phase_filter
-                && item.phase != *p
+                && item.phase.as_str() != p.as_str()
             {
                 return false;
             }

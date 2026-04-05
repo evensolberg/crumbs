@@ -1565,6 +1565,41 @@ fn update_phase_trims_whitespace() {
 }
 
 #[test]
+fn list_phase_filter_trims_whitespace() {
+    // list --phase with surrounding whitespace must still match trimmed values.
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "Phase One".to_string(),
+            phase: "phase-1".to_string(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("crumbs")
+        .unwrap()
+        .args([
+            "--dir",
+            d.to_str().unwrap(),
+            "list",
+            "--phase",
+            "  phase-1  ",
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        stdout.contains("Phase One"),
+        "--phase with surrounding spaces must match trimmed stored value, got:\n{stdout}"
+    );
+}
+
+#[test]
 fn list_phase_filter_shows_matching_items_only() {
     let dir = tempdir().unwrap();
     let d = dir.path().join(".crumbs");
