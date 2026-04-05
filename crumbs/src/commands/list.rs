@@ -220,6 +220,8 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
         let points_marker = item
             .story_points
             .map_or_else(String::new, |sp| format!(" [{sp}sp]"));
+        // Always emit a bracket pair so the column appears even for unphased items.
+        // [ ] keeps the priority → phase → type visual column consistent.
         let phase_badge = if item.phase.is_empty() {
             "[ ]".to_string()
         } else {

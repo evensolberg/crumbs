@@ -1653,9 +1653,9 @@ fn list_phase_filter_shows_matching_items_only() {
 }
 
 #[test]
-fn list_output_shows_phase_marker() {
-    // Items with a phase set should show a @phase marker in list output;
-    // items without a phase should not show one.
+fn list_output_shows_phase_badge() {
+    // Items with a phase set should show a [phase] badge inline between the
+    // priority and type badges; items without a phase should show [ ].
     let dir = tempdir().unwrap();
     let d = dir.path().join(".crumbs");
     commands::init::run(&d, Some("cr".to_string())).unwrap();
@@ -1685,7 +1685,7 @@ fn list_output_shows_phase_marker() {
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
 
-    // The phased item line must include the inline [2026-Q2] badge
+    // The phased item line must include the inline [2026-Q2] badge before [task]
     let phased_line = stdout
         .lines()
         .find(|l| l.contains("Has Phase"))
@@ -1693,6 +1693,12 @@ fn list_output_shows_phase_marker() {
     assert!(
         phased_line.contains("[2026-Q2]"),
         "list output must show [phase] badge for items with a phase, got line:\n{phased_line}"
+    );
+    let phase_pos = phased_line.find("[2026-Q2]").unwrap();
+    let type_pos = phased_line.find("[task]").unwrap();
+    assert!(
+        phase_pos < type_pos,
+        "phase badge must appear before type badge, got line:\n{phased_line}"
     );
 
     // The no-phase item line must show [ ] empty badge
