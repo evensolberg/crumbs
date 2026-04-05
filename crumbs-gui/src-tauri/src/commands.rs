@@ -204,11 +204,12 @@ pub fn update_dependencies(dir: String, id: String, dependencies: String) -> Res
     .map_err(|e| e.to_string())
 }
 
-/// Update an item's phase label. Empty string clears the phase.
+/// Update an item's phase label. Empty or whitespace-only string clears the phase.
 /// Uses `clear_phase: true` (not `phase: Some("")`) so the clear intent
 /// remains correct if validation is added to the `phase` assignment path later.
 #[tauri::command]
 pub fn update_phase(dir: String, id: String, phase: String) -> Result<(), String> {
+    let phase = phase.trim().to_string();
     if phase.is_empty() {
         update::run(
             &to_path(&dir),

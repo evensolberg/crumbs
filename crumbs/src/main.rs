@@ -51,7 +51,7 @@ enum Command {
         /// Show first two lines of body text beneath each item
         #[arg(short, long)]
         verbose: bool,
-        /// Sort by field (id, priority, status, title, type, due, created, updated)
+        /// Sort by field (id, priority, status, title, type, due, created, updated, phase)
         #[arg(long, default_value_t = SortKey::Id)]
         sort: SortKey,
     },
