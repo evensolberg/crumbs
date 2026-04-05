@@ -45,6 +45,7 @@ crumbs list --status blocked
 crumbs list --status open --priority 0
 crumbs list --tag project/auth
 crumbs list --type bug           # filter by type (task, bug, feature, epic, idea)
+crumbs list --phase phase-1      # filter by phase label
 crumbs list --verbose            # show first two body lines beneath each item
 crumbs list --sort priority      # sort by: id (default), priority, status, title, type, due, created, updated
 crumbs next                      # highest-priority actionable item (skips deferred with future until date)
@@ -71,6 +72,9 @@ crumbs update cr-x7q --depends cr-abc,cr-xyz
 crumbs update cr-x7q --type bug
 crumbs update cr-x7q --points 5
 crumbs update cr-x7q --clear-points
+crumbs update cr-x7q --phase phase-1
+crumbs update cr-x7q --phase 2026-Q2
+crumbs update cr-x7q --clear-phase
 ```
 
 ### Append (shorthand)
@@ -166,6 +170,7 @@ crumbs reindex                   # rebuild index.csv manually
 | `dependencies` | comma-separated IDs |
 | `blocks` / `blocked_by` | set via `link` or `block` command |
 | `story_points` | optional integer; conventional Fibonacci values: 1, 2, 3, 5, 8, 13, 21 |
+| `phase` | optional string; free-form label, e.g. `phase-1`, `2026-Q2` |
 
 ## Time tracking format
 
@@ -186,9 +191,10 @@ Timer entries live in the markdown body alongside other notes:
 - `link blocks` and `block` update **both** items atomically and set blocked status on targets
 - Unlinking restores `open` on targets when no other blockers remain
 - `--tags` and `--depends` on update **replace** the existing list (not append)
+- `--tag` on list uses **AND semantics**: `--tag alpha,beta` returns only items that have both tags; empty parts are ignored
 - `--append 'text'` adds to the body with a `[YYYY-MM-DD]` timestamp prefix; `--message 'text'` replaces it
 - `:shortcode:` in body text (message, append, timer comments) is expanded to Unicode at write time — e.g. `:tada:` → 🎉, `:bug:` → 🐛, `:+1:` → 👍; unknown shortcodes pass through unchanged
-- `crumbs defer --until <date>` sets the due date; `crumbs next` skips deferred items with a future until date
+- `crumbs defer --until <date>` sets the due date; `crumbs next` skips deferred items with a future until date and skips items whose `blocked_by` items are still open
 - `crumbs start` / `crumbs stop` append timer entries to the body; `crumbs show` sums elapsed time as "Total tracked"
 - File names are title slugs; collisions get the ID suffix appended
 - `.crumbs/` can be committed to git for full history

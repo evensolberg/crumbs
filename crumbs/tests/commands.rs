@@ -798,6 +798,7 @@ fn show_bare_suffix_expands_with_store_prefix() {
             due: None,
             description: String::new(),
             story_points: None,
+            phase: None,
         },
     )
     .unwrap();
@@ -1431,5 +1432,153 @@ fn reopen_with_append_note_comes_after_appended_text() {
     assert!(
         append_pos < note_pos,
         "appended text should come before the reopen note"
+    );
+}
+
+// ── phase field ───────────────────────────────────────────────────────────────
+
+#[test]
+fn create_with_phase_stores_field() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "Phase Task".to_string(),
+            phase: Some("phase-1".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let items = store::load_all(&d).unwrap();
+    let item = items
+        .into_iter()
+        .find(|(_, i)| i.title == "Phase Task")
+        .unwrap()
+        .1;
+    assert_eq!(item.phase, Some("phase-1".to_string()));
+}
+
+#[test]
+fn update_phase_sets_field() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "Update Phase");
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            phase: Some("2026-Q2".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (_, item) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert_eq!(item.phase, Some("2026-Q2".to_string()));
+}
+
+#[test]
+fn update_clear_phase_removes_field() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "Clear Phase");
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            phase: Some("phase-1".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            clear_phase: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (_, item) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert_eq!(item.phase, None);
+}
+
+#[test]
+fn list_phase_filter_shows_matching_items_only() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "In Phase One".to_string(),
+            phase: Some("phase-1".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "In Phase Two".to_string(),
+            phase: Some("phase-2".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "No Phase".to_string(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("crumbs")
+        .unwrap()
+        .args(["--dir", d.to_str().unwrap(), "list", "--phase", "phase-1"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        stdout.contains("In Phase One"),
+        "phase filter should include matching item, got:\n{stdout}"
+    );
+    assert!(
+        !stdout.contains("In Phase Two"),
+        "phase filter must exclude different phase, got:\n{stdout}"
+    );
+    assert!(
+        !stdout.contains("No Phase"),
+        "phase filter must exclude items with no phase, got:\n{stdout}"
+    );
+}
+
+#[test]
+fn phase_round_trips_through_file() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "Round Trip Phase");
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            phase: Some("2026-Q3".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (_, item) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert_eq!(
+        item.phase,
+        Some("2026-Q3".to_string()),
+        "phase should survive a write/read round-trip"
     );
 }

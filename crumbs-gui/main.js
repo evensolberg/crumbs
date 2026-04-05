@@ -771,6 +771,26 @@ function renderProps(item) {
   });
   propRow('Tags', '').appendChild(tagsInput);
 
+  const phaseInput = document.createElement('input');
+  phaseInput.type = 'text';
+  phaseInput.placeholder = 'e.g. phase-1, 2026-Q2';
+  phaseInput.value = item.phase ?? '';
+  phaseInput.style.cssText = 'width:100%;font:inherit;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:2px 4px;outline:none;box-sizing:border-box;';
+  let loadedPhase = phaseInput.value;
+  phaseInput.addEventListener('focus', () => { phaseInput.style.borderColor = 'var(--accent)'; });
+  phaseInput.addEventListener('blur', () => {
+    phaseInput.style.borderColor = 'var(--border)';
+    if (phaseInput.value !== loadedPhase) {
+      loadedPhase = phaseInput.value;
+      doUpdatePhase(item.id, phaseInput.value);
+    }
+  });
+  phaseInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') phaseInput.blur();
+    if (e.key === 'Escape') { phaseInput.value = loadedPhase; phaseInput.blur(); e.stopPropagation(); }
+  });
+  propRow('Phase', '').appendChild(phaseInput);
+
   const depsInput = document.createElement('input');
   depsInput.type = 'text';
   depsInput.placeholder = 'id1, id2, …';
@@ -1132,6 +1152,16 @@ async function doUpdateTags(id, tags) {
   clearError();
   try {
     await invoke('update_tags', { dir: storeDir, id, tags });
+    await loadItems();
+  } catch (e) {
+    showError(`Update failed: ${e}`);
+  }
+}
+
+async function doUpdatePhase(id, phase) {
+  clearError();
+  try {
+    await invoke('update_phase', { dir: storeDir, id, phase });
     await loadItems();
   } catch (e) {
     showError(`Update failed: ${e}`);

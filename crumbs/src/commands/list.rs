@@ -98,6 +98,7 @@ pub struct ListArgs {
     pub tag_filter: Option<String>,
     pub priority_filter: Option<u8>,
     pub type_filter: Option<ItemType>,
+    pub phase_filter: Option<String>,
     pub all: bool,
     pub verbose: bool,
     pub sort: Option<SortKey>,
@@ -113,6 +114,7 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
         tag_filter,
         priority_filter,
         type_filter,
+        phase_filter,
         all,
         verbose,
         sort,
@@ -155,13 +157,12 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
             {
                 return false;
             }
-            if let Some(parts) = &tag_parts {
-                if !parts
+            if let Some(parts) = &tag_parts
+                && !parts
                     .iter()
                     .all(|req| item.tags.iter().any(|t| t.contains(req)))
-                {
-                    return false;
-                }
+            {
+                return false;
             }
             if let Some(p) = priority_filter
                 && item.priority != p
@@ -170,6 +171,11 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
             }
             if let Some(ref t) = type_filter
                 && &item.item_type != t
+            {
+                return false;
+            }
+            if let Some(ref p) = phase_filter
+                && item.phase.as_deref() != Some(p.as_str())
             {
                 return false;
             }
