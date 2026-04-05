@@ -798,6 +798,7 @@ fn show_bare_suffix_expands_with_store_prefix() {
             due: None,
             description: String::new(),
             story_points: None,
+            phase: String::new(),
         },
     )
     .unwrap();
@@ -1209,6 +1210,39 @@ fn sort_by_due_undated_items_sort_last() {
 }
 
 #[test]
+fn sort_by_phase_alphabetical_no_phase_last() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id_b = create_task(&d, "Phase B item");
+    let id_a = create_task(&d, "Phase A item");
+    let id_none = create_task(&d, "No phase item");
+    commands::update::run(
+        &d,
+        &id_a,
+        UpdateArgs {
+            phase: Some("alpha".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::update::run(
+        &d,
+        &id_b,
+        UpdateArgs {
+            phase: Some("beta".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let items = store::load_all(&d).unwrap();
+    let sorted = commands::list::sort_items(items, SortKey::Phase);
+    assert_eq!(sorted[0].1.id, id_a, "alpha should sort first");
+    assert_eq!(sorted[1].1.id, id_b, "beta should sort second");
+    assert_eq!(sorted[2].1.id, id_none, "no-phase item should sort last");
+}
+
+#[test]
 fn sort_key_from_str_error_on_unknown_field() {
     let result = "bogus".parse::<SortKey>();
     assert!(result.is_err());
@@ -1230,7 +1264,7 @@ fn sort_key_value_enum_has_all_variants() {
     assert_eq!(
         names,
         vec![
-            "id", "priority", "status", "title", "type", "due", "created", "updated"
+            "id", "priority", "status", "title", "type", "due", "created", "updated", "phase"
         ],
     );
 }
@@ -1431,5 +1465,310 @@ fn reopen_with_append_note_comes_after_appended_text() {
     assert!(
         append_pos < note_pos,
         "appended text should come before the reopen note"
+    );
+}
+
+// ── phase field ───────────────────────────────────────────────────────────────
+
+#[test]
+fn create_with_phase_stores_field() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "Phase Task".to_string(),
+            phase: "phase-1".to_string(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let items = store::load_all(&d).unwrap();
+    let item = items
+        .into_iter()
+        .find(|(_, i)| i.title == "Phase Task")
+        .unwrap()
+        .1;
+    assert_eq!(item.phase, "phase-1");
+}
+
+#[test]
+fn update_phase_sets_field() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "Update Phase");
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            phase: Some("2026-Q2".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (_, item) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert_eq!(item.phase, "2026-Q2");
+}
+
+#[test]
+fn update_clear_phase_clears_value() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "Clear Phase");
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            phase: Some("phase-1".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            clear_phase: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (_, item) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert!(
+        item.phase.is_empty(),
+        "clear_phase should leave phase as empty string"
+    );
+}
+
+#[test]
+fn update_phase_trims_whitespace() {
+    // Phase values with leading/trailing whitespace must be stored trimmed so
+    // that `list --phase` can match them reliably with an exact comparison.
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "Whitespace Phase");
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            phase: Some("  phase-1  ".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (_, item) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert_eq!(item.phase, "phase-1", "phase should be stored trimmed");
+}
+
+#[test]
+fn list_phase_filter_trims_whitespace() {
+    // list --phase with surrounding whitespace must still match trimmed values.
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "Phase One".to_string(),
+            phase: "phase-1".to_string(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("crumbs")
+        .unwrap()
+        .args([
+            "--dir",
+            d.to_str().unwrap(),
+            "list",
+            "--phase",
+            "  phase-1  ",
+        ])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        stdout.contains("Phase One"),
+        "--phase with surrounding spaces must match trimmed stored value, got:\n{stdout}"
+    );
+}
+
+#[test]
+fn list_phase_filter_shows_matching_items_only() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "In Phase One".to_string(),
+            phase: "phase-1".to_string(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "In Phase Two".to_string(),
+            phase: "phase-2".to_string(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "No Phase".to_string(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("crumbs")
+        .unwrap()
+        .args(["--dir", d.to_str().unwrap(), "list", "--phase", "phase-1"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        stdout.contains("In Phase One"),
+        "phase filter should include matching item, got:\n{stdout}"
+    );
+    assert!(
+        !stdout.contains("In Phase Two"),
+        "phase filter must exclude different phase, got:\n{stdout}"
+    );
+    assert!(
+        !stdout.contains("No Phase"),
+        "phase filter must exclude items with no phase, got:\n{stdout}"
+    );
+}
+
+#[test]
+fn list_output_shows_phase_marker() {
+    // Items with a phase set should show a @phase marker in list output;
+    // items without a phase should not show one.
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "Has Phase".to_string(),
+            phase: "2026-Q2".to_string(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "No Phase Item".to_string(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("crumbs")
+        .unwrap()
+        .args(["--dir", d.to_str().unwrap(), "list"])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+
+    // The phased item line must include the @phase marker
+    let phased_line = stdout
+        .lines()
+        .find(|l| l.contains("Has Phase"))
+        .unwrap_or("");
+    assert!(
+        phased_line.contains("@2026-Q2"),
+        "list output must show @phase marker for items with a phase, got line:\n{phased_line}"
+    );
+
+    // The no-phase item line must NOT include a @ marker
+    let no_phase_line = stdout
+        .lines()
+        .find(|l| l.contains("No Phase Item"))
+        .unwrap_or("");
+    assert!(
+        !no_phase_line.contains(" @"),
+        "list output must not show space-@ phase marker for items without a phase, got line:\n{no_phase_line}"
+    );
+}
+
+#[test]
+fn create_with_empty_phase_writes_key_to_frontmatter() {
+    // Passing phase: "" (or omitting --phase) must still produce `phase:` in
+    // the YAML so external tools can always grep for the key.
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "Empty Phase".to_string(),
+            phase: String::new(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let items = store::load_all(&d).unwrap();
+    let (path, item) = items
+        .into_iter()
+        .find(|(_, i)| i.title == "Empty Phase")
+        .unwrap();
+    assert!(item.phase.is_empty(), "phase should be empty string");
+    let raw = std::fs::read_to_string(&path).unwrap();
+    assert!(
+        raw.contains("phase:"),
+        "phase key must be in frontmatter even when empty, got:\n{raw}"
+    );
+}
+
+#[test]
+fn phase_always_written_to_frontmatter() {
+    // Even without a phase value, the key must appear in the raw YAML so
+    // external tools can grep and bulk-edit it without touching every item.
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "No Phase Item");
+    let (path, _) = store::find_by_id(&d, &id).unwrap().unwrap();
+    let raw = std::fs::read_to_string(&path).unwrap();
+    assert!(
+        raw.contains("phase:"),
+        "phase key must be present in frontmatter even when empty, got:\n{raw}"
+    );
+}
+
+#[test]
+fn phase_round_trips_through_file() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "Round Trip Phase");
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            phase: Some("2026-Q3".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (_, item) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert_eq!(
+        item.phase, "2026-Q3",
+        "phase should survive a write/read round-trip"
     );
 }

@@ -20,6 +20,7 @@ pub struct CreateArgs {
     pub dependencies: Vec<String>,
     pub due: Option<NaiveDate>,
     pub story_points: Option<u8>,
+    pub phase: String,
 }
 
 // Manual Default: priority 2 = "normal" (not 0 = "critical" which derive would give).
@@ -34,6 +35,7 @@ impl Default for CreateArgs {
             dependencies: Vec::new(),
             due: None,
             story_points: None,
+            phase: String::new(),
         }
     }
 }
@@ -75,6 +77,7 @@ pub fn run(dir: &Path, args: CreateArgs) -> Result<()> {
         due: args.due,
         description,
         story_points: args.story_points,
+        phase: args.phase.trim().to_string(),
     };
     let path = store::write_item(dir, &item)?;
     store::reindex(dir)?;

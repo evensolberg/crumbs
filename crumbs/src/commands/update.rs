@@ -52,6 +52,8 @@ pub struct UpdateArgs {
     pub story_points: Option<u8>,
     pub clear_points: bool,
     pub title: Option<String>,
+    pub phase: Option<String>,
+    pub clear_phase: bool,
 }
 
 /// Update an item. Prints `"Updated <id>"` on success.
@@ -114,6 +116,11 @@ pub fn run_labeled(
                     );
                 }
                 item.story_points = Some(sp);
+            }
+            if args.clear_phase {
+                item.phase = String::new();
+            } else if let Some(p) = args.phase {
+                item.phase = p.trim().to_string();
             }
             item.updated = Local::now().date_naive();
 

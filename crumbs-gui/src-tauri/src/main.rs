@@ -18,6 +18,7 @@ fn main() {
             commands::update_points,
             commands::update_dependencies,
             commands::update_tags,
+            commands::update_phase,
             commands::update_title,
             commands::close_item,
             commands::has_store,

@@ -61,7 +61,7 @@ The GUI provides a full item management interface:
 - **Item table** — sortable columns, customisable visibility (click **Columns ▾**), resizable
 - **Status strip** — live count of items in the current view with coloured status dots
 - **Filters** — status buttons + priority, type, tag dropdowns, and a full-text **Search** bar (searches title and body)
-- **Detail pane** — edit title (double-click), body (autosaves on blur/⌘S), tags, dependencies, due date, type, priority, and story points
+- **Detail pane** — edit title (double-click), body (autosaves on blur/⌘S), tags, phase, dependencies, due date, type, priority, and story points
 - **Markdown preview** — click **Preview** in the detail pane to render the body as HTML; shortcodes (`:tada:` → 🎉) are expanded in the preview
 - **Emoji picker** — click 😀 (next to Preview) to open a tabbed picker; click any emoji to insert it at the cursor
 - **Priority badges** — colour-coded P0 Critical … P4 Backlog labels
@@ -116,6 +116,7 @@ crumbs c 'Quick idea'          # shorthand
 | `--depends`       | —       | comma-separated dependency IDs                   |
 | `--due`           | —       | `YYYY-MM-DD`                                     |
 | `--points`        | —       | story points (Fibonacci: 1 2 3 5 8 13 21)        |
+| `--phase`         | —       | phase or milestone label, e.g. `phase-1`, `2026-Q2` |
 
 ### List items
 
@@ -123,12 +124,14 @@ crumbs c 'Quick idea'          # shorthand
 crumbs list                    # open, in-progress, blocked, deferred
 crumbs list --all              # include closed
 crumbs list --status blocked
-crumbs list --tag project/auth
-crumbs list --priority 0       # P0 items only
-crumbs list --type bug         # filter by type (task, bug, feature, epic, idea)
-crumbs list --verbose          # show first two body lines beneath each item
-crumbs list --sort priority    # sort by: id (default), priority, status, title, type, due, created, updated
-crumbs next                    # highest-priority actionable item (skips deferred with future until date)
+crumbs list --tag project/auth              # AND semantics: all specified tags must match
+crumbs list --tag security,backend         # items that have BOTH tags
+crumbs list --priority 0                   # P0 items only
+crumbs list --type bug                     # filter by type (task, bug, feature, epic, idea)
+crumbs list --phase phase-1                # filter by phase label
+crumbs list --verbose                      # show first two body lines beneath each item
+crumbs list --sort priority                # sort by: id (default), priority, status, title, type, due, created, updated, phase
+crumbs next                                # highest-priority actionable item (skips deferred with future until date; skips items with open blockers)
 ```
 
 ### Inspect
@@ -155,6 +158,9 @@ crumbs update bc-x7q --message 'Now includes OAuth flow'
 crumbs update bc-x7q --append 'See also PR #99'             # appends with [date] prefix
 crumbs update bc-x7q --points 8
 crumbs update bc-x7q --clear-points
+crumbs update bc-x7q --phase phase-1
+crumbs update bc-x7q --phase 2026-Q2
+crumbs update bc-x7q --clear-phase
 crumbs append bc-x7q 'Quick note'                           # shorthand for update --append
 crumbs a bc-x7q 'Quick note'                                # alias
 ```
@@ -289,6 +295,7 @@ blocks: []
 blocked_by: []
 due: 2026-04-01     # optional
 story_points: ~     # optional integer; conventional values: 1, 2, 3, 5, 8, 13, 21 (Fibonacci)
+phase: ''           # free-form label, e.g. "phase-1", "2026-Q2"; always present, empty until set
 ---
 
 # Example item

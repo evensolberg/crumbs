@@ -42,13 +42,16 @@ enum Command {
         /// Filter by type (task, bug, feature, epic, idea)
         #[arg(long)]
         r#type: Option<String>,
+        /// Filter by phase (e.g. "phase-1", "2026-Q2")
+        #[arg(long)]
+        phase: Option<String>,
         /// Show all items including closed
         #[arg(short, long)]
         all: bool,
         /// Show first two lines of body text beneath each item
         #[arg(short, long)]
         verbose: bool,
-        /// Sort by field (id, priority, status, title, type, due, created, updated)
+        /// Sort by field (id, priority, status, title, type, due, created, updated, phase)
         #[arg(long, default_value_t = SortKey::Id)]
         sort: SortKey,
     },
@@ -86,6 +89,9 @@ enum Command {
         /// Story points (Fibonacci: 1 2 3 5 8 13 21)
         #[arg(long)]
         points: Option<u8>,
+        /// Phase or milestone label (e.g. "phase-1", "2026-Q2")
+        #[arg(long)]
+        phase: Option<String>,
     },
     /// Update an item
     Update {
@@ -122,6 +128,12 @@ enum Command {
         /// Remove the story points estimate
         #[arg(long)]
         clear_points: bool,
+        /// Phase or milestone label (e.g. "phase-1", "2026-Q2")
+        #[arg(long)]
+        phase: Option<String>,
+        /// Remove the phase label
+        #[arg(long)]
+        clear_phase: bool,
     },
     /// Edit an item's title and body in an inline TUI editor
     Body { id: String },
@@ -266,6 +278,7 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
             depends,
             due,
             points,
+            phase,
         } => {
             commands::create::run(
                 dir,
@@ -278,6 +291,7 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
                     dependencies: depends.map(|d| split_csv(&d)).unwrap_or_default(),
                     due,
                     story_points: points,
+                    phase: phase.unwrap_or_default(),
                 },
             )?;
         }
@@ -286,6 +300,7 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
             tag,
             priority,
             r#type,
+            phase,
             all,
             verbose,
             sort,
@@ -304,6 +319,7 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
                     tag_filter: tag,
                     priority_filter: priority,
                     type_filter,
+                    phase_filter: phase.map(|p| p.trim().to_string()),
                     all,
                     verbose,
                     sort: Some(sort),
@@ -324,6 +340,8 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
             append,
             points,
             clear_points,
+            phase,
+            clear_phase,
         } => {
             // --append wins over --message when both are supplied.
             let (final_message, final_append) = match (message, append) {
@@ -346,6 +364,8 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
                     story_points: points,
                     clear_points,
                     title,
+                    phase,
+                    clear_phase,
                 },
             )?;
         }
