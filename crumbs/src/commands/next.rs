@@ -25,11 +25,9 @@ pub fn run(dir: &Path) -> Result<()> {
             if item.status == Status::Closed {
                 return false;
             }
-            // Skip deferred items with a future until date.
-            if item.status == Status::Deferred
-                && let Some(due) = item.due
-            {
-                return due <= today;
+            // Skip deferred items whose wake-up date is still in the future.
+            if item.status == Status::Deferred && item.due.is_some_and(|due| due > today) {
+                return false;
             }
             // Skip items that have at least one blocker not yet closed.
             if item.blocked_by.iter().any(|id| {

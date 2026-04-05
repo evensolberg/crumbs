@@ -129,11 +129,16 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
     };
 
     // Parse comma-separated tag filter once before iteration.
-    // Comma-separated values use AND semantics: each part must
-    // match at least one of the item's tags (substring match).
-    let tag_parts: Option<Vec<&str>> = tag_filter
-        .as_deref()
-        .map(|s| s.split(',').map(str::trim).collect());
+    // AND semantics: all non-empty parts must each match at least one tag.
+    // Empty parts (e.g. trailing comma) are ignored so "--tag alpha," == "--tag alpha".
+    let tag_parts: Option<Vec<&str>> = tag_filter.as_deref().and_then(|s| {
+        let parts: Vec<&str> = s
+            .split(',')
+            .map(str::trim)
+            .filter(|p| !p.is_empty())
+            .collect();
+        if parts.is_empty() { None } else { Some(parts) }
+    });
 
     let items = store::load_all(dir)?;
     let filtered: Vec<_> = items

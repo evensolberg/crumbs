@@ -14,7 +14,7 @@ All notable changes to this project will be documented in this file.
 - `crumbs list --tag` now uses AND semantics for comma-separated values (cr-vfb)
 - GUI: markdown preview now renders top-aligned instead of vertically centred (cr-99g)
 
-## [0.17.2]
+## [0.17.2] - 2026-03-31
 
 ### Chore
 
