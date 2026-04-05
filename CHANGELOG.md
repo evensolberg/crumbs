@@ -4,20 +4,6 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
-## [0.17.3] - 2026-04-05
-
-### Chore
-
-- Bump version to 0.17.3
-
-### Fix
-
-- `crumbs next` now skips items whose blockers are still open (cr-tbd)
-- `crumbs list --tag` now uses AND semantics for comma-separated values (cr-vfb)
-- GUI: markdown preview now renders top-aligned instead of vertically centred (cr-99g)
-
-## [0.17.2] - 2026-03-31
-
 ### Chore
 
 - Bump flatted from 3.4.1 to 3.4.2 in /crumbs-gui
@@ -32,6 +18,7 @@ All notable changes to this project will be documented in this file.
 ### Feat
 
 - Add ValueEnum to SortKey for shell completions
+- Add phase field for roadmap grouping (#13)
 
 ### Fix
 
@@ -42,6 +29,8 @@ All notable changes to this project will be documented in this file.
 - Use vec! for ValueEnum test comparison (Copilot review on PR #10)
 - Move closed_reason to body when reopening a crumb
 - Skip serializing empty closed_reason; add append+reopen test
+- Next skips open blockers; --tag AND semantics; preview top-aligned (#12)
+- Sync dist files with source; add deps/due columns to reindex CSV
 
 ### Refactor
 
@@ -49,6 +38,7 @@ All notable changes to this project will be documented in this file.
 - Split expand_shortcodes and main() to fix too_many_lines (#9)
 - Tighten SortKey Display and test per review
 - Extract apply_status helper; add edge-case tests
+- Move phase field to appear after status across all surfaces
 
 ## [0.17.1] - 2026-03-30
 

@@ -220,10 +220,10 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
         let points_marker = item
             .story_points
             .map_or_else(String::new, |sp| format!(" [{sp}sp]"));
-        let phase_marker = if item.phase.is_empty() {
-            String::new()
+        let phase_badge = if item.phase.is_empty() {
+            "[ ]".to_string()
         } else {
-            format!(" @{}", item.phase)
+            format!("[{}]", item.phase)
         };
         let timer_marker = if active_start_ts(&item.description).is_some() {
             " ▶"
@@ -231,9 +231,10 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
             ""
         };
         println!(
-            "{icon} {} {} {} {}{timer_marker}{tags}{due_marker}{points_marker}{phase_marker}",
+            "{icon} {} {} {} {} {}{timer_marker}{tags}{due_marker}{points_marker}",
             item.id,
             p_style.apply_to(format!("[P{}]", item.priority)),
+            phase_badge,
             t_style.apply_to(format!("[{}]", item.item_type)),
             item.title
         );

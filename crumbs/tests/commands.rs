@@ -1685,24 +1685,24 @@ fn list_output_shows_phase_marker() {
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
 
-    // The phased item line must include the @phase marker
+    // The phased item line must include the inline [2026-Q2] badge
     let phased_line = stdout
         .lines()
         .find(|l| l.contains("Has Phase"))
         .unwrap_or("");
     assert!(
-        phased_line.contains("@2026-Q2"),
-        "list output must show @phase marker for items with a phase, got line:\n{phased_line}"
+        phased_line.contains("[2026-Q2]"),
+        "list output must show [phase] badge for items with a phase, got line:\n{phased_line}"
     );
 
-    // The no-phase item line must NOT include a @ marker
+    // The no-phase item line must show [ ] empty badge
     let no_phase_line = stdout
         .lines()
         .find(|l| l.contains("No Phase Item"))
         .unwrap_or("");
     assert!(
-        !no_phase_line.contains(" @"),
-        "list output must not show space-@ phase marker for items without a phase, got line:\n{no_phase_line}"
+        no_phase_line.contains("[ ]"),
+        "list output must show [ ] badge for items without a phase, got line:\n{no_phase_line}"
     );
 }
 
