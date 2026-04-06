@@ -18,3 +18,5 @@ phase: ''
 The --reason flag on crumbs close is optional and is frequently omitted, leaving closed_reason empty. When closing interactively (not in a script / --no-interactive context), prompt the user for a reason if none is provided. Improves traceability without being disruptive. Should be skippable with Enter for speed and suppressible with a --no-prompt / --yes flag for scripted use.
 
 [start] 2026-04-06 10:40:18  Prompt for --reason interactively when not supplied
+
+[stop]  2026-04-06 13:03:19  2h 23m 1s

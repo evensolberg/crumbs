@@ -350,13 +350,25 @@ fn close_without_active_timer_succeeds() {
 
 #[test]
 fn close_without_reason_when_not_interactive_succeeds_without_prompt() {
-    // cr-by7: when stdin is not a TTY, `close::run` must skip the prompt
-    // and leave closed_reason empty. nextest already runs with non-TTY stdin,
-    // so calling the library function directly exercises the right code path.
+    // cr-by7: the CLI must not hang or prompt when stdin is not a TTY.
+    // Drive the binary directly with stdin=null to exercise the main.rs
+    // dispatch path (where the prompt lives).
     let dir = tempdir().unwrap();
-    let id = create_task(dir.path(), "No Reason Close");
-    commands::close::run(dir.path(), &id, None).unwrap();
-    let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "No Reason Close");
+    let bin = env!("CARGO_BIN_EXE_crumbs");
+    let output = std::process::Command::new(bin)
+        .args(["--dir", dir.path().to_str().unwrap(), "close", &id])
+        .stdin(std::process::Stdio::null())
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "close failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let (_, item) = store::find_by_id(&d, &id).unwrap().unwrap();
     assert_eq!(item.status, Status::Closed);
     assert_eq!(item.closed_reason, "");
 }

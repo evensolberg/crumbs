@@ -441,8 +441,7 @@ fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
                     let r = dialoguer::Input::<String>::new()
                         .with_prompt("Close reason (optional, Enter to skip)")
                         .allow_empty(true)
-                        .interact_text()
-                        .unwrap_or_default();
+                        .interact_text()?;
                     Some(r)
                 }
                 None => None,

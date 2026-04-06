@@ -16,3 +16,5 @@ phase: ''
 If a crumb has an active timer, and the crumb is being closed, the timer should be stopped first and the crumb updated accordingly.
 
 [start] 2026-04-06 10:40:18  Stop active timer automatically when closing an item
+
+[stop]  2026-04-06 13:03:19  2h 23m 1s
