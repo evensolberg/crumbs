@@ -10,7 +10,7 @@ use crate::{color, commands::start::active_start_ts, item::Item};
 /// spaces string). `today` is supplied once by the caller so it is not
 /// recomputed per item.
 #[must_use]
-pub(crate) fn format_row(item: &Item, phase_badge: &str, today: NaiveDate) -> String {
+pub fn format_row(item: &Item, phase_badge: &str, today: NaiveDate) -> String {
     let icon = color::status_icon_styled(&item.status);
     let p_style = color::priority(item.priority);
     let t_style = color::item_type(&item.item_type);
@@ -114,6 +114,19 @@ mod tests {
         };
         let row = format_row(&item, "[]", today());
         assert!(row.contains("[5sp]"), "missing story points, got:\n{row}");
+    }
+
+    #[test]
+    fn format_row_shows_future_due_date() {
+        let item = Item {
+            due: Some(NaiveDate::from_ymd_opt(2027, 1, 1).unwrap()),
+            ..base_item()
+        };
+        let row = format_row(&item, "[]", today());
+        assert!(
+            row.contains("due:2027-01-01"),
+            "missing future due date, got:\n{row}"
+        );
     }
 
     #[test]
