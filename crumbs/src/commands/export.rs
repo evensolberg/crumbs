@@ -27,6 +27,8 @@ pub fn items_to_string(items: &[Item], format: &str) -> Result<String> {
                 "updated",
                 "closed_reason",
                 "dependencies",
+                "blocks",
+                "blocked_by",
                 "due",
                 "story_points",
             ])?;
@@ -43,6 +45,8 @@ pub fn items_to_string(items: &[Item], format: &str) -> Result<String> {
                     &item.updated.to_string(),
                     &item.closed_reason,
                     &item.dependencies.join("|"),
+                    &item.blocks.join("|"),
+                    &item.blocked_by.join("|"),
                     &item.due.map(|d| d.to_string()).unwrap_or_default(),
                     &item
                         .story_points
@@ -76,4 +80,50 @@ pub fn run(dir: &Path, format: &str, output: Option<&Path>) -> Result<()> {
         None => print!("{content}"),
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::NaiveDate;
+
+    use super::items_to_string;
+    use crate::item::{Item, ItemType, Status};
+
+    fn sample_item() -> Item {
+        Item {
+            id: "cr-t01".to_string(),
+            title: "Test".to_string(),
+            status: Status::Open,
+            item_type: ItemType::Task,
+            priority: 2,
+            tags: vec![],
+            created: NaiveDate::from_ymd_opt(2026, 1, 1).unwrap(),
+            updated: NaiveDate::from_ymd_opt(2026, 1, 1).unwrap(),
+            closed_reason: String::new(),
+            dependencies: vec!["cr-dep".to_string()],
+            blocks: vec!["cr-aaa".to_string(), "cr-bbb".to_string()],
+            blocked_by: vec!["cr-zzz".to_string()],
+            due: None,
+            description: String::new(),
+            story_points: None,
+            phase: String::new(),
+        }
+    }
+
+    #[test]
+    fn export_csv_includes_blocks_and_blocked_by() {
+        let csv = items_to_string(&[sample_item()], "csv").unwrap();
+        let mut rdr = csv::Reader::from_reader(csv.as_bytes());
+        let headers = rdr.headers().unwrap().clone();
+        let cols: Vec<&str> = headers.iter().collect();
+
+        let dep_idx = cols.iter().position(|c| *c == "dependencies").unwrap();
+        assert_eq!(cols.get(dep_idx + 1), Some(&"blocks"));
+        assert_eq!(cols.get(dep_idx + 2), Some(&"blocked_by"));
+
+        let row = rdr.records().next().unwrap().unwrap();
+        let col = |name: &str| cols.iter().position(|c| *c == name).unwrap();
+        assert_eq!(row.get(col("blocks")), Some("cr-aaa|cr-bbb"));
+        assert_eq!(row.get(col("blocked_by")), Some("cr-zzz"));
+    }
 }

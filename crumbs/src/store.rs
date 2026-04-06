@@ -182,6 +182,8 @@ pub fn reindex(dir: &Path) -> Result<()> {
         "updated",
         "closed_reason",
         "dependencies",
+        "blocks",
+        "blocked_by",
         "due",
         "story_points",
     ])?;
@@ -198,6 +200,8 @@ pub fn reindex(dir: &Path) -> Result<()> {
             &item.updated.to_string(),
             &item.closed_reason,
             &item.dependencies.join("|"),
+            &item.blocks.join("|"),
+            &item.blocked_by.join("|"),
             &item.due.map(|d| d.to_string()).unwrap_or_default(),
             &item
                 .story_points
@@ -372,6 +376,89 @@ mod tests {
         reindex(dir.path()).unwrap();
         let content = std::fs::read_to_string(dir.path().join("index.csv")).unwrap();
         assert!(content.starts_with("id,title,status"));
+    }
+
+    #[test]
+    fn reindex_csv_has_blocks_and_blocked_by_headers() {
+        let dir = tempdir().unwrap();
+        reindex(dir.path()).unwrap();
+        let mut rdr = csv::Reader::from_path(dir.path().join("index.csv")).unwrap();
+        let headers = rdr.headers().unwrap().clone();
+        let cols: Vec<&str> = headers.iter().collect();
+        let dep_idx = cols
+            .iter()
+            .position(|c| *c == "dependencies")
+            .unwrap_or_else(|| panic!("missing dependencies column, got: {cols:?}"));
+        assert_eq!(
+            cols.get(dep_idx + 1),
+            Some(&"blocks"),
+            "expected blocks immediately after dependencies, got: {cols:?}"
+        );
+        assert_eq!(
+            cols.get(dep_idx + 2),
+            Some(&"blocked_by"),
+            "expected blocked_by immediately after blocks, got: {cols:?}"
+        );
+    }
+
+    #[test]
+    fn reindex_csv_writes_blocks_and_blocked_by_values() {
+        let dir = tempdir().unwrap();
+        let item = Item {
+            blocks: vec!["cr-aaa".to_string(), "cr-bbb".to_string()],
+            blocked_by: vec!["cr-zzz".to_string()],
+            ..sample_item("cr-x01", "Blocker Item")
+        };
+        write_item(dir.path(), &item).unwrap();
+        reindex(dir.path()).unwrap();
+
+        let index_path = dir.path().join("index.csv");
+        let mut rdr = csv::Reader::from_path(&index_path).unwrap();
+        let headers = rdr.headers().unwrap().clone();
+        let col = |name: &str| headers.iter().position(|h| h == name).unwrap();
+        let blocks_idx = col("blocks");
+        let blocked_by_idx = col("blocked_by");
+
+        let row = rdr
+            .records()
+            .map(|r| r.unwrap())
+            .find(|r| r.get(col("id")) == Some("cr-x01"))
+            .expect("row for cr-x01 not found");
+
+        assert_eq!(
+            row.get(blocks_idx),
+            Some("cr-aaa|cr-bbb"),
+            "wrong blocks value"
+        );
+        assert_eq!(
+            row.get(blocked_by_idx),
+            Some("cr-zzz"),
+            "wrong blocked_by value"
+        );
+    }
+
+    #[test]
+    fn reindex_and_export_csv_headers_match() {
+        // Ensures the two CSV writers never drift out of sync.
+        let dir = tempdir().unwrap();
+        reindex(dir.path()).unwrap();
+        let mut rdr = csv::Reader::from_path(dir.path().join("index.csv")).unwrap();
+        let reindex_headers: Vec<String> =
+            rdr.headers().unwrap().iter().map(str::to_owned).collect();
+
+        let export_csv = crate::commands::export::items_to_string(&[], "csv").unwrap();
+        let mut export_rdr = csv::Reader::from_reader(export_csv.as_bytes());
+        let export_headers: Vec<String> = export_rdr
+            .headers()
+            .unwrap()
+            .iter()
+            .map(str::to_owned)
+            .collect();
+
+        assert_eq!(
+            reindex_headers, export_headers,
+            "reindex and export CSV headers diverged"
+        );
     }
 
     // --- find_by_id ---

@@ -1,7 +1,7 @@
 ---
 id: cr-e3q
 title: 'Refactor: extract shared row-formatter from list and search'
-status: in_progress
+status: closed
 type: feature
 priority: 2
 tags:
@@ -9,6 +9,7 @@ tags:
 - refactor
 created: 2026-04-06
 updated: 2026-04-06
+closed_reason: 'Extracted format_row + PhaseColumn into commands/row.rs; merged in PR #21 (v0.19.1)'
 dependencies: []
 phase: ''
 ---
