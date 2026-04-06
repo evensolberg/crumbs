@@ -153,6 +153,13 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
         if parts.is_empty() { None } else { Some(parts) }
     });
 
+    // Trim the phase filter once before the loop (not per item).
+    // An all-whitespace value collapses to "" which would silently match
+    // items with no phase — treat it as "no filter" instead.
+    let phase_filter = phase_filter
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+
     let items = store::load_all(dir)?;
     let filtered: Vec<_> = items
         .into_iter()
@@ -186,7 +193,7 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
                 return false;
             }
             if let Some(ref p) = phase_filter
-                && item.phase.as_str() != p.as_str()
+                && item.phase != p.as_str()
             {
                 return false;
             }
