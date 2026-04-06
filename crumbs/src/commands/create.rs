@@ -78,6 +78,7 @@ pub fn run(dir: &Path, args: CreateArgs) -> Result<()> {
         description,
         story_points: args.story_points,
         phase: args.phase.trim().to_string(),
+        resolution: String::new(),
     };
     let path = store::write_item(dir, &item)?;
     store::reindex(dir)?;

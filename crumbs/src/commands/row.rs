@@ -113,6 +113,7 @@ mod tests {
             description: String::new(),
             story_points: None,
             phase: String::new(),
+            resolution: String::new(),
         }
     }
 

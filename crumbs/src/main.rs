@@ -135,6 +135,9 @@ enum Command {
         /// Remove the phase label
         #[arg(long)]
         clear_phase: bool,
+        /// PR or commit URL/reference that resolved this item (e.g. "owner/repo#42")
+        #[arg(long)]
+        resolution: Option<String>,
     },
     /// Edit an item's title and body in an inline TUI editor
     Body { id: String },
@@ -268,6 +271,7 @@ fn split_csv(s: &str) -> Vec<String> {
 /// can never fire at runtime. If a new "structured" command is added,
 /// **both** the `@`-binding in `run_command` and a matching arm here must
 /// be updated — the compiler will not warn if only one side changes.
+#[allow(clippy::too_many_lines)] // one branch per CLI command; no natural split point
 fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()> {
     match command {
         Command::Create {
@@ -343,6 +347,7 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
             clear_points,
             phase,
             clear_phase,
+            resolution,
         } => {
             // --append wins over --message when both are supplied.
             let (final_message, final_append) = match (message, append) {
@@ -367,6 +372,7 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
                     title,
                     phase,
                     clear_phase,
+                    resolution,
                 },
             )?;
         }

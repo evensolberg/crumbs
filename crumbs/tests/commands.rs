@@ -977,6 +977,7 @@ fn show_bare_suffix_expands_with_store_prefix() {
             description: String::new(),
             story_points: None,
             phase: String::new(),
+            resolution: String::new(),
         },
     )
     .unwrap();
@@ -2123,5 +2124,62 @@ fn phase_round_trips_through_file() {
     assert_eq!(
         item.phase, "2026-Q3",
         "phase should survive a write/read round-trip"
+    );
+}
+
+// ── resolution field (cr-w8z) ─────────────────────────────────────────────────
+
+#[test]
+fn update_sets_resolution() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "Resolution Item");
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            resolution: Some("github.com/evensolberg/crumbs/pull/22".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (_, item) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert_eq!(item.resolution, "github.com/evensolberg/crumbs/pull/22");
+}
+
+#[test]
+fn resolution_round_trips_through_file() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "Resolution Round Trip");
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            resolution: Some("cr-w8z".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (_, item) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert_eq!(
+        item.resolution, "cr-w8z",
+        "resolution should survive write/read round-trip"
+    );
+}
+
+#[test]
+fn resolution_not_in_frontmatter_when_empty() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "No Resolution");
+    let (path, _) = store::find_by_id(&d, &id).unwrap().unwrap();
+    let raw = std::fs::read_to_string(path).unwrap();
+    assert!(
+        !raw.contains("resolution:"),
+        "resolution key should be absent when empty, got:\n{raw}"
     );
 }
