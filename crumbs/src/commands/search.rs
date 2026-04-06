@@ -27,34 +27,43 @@ pub fn run(dir: &Path, query: &str) -> Result<()> {
         return Ok(());
     }
 
-    // Compute phase display widths once; derive max for column alignment.
-    let phase_widths: Vec<usize> = matches
-        .iter()
-        .map(|(_, i)| measure_text_width(&i.phase))
+    // Compute each phase's display width once, then derive max for column alignment.
+    let matches_with_widths: Vec<_> = matches
+        .into_iter()
+        .map(|(p, i)| {
+            let w = measure_text_width(&i.phase);
+            (p, i, w)
+        })
         .collect();
-    let max_phase = phase_widths.iter().copied().max().unwrap_or(0);
+    let max_phase = matches_with_widths
+        .iter()
+        .map(|(_, _, w)| *w)
+        .max()
+        .unwrap_or(0);
     let spaces = " ".repeat(max_phase);
     let today = Local::now().date_naive();
 
-    for ((_, item), display_w) in matches.into_iter().zip(phase_widths) {
+    for (_, item, display_w) in matches_with_widths {
         let icon = color::status_icon_styled(&item.status);
         let p_style = color::priority(item.priority);
         let t_style = color::item_type(&item.item_type);
-        let padding = max_phase.saturating_sub(display_w);
-        let phase_badge = format!("[{}{}]", item.phase, &spaces[..padding]);
         let tags = if item.tags.is_empty() {
             String::new()
         } else {
             format!(" [{}]", item.tags.join(", "))
         };
         let due_marker = match item.due {
-            Some(d) if d < today => format!(" {}", Style::new().red().bold().apply_to("!due")),
+            Some(d) if d < today => {
+                format!(" {}", Style::new().red().bold().apply_to("!due"))
+            }
             Some(d) => format!(" due:{d}"),
             None => String::new(),
         };
         let points_marker = item
             .story_points
             .map_or_else(String::new, |sp| format!(" [{sp}sp]"));
+        let padding = max_phase.saturating_sub(display_w);
+        let phase_badge = format!("[{}{}]", item.phase, &spaces[..padding]);
         let timer_marker = if active_start_ts(&item.description).is_some() {
             " ▶"
         } else {
