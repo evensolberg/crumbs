@@ -1,3 +1,4 @@
+use std::io::IsTerminal;
 use std::path::Path;
 
 use anyhow::{Result, bail};
@@ -15,17 +16,15 @@ pub fn run(dir: &Path, id: &str, reason: Option<String>) -> Result<()> {
             // cr-613: stop any running timer before closing
             if active_start_ts(&item.description).is_some() {
                 super::stop::run(dir, id, None)?;
-                // reload after stop rewrote the file
-                let (_, new_item) = store::find_by_id(dir, id)?
-                    .ok_or_else(|| anyhow::anyhow!("item {id} disappeared after timer stop"))?;
-                item = new_item;
+                // reload just this file after stop rewrote it
+                item = store::read_item(&path)?;
             }
 
             // cr-by7: prompt for reason when stdin is a TTY and none was supplied
             let reason = match reason {
                 Some(r) => r,
                 None => {
-                    if dialoguer::console::Term::stderr().is_term() {
+                    if std::io::stdin().is_terminal() {
                         dialoguer::Input::<String>::new()
                             .with_prompt("Close reason (optional, Enter to skip)")
                             .allow_empty(true)
