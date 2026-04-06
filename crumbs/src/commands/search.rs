@@ -21,7 +21,11 @@ pub fn run(dir: &Path, query: &str) -> Result<()> {
                 || item.id.to_lowercase().contains(lq)
                 || item.phase.to_lowercase().contains(lq)
                 || item.item_type.to_string().to_lowercase().contains(lq)
+                || item.status.to_string().to_lowercase().contains(lq)
                 || item.tags.iter().any(|t| t.to_lowercase().contains(lq))
+                || item
+                    .due
+                    .map_or(false, |d| d.to_string().contains(lq.as_str()))
         })
         .collect();
 
