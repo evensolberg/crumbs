@@ -437,6 +437,30 @@ mod tests {
         );
     }
 
+    #[test]
+    fn reindex_and_export_csv_headers_match() {
+        // Ensures the two CSV writers never drift out of sync.
+        let dir = tempdir().unwrap();
+        reindex(dir.path()).unwrap();
+        let mut rdr = csv::Reader::from_path(dir.path().join("index.csv")).unwrap();
+        let reindex_headers: Vec<String> =
+            rdr.headers().unwrap().iter().map(str::to_owned).collect();
+
+        let export_csv = crate::commands::export::items_to_string(&[], "csv").unwrap();
+        let mut export_rdr = csv::Reader::from_reader(export_csv.as_bytes());
+        let export_headers: Vec<String> = export_rdr
+            .headers()
+            .unwrap()
+            .iter()
+            .map(str::to_owned)
+            .collect();
+
+        assert_eq!(
+            reindex_headers, export_headers,
+            "reindex and export CSV headers diverged"
+        );
+    }
+
     // --- find_by_id ---
 
     #[test]
