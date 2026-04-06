@@ -191,6 +191,7 @@ Timer entries live in the markdown body alongside other notes:
 - `link blocks` and `block` update **both** items atomically and set blocked status on targets
 - Unlinking restores `open` on targets when no other blockers remain
 - `--tags` and `--depends` on update **replace** the existing list (not append)
+- `crumbs list` output format: `icon id [Px] [phase] [type] title [tags] due:… [Nsp]` — phase badge is padded to the widest phase in the current view; unphased items show spaces to match that width; when no items have a phase, `[]` is shown
 - `--tag` on list uses **AND semantics**: `--tag alpha,beta` returns only items that have both tags; empty parts are ignored
 - `--append 'text'` adds to the body with a `[YYYY-MM-DD]` timestamp prefix; `--message 'text'` replaces it
 - `:shortcode:` in body text (message, append, timer comments) is expanded to Unicode at write time — e.g. `:tada:` → 🎉, `:bug:` → 🐛, `:+1:` → 👍; unknown shortcodes pass through unchanged

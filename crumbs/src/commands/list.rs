@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use chrono::{Local, NaiveDate};
-use console::Style;
+use console::{Style, measure_text_width};
 
 use crate::{
     color,
@@ -199,9 +199,24 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
         return Ok(());
     }
 
-    let sorted = sort_items(filtered, sort);
+    // Compute each phase's display width once, then derive max_phase from those widths.
+    // This avoids measuring the same phase string twice (once for max, once per row).
+    let sorted_with_widths: Vec<_> = sort_items(filtered, sort)
+        .into_iter()
+        .map(|(p, i)| {
+            let w = measure_text_width(&i.phase);
+            (p, i, w)
+        })
+        .collect();
+    let max_phase = sorted_with_widths
+        .iter()
+        .map(|(_, _, w)| *w)
+        .max()
+        .unwrap_or(0);
+    // Precompute a single spaces string; sliced per item to avoid per-row allocation.
+    let spaces = " ".repeat(max_phase);
     let today = Local::now().date_naive();
-    for (_, item) in sorted {
+    for (_, item, display_w) in sorted_with_widths {
         let icon = color::status_icon_styled(&item.status);
         let p_style = color::priority(item.priority);
         let t_style = color::item_type(&item.item_type);
@@ -220,13 +235,10 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
         let points_marker = item
             .story_points
             .map_or_else(String::new, |sp| format!(" [{sp}sp]"));
-        // Always emit a bracket pair so the column appears even for unphased items.
-        // [ ] keeps the priority → phase → type visual column consistent.
-        let phase_badge = if item.phase.is_empty() {
-            "[ ]".to_string()
-        } else {
-            format!("[{}]", item.phase)
-        };
+        // Pad phase to max_phase display-width so the type badge column stays aligned.
+        // Slice the precomputed spaces string (single-byte, so index == byte offset).
+        let padding = max_phase.saturating_sub(display_w);
+        let phase_badge = format!("[{}{}]", item.phase, &spaces[..padding]);
         let timer_marker = if active_start_ts(&item.description).is_some() {
             " ▶"
         } else {

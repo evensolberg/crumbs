@@ -38,6 +38,10 @@ fn apply_status(item: &mut Item, new_status: &str) -> Result<Option<String>> {
     Ok(reopen_note)
 }
 
+// UpdateArgs is a plain argument bag. The four bool fields are semantically
+// distinct clear-flags (not state-machine transitions), so the lint does not
+// apply here.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Default)]
 pub struct UpdateArgs {
     pub status: Option<String>,
