@@ -2,9 +2,11 @@ use std::path::Path;
 
 use anyhow::Result;
 use chrono::Local;
-use console::{Style, measure_text_width};
 
-use crate::{color, commands::start::active_start_ts, store};
+use crate::{
+    commands::row::{PhaseColumn, format_row},
+    store,
+};
 
 /// # Errors
 ///
@@ -15,17 +17,14 @@ pub fn run(dir: &Path, query: &str) -> Result<()> {
     let matches: Vec<_> = items
         .into_iter()
         .filter(|(_, item)| {
-            let lq = &q;
-            item.title.to_lowercase().contains(lq)
-                || item.description.to_lowercase().contains(lq)
-                || item.id.to_lowercase().contains(lq)
-                || item.phase.to_lowercase().contains(lq)
-                || item.item_type.to_string().to_lowercase().contains(lq)
-                || item.status.to_string().to_lowercase().contains(lq)
-                || item.tags.iter().any(|t| t.to_lowercase().contains(lq))
-                || item
-                    .due
-                    .is_some_and(|d| d.to_string().contains(lq.as_str()))
+            item.title.to_lowercase().contains(&q)
+                || item.description.to_lowercase().contains(&q)
+                || item.id.to_lowercase().contains(&q)
+                || item.phase.to_lowercase().contains(&q)
+                || item.item_type.to_string().to_lowercase().contains(&q)
+                || item.status.to_string().to_lowercase().contains(&q)
+                || item.tags.iter().any(|t| t.to_lowercase().contains(&q))
+                || item.due.is_some_and(|d| d.to_string().contains(q.as_str()))
         })
         .collect();
 
@@ -34,56 +33,11 @@ pub fn run(dir: &Path, query: &str) -> Result<()> {
         return Ok(());
     }
 
-    // Compute each phase's display width once, then derive max for column alignment.
-    let matches_with_widths: Vec<_> = matches
-        .into_iter()
-        .map(|(p, i)| {
-            let w = measure_text_width(&i.phase);
-            (p, i, w)
-        })
-        .collect();
-    let max_phase = matches_with_widths
-        .iter()
-        .map(|(_, _, w)| *w)
-        .max()
-        .unwrap_or(0);
-    let spaces = " ".repeat(max_phase);
+    let phase_col = PhaseColumn::new(matches.iter().map(|(_, i)| i.phase.as_str()));
     let today = Local::now().date_naive();
 
-    for (_, item, display_w) in matches_with_widths {
-        let icon = color::status_icon_styled(&item.status);
-        let p_style = color::priority(item.priority);
-        let t_style = color::item_type(&item.item_type);
-        let tags = if item.tags.is_empty() {
-            String::new()
-        } else {
-            format!(" [{}]", item.tags.join(", "))
-        };
-        let due_marker = match item.due {
-            Some(d) if d < today => {
-                format!(" {}", Style::new().red().bold().apply_to("!due"))
-            }
-            Some(d) => format!(" due:{d}"),
-            None => String::new(),
-        };
-        let points_marker = item
-            .story_points
-            .map_or_else(String::new, |sp| format!(" [{sp}sp]"));
-        let padding = max_phase.saturating_sub(display_w);
-        let phase_badge = format!("[{}{}]", item.phase, &spaces[..padding]);
-        let timer_marker = if active_start_ts(&item.description).is_some() {
-            " ▶"
-        } else {
-            ""
-        };
-        println!(
-            "{icon} {} {} {} {} {}{timer_marker}{tags}{due_marker}{points_marker}",
-            item.id,
-            p_style.apply_to(format!("[P{}]", item.priority)),
-            phase_badge,
-            t_style.apply_to(format!("[{}]", item.item_type)),
-            item.title,
-        );
+    for (_, item) in &matches {
+        println!("{}", format_row(item, &phase_col.badge(&item.phase), today));
     }
     Ok(())
 }

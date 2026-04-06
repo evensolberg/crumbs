@@ -1,7 +1,7 @@
 ---
 id: cr-e3q
 title: 'Refactor: extract shared row-formatter from list and search'
-status: open
+status: in_progress
 type: feature
 priority: 2
 tags:
@@ -15,4 +15,4 @@ phase: ''
 
 # Refactor: extract shared row-formatter from list and search
 
-list.rs and search.rs duplicate the phase-width/badge/timer/tags/due/points rendering logic. Extract a shared helper (e.g. format_row) so future format changes only need to be made in one place.
+Extracted format_row into commands/row.rs; list.rs and search.rs now delegate to it. PR #21 open for review.

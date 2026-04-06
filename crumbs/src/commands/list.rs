@@ -2,11 +2,10 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use chrono::{Local, NaiveDate};
-use console::{Style, measure_text_width};
+use console::Style;
 
 use crate::{
-    color,
-    commands::start::active_start_ts,
+    commands::row::{PhaseColumn, format_row},
     item::{Item, ItemType, Status},
     store,
 };
@@ -206,59 +205,11 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
         return Ok(());
     }
 
-    // Compute each phase's display width once, then derive max_phase from those widths.
-    // This avoids measuring the same phase string twice (once for max, once per row).
-    let sorted_with_widths: Vec<_> = sort_items(filtered, sort)
-        .into_iter()
-        .map(|(p, i)| {
-            let w = measure_text_width(&i.phase);
-            (p, i, w)
-        })
-        .collect();
-    let max_phase = sorted_with_widths
-        .iter()
-        .map(|(_, _, w)| *w)
-        .max()
-        .unwrap_or(0);
-    // Precompute a single spaces string; sliced per item to avoid per-row allocation.
-    let spaces = " ".repeat(max_phase);
+    let sorted = sort_items(filtered, sort);
+    let phase_col = PhaseColumn::new(sorted.iter().map(|(_, i)| i.phase.as_str()));
     let today = Local::now().date_naive();
-    for (_, item, display_w) in sorted_with_widths {
-        let icon = color::status_icon_styled(&item.status);
-        let p_style = color::priority(item.priority);
-        let t_style = color::item_type(&item.item_type);
-        let tags = if item.tags.is_empty() {
-            String::new()
-        } else {
-            format!(" [{}]", item.tags.join(", "))
-        };
-        let due_marker = match item.due {
-            Some(d) if d < today => {
-                format!(" {}", Style::new().red().bold().apply_to("!due"))
-            }
-            Some(d) => format!(" due:{d}"),
-            None => String::new(),
-        };
-        let points_marker = item
-            .story_points
-            .map_or_else(String::new, |sp| format!(" [{sp}sp]"));
-        // Pad phase to max_phase display-width so the type badge column stays aligned.
-        // Slice the precomputed spaces string (single-byte, so index == byte offset).
-        let padding = max_phase.saturating_sub(display_w);
-        let phase_badge = format!("[{}{}]", item.phase, &spaces[..padding]);
-        let timer_marker = if active_start_ts(&item.description).is_some() {
-            " ▶"
-        } else {
-            ""
-        };
-        println!(
-            "{icon} {} {} {} {} {}{timer_marker}{tags}{due_marker}{points_marker}",
-            item.id,
-            p_style.apply_to(format!("[P{}]", item.priority)),
-            phase_badge,
-            t_style.apply_to(format!("[{}]", item.item_type)),
-            item.title
-        );
+    for (_, item) in &sorted {
+        println!("{}", format_row(item, &phase_col.badge(&item.phase), today));
         if verbose && !item.description.is_empty() {
             let snippet = item
                 .description

@@ -13,6 +13,7 @@ pub mod list;
 pub mod move_;
 pub mod next;
 pub mod reindex;
+pub(crate) mod row;
 pub mod search;
 pub mod show;
 pub mod start;
