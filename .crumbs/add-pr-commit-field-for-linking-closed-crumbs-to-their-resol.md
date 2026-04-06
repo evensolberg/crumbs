@@ -3,13 +3,14 @@ id: cr-w8z
 title: Add pr / commit field for linking closed crumbs to their resolution
 status: open
 type: feature
-priority: 3
+priority: 2
 tags:
 - cli
 - metadata
 created: 2026-04-04
 updated: 2026-04-05
 dependencies: []
+phase: ''
 ---
 
 # Add pr / commit field for linking closed crumbs to their resolution

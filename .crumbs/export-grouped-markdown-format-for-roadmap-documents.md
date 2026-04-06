@@ -3,14 +3,15 @@ id: cr-rxy
 title: 'Export: grouped markdown format for roadmap documents'
 status: open
 type: feature
-priority: 3
+priority: 2
 tags:
 - cli
 - export
 - planning
 created: 2026-04-04
-updated: 2026-04-04
+updated: 2026-04-05
 dependencies: []
+phase: ''
 ---
 
 # Export: grouped markdown format for roadmap documents

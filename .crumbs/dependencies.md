@@ -6,9 +6,9 @@ type: idea
 priority: 4
 tags: []
 created: 2026-03-21
-updated: 2026-03-21
-closed_reason: ''
+updated: 2026-04-06
 dependencies: []
+phase: ''
 ---
 
 # Dependencies

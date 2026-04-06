@@ -603,6 +603,131 @@ fn search_does_not_error_on_no_results() {
     commands::search::run(dir.path(), "xyzzy_nonexistent").unwrap();
 }
 
+#[test]
+fn search_output_shows_priority_badge() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "High Pri Bug".to_string(),
+            priority: 1,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("crumbs")
+        .unwrap()
+        .args(["--dir", d.to_str().unwrap(), "search", "High Pri"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "crumbs search failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        stdout.contains("[P1]"),
+        "search output must include priority badge, got:\n{stdout}"
+    );
+}
+
+#[test]
+fn search_output_shows_phase_badge() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "Phased Item".to_string(),
+            phase: "phase-1".to_string(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("crumbs")
+        .unwrap()
+        .args(["--dir", d.to_str().unwrap(), "search", "Phased"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "crumbs search failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        stdout.contains("[phase-1]"),
+        "search output must include phase badge, got:\n{stdout}"
+    );
+}
+
+#[test]
+fn search_output_column_order() {
+    // icon id [Px] [phase] [type] title
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "Order Check".to_string(),
+            priority: 0,
+            item_type: "bug".parse().unwrap(),
+            phase: "alpha".to_string(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("crumbs")
+        .unwrap()
+        .args(["--dir", d.to_str().unwrap(), "search", "Order Check"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "crumbs search failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let p0_pos = stdout.find("[P0]").expect("must contain [P0]");
+    let phase_pos = stdout.find("[alpha]").expect("must contain [alpha]");
+    let type_pos = stdout.find("[bug]").expect("must contain [bug]");
+    assert!(p0_pos < phase_pos, "priority must come before phase");
+    assert!(phase_pos < type_pos, "phase must come before type");
+}
+
+#[test]
+fn search_output_shows_timer_marker() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "Timer Item");
+    commands::start::run(&d, &id, None).unwrap();
+
+    let output = Command::cargo_bin("crumbs")
+        .unwrap()
+        .args(["--dir", d.to_str().unwrap(), "search", "Timer Item"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "crumbs search failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        stdout.contains('▶'),
+        "search output must include timer marker for active timer, got:\n{stdout}"
+    );
+}
+
 // ── reindex ───────────────────────────────────────────────────────────────────
 
 #[test]
