@@ -320,6 +320,56 @@ fn close_unknown_id_errors() {
     assert!(result.is_err());
 }
 
+#[test]
+fn close_stops_active_timer() {
+    // cr-613: closing an item with a running timer must write a [stop] entry
+    let dir = tempdir().unwrap();
+    let id = create_task(dir.path(), "Timer Close");
+    commands::start::run(dir.path(), &id, None).unwrap();
+    commands::close::run(dir.path(), &id, None).unwrap();
+
+    let (path, _) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    let raw = std::fs::read_to_string(path).unwrap();
+    assert!(
+        raw.contains("[stop]"),
+        "close should have written a [stop] entry, got:\n{raw}"
+    );
+}
+
+#[test]
+fn close_without_active_timer_succeeds() {
+    // cr-613: closing an item with no running timer must still succeed normally
+    let dir = tempdir().unwrap();
+    let id = create_task(dir.path(), "No Timer Close");
+    commands::close::run(dir.path(), &id, None).unwrap();
+    let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    assert_eq!(item.status, Status::Closed);
+}
+
+#[test]
+fn close_prompts_for_reason_when_not_interactive() {
+    // cr-by7: `crumbs close <id>` without --reason on non-TTY stdin must
+    // succeed immediately (no hang) and leave closed_reason empty.
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "No Reason Close");
+
+    let output = Command::cargo_bin("crumbs")
+        .unwrap()
+        .args(["--dir", d.to_str().unwrap(), "close", &id])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "close without reason failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let (_, item) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert_eq!(item.status, Status::Closed);
+    assert_eq!(item.closed_reason, "");
+}
+
 // ── list ─────────────────────────────────────────────────────────────────────
 
 #[test]
