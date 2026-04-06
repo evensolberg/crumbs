@@ -414,7 +414,7 @@ mod tests {
             "missing blocks values, got:\n{content}"
         );
         assert!(
-            content.contains("cr-zzz"),
+            content.contains(",cr-zzz,") || content.contains(",cr-zzz\n"),
             "missing blocked_by values, got:\n{content}"
         );
     }
