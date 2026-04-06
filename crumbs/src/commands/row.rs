@@ -16,12 +16,17 @@ pub struct PhaseColumn {
 }
 
 impl PhaseColumn {
-    /// Measure every phase string once and record the widest one.
+    /// Measure every distinct phase string once and record the widest one.
     pub fn new<'a>(phases: impl Iterator<Item = &'a str>) -> Self {
-        let widths: HashMap<String, usize> = phases
-            .map(|p| (p.to_owned(), measure_text_width(p)))
-            .collect();
-        let max_width = widths.values().copied().max().unwrap_or(0);
+        let mut widths: HashMap<String, usize> = HashMap::new();
+        let mut max_width = 0;
+        for p in phases {
+            if let std::collections::hash_map::Entry::Vacant(entry) = widths.entry(p.to_owned()) {
+                let w = measure_text_width(p);
+                max_width = max_width.max(w);
+                entry.insert(w);
+            }
+        }
         let spaces = " ".repeat(max_width);
         Self {
             max_width,
