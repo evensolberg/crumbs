@@ -2,9 +2,9 @@ use std::path::Path;
 
 use anyhow::Result;
 use chrono::Local;
-use console::{Style, measure_text_width};
+use console::measure_text_width;
 
-use crate::{color, commands::start::active_start_ts, store};
+use crate::{commands::row::format_row, store};
 
 /// # Errors
 ///
@@ -51,39 +51,9 @@ pub fn run(dir: &Path, query: &str) -> Result<()> {
     let today = Local::now().date_naive();
 
     for (_, item, display_w) in matches_with_widths {
-        let icon = color::status_icon_styled(&item.status);
-        let p_style = color::priority(item.priority);
-        let t_style = color::item_type(&item.item_type);
-        let tags = if item.tags.is_empty() {
-            String::new()
-        } else {
-            format!(" [{}]", item.tags.join(", "))
-        };
-        let due_marker = match item.due {
-            Some(d) if d < today => {
-                format!(" {}", Style::new().red().bold().apply_to("!due"))
-            }
-            Some(d) => format!(" due:{d}"),
-            None => String::new(),
-        };
-        let points_marker = item
-            .story_points
-            .map_or_else(String::new, |sp| format!(" [{sp}sp]"));
         let padding = max_phase.saturating_sub(display_w);
         let phase_badge = format!("[{}{}]", item.phase, &spaces[..padding]);
-        let timer_marker = if active_start_ts(&item.description).is_some() {
-            " ▶"
-        } else {
-            ""
-        };
-        println!(
-            "{icon} {} {} {} {} {}{timer_marker}{tags}{due_marker}{points_marker}",
-            item.id,
-            p_style.apply_to(format!("[P{}]", item.priority)),
-            phase_badge,
-            t_style.apply_to(format!("[{}]", item.item_type)),
-            item.title,
-        );
+        println!("{}", format_row(&item, &phase_badge, today));
     }
     Ok(())
 }

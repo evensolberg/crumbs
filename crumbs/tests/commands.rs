@@ -781,6 +781,95 @@ fn search_output_shows_timer_marker() {
     );
 }
 
+// ── row formatter ─────────────────────────────────────────────────────────────
+
+#[test]
+fn format_row_contains_core_fields() {
+    let dir = tempdir().unwrap();
+    let id = create_task(dir.path(), "Row Test");
+    let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    let today = chrono::NaiveDate::from_ymd_opt(2026, 4, 6).unwrap();
+    let row = commands::row::format_row(&item, "[   ]", today);
+    assert!(row.contains(&id), "row missing id");
+    assert!(row.contains("[P2]"), "row missing priority badge");
+    assert!(row.contains("[   ]"), "row missing phase badge");
+    assert!(row.contains("Row Test"), "row missing title");
+}
+
+#[test]
+fn format_row_shows_tags() {
+    let dir = tempdir().unwrap();
+    let id = create_task(dir.path(), "Tagged Row");
+    commands::update::run(
+        dir.path(),
+        &id,
+        UpdateArgs {
+            tags: Some(vec!["foo".to_string(), "bar".to_string()]),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    let today = chrono::NaiveDate::from_ymd_opt(2026, 4, 6).unwrap();
+    let row = commands::row::format_row(&item, "[]", today);
+    assert!(row.contains("[foo, bar]"), "row missing tags, got:\n{row}");
+}
+
+#[test]
+fn format_row_shows_overdue_marker() {
+    let dir = tempdir().unwrap();
+    let id = create_task(dir.path(), "Overdue Row");
+    commands::update::run(
+        dir.path(),
+        &id,
+        UpdateArgs {
+            due: Some(chrono::NaiveDate::from_ymd_opt(2025, 1, 1).unwrap()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    let today = chrono::NaiveDate::from_ymd_opt(2026, 4, 6).unwrap();
+    let row = commands::row::format_row(&item, "[]", today);
+    assert!(
+        row.contains("!due"),
+        "row missing overdue marker, got:\n{row}"
+    );
+}
+
+#[test]
+fn format_row_shows_story_points() {
+    let dir = tempdir().unwrap();
+    let id = create_task(dir.path(), "Pointed Row");
+    commands::update::run(
+        dir.path(),
+        &id,
+        UpdateArgs {
+            story_points: Some(5),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    let today = chrono::NaiveDate::from_ymd_opt(2026, 4, 6).unwrap();
+    let row = commands::row::format_row(&item, "[]", today);
+    assert!(
+        row.contains("[5sp]"),
+        "row missing story points, got:\n{row}"
+    );
+}
+
+#[test]
+fn format_row_shows_timer_marker() {
+    let dir = tempdir().unwrap();
+    let id = create_task(dir.path(), "Timed Row");
+    commands::start::run(dir.path(), &id, None).unwrap();
+    let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    let today = chrono::NaiveDate::from_ymd_opt(2026, 4, 6).unwrap();
+    let row = commands::row::format_row(&item, "[]", today);
+    assert!(row.contains('▶'), "row missing timer marker, got:\n{row}");
+}
+
 // ── reindex ───────────────────────────────────────────────────────────────────
 
 #[test]
