@@ -1563,6 +1563,17 @@ async function switchStore(crumbsDir) {
   selectedId = null;
   searchResults = null;
   searchInput.value = '';
+  filterStatus = 'all';
+  filterPriority = 'any';
+  filterType = 'any';
+  filterTag = '';
+  filterPhase = '';
+  for (const b of document.querySelectorAll('.filter-btn')) b.classList.toggle('active', b.dataset.status === 'all');
+  document.getElementById('filter-priority').value = 'any';
+  document.getElementById('filter-type').value = 'any';
+  document.getElementById('filter-tag').value = '';
+  document.getElementById('filter-phase').value = '';
+  showClosedEl.checked = false;
   addRecentStore(storeDir);
   renderSidebar();
   await loadItems();

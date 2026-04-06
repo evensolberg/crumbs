@@ -3,7 +3,7 @@ id: cr-2m8
 title: Add due/dependencies/blocks/blocked_by to reindex CSV
 status: open
 type: feature
-priority: 4
+priority: 2
 tags:
 - cli
 created: 2026-04-05
