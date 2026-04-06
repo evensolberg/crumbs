@@ -6,11 +6,8 @@ type: task
 priority: 2
 tags: []
 created: 2026-04-03
-updated: 2026-04-05
+updated: 2026-04-03
 dependencies: []
-phase: ''
 ---
 
 # GUI: Sort crumb type filter dropdown
-
-Both the filter drop-down and the Properties panel one.
