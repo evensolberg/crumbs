@@ -1,12 +1,13 @@
 ---
 id: cr-613
 title: Stop timer on close
-status: in_progress
+status: closed
 type: task
 priority: 2
 tags: []
 created: 2026-04-05
 updated: 2026-04-06
+closed_reason: 'Implemented in PR #20 (feat/close-improvements)'
 dependencies: []
 phase: ''
 ---

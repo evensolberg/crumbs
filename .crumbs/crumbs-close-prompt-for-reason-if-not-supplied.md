@@ -1,7 +1,7 @@
 ---
 id: cr-by7
 title: 'crumbs close: prompt for --reason if not supplied'
-status: in_progress
+status: closed
 type: feature
 priority: 2
 tags:
@@ -9,6 +9,7 @@ tags:
 - ux
 created: 2026-04-04
 updated: 2026-04-06
+closed_reason: 'Implemented in PR #20 (feat/close-improvements)'
 dependencies: []
 phase: ''
 ---
