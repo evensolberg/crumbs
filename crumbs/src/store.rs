@@ -382,26 +382,22 @@ mod tests {
     fn reindex_csv_has_blocks_and_blocked_by_headers() {
         let dir = tempdir().unwrap();
         reindex(dir.path()).unwrap();
-        let header = std::fs::read_to_string(dir.path().join("index.csv"))
-            .unwrap()
-            .lines()
-            .next()
-            .unwrap()
-            .to_owned();
-        let cols: Vec<&str> = header.split(',').collect();
+        let mut rdr = csv::Reader::from_path(dir.path().join("index.csv")).unwrap();
+        let headers = rdr.headers().unwrap().clone();
+        let cols: Vec<&str> = headers.iter().collect();
         let dep_idx = cols
             .iter()
             .position(|c| *c == "dependencies")
-            .unwrap_or_else(|| panic!("missing dependencies column, got: {header}"));
+            .unwrap_or_else(|| panic!("missing dependencies column, got: {cols:?}"));
         assert_eq!(
             cols.get(dep_idx + 1),
             Some(&"blocks"),
-            "expected blocks immediately after dependencies, got: {header}"
+            "expected blocks immediately after dependencies, got: {cols:?}"
         );
         assert_eq!(
             cols.get(dep_idx + 2),
             Some(&"blocked_by"),
-            "expected blocked_by immediately after blocks, got: {header}"
+            "expected blocked_by immediately after blocks, got: {cols:?}"
         );
     }
 
