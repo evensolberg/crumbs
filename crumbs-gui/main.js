@@ -1573,6 +1573,7 @@ async function switchStore(crumbsDir) {
   document.getElementById('filter-type').value = 'any';
   document.getElementById('filter-tag').value = '';
   document.getElementById('filter-phase').value = '';
+  showClosedEl.checked = false;
   addRecentStore(storeDir);
   renderSidebar();
   await loadItems();
