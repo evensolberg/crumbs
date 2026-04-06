@@ -4,7 +4,7 @@ use anyhow::Result;
 use chrono::Local;
 use console::{Style, measure_text_width};
 
-use crate::{color, store};
+use crate::{color, commands::start::active_start_ts, store};
 
 /// # Errors
 ///
@@ -36,7 +36,7 @@ pub fn run(dir: &Path, query: &str) -> Result<()> {
     let spaces = " ".repeat(max_phase);
     let today = Local::now().date_naive();
 
-    for ((_, item), display_w) in matches.drain(..).zip(phase_widths) {
+    for ((_, item), display_w) in matches.into_iter().zip(phase_widths) {
         let icon = color::status_icon_styled(&item.status);
         let p_style = color::priority(item.priority);
         let t_style = color::item_type(&item.item_type);
@@ -55,8 +55,13 @@ pub fn run(dir: &Path, query: &str) -> Result<()> {
         let points_marker = item
             .story_points
             .map_or_else(String::new, |sp| format!(" [{sp}sp]"));
+        let timer_marker = if active_start_ts(&item.description).is_some() {
+            " ▶"
+        } else {
+            ""
+        };
         println!(
-            "{icon} {} {} {} {} {}{tags}{due_marker}{points_marker}",
+            "{icon} {} {} {} {} {}{timer_marker}{tags}{due_marker}{points_marker}",
             item.id,
             p_style.apply_to(format!("[P{}]", item.priority)),
             phase_badge,
