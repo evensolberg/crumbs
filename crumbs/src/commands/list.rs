@@ -2,10 +2,10 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use chrono::{Local, NaiveDate};
-use console::{Style, measure_text_width};
+use console::Style;
 
 use crate::{
-    commands::row::format_row,
+    commands::row::{PhaseColumn, format_row},
     item::{Item, ItemType, Status},
     store,
 };
@@ -205,29 +205,11 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
         return Ok(());
     }
 
-    // Compute each phase's display width once, then derive max_phase from those widths.
-    // This avoids measuring the same phase string twice (once for max, once per row).
-    let sorted_with_widths: Vec<_> = sort_items(filtered, sort)
-        .into_iter()
-        .map(|(p, i)| {
-            let w = measure_text_width(&i.phase);
-            (p, i, w)
-        })
-        .collect();
-    let max_phase = sorted_with_widths
-        .iter()
-        .map(|(_, _, w)| *w)
-        .max()
-        .unwrap_or(0);
-    // Precompute a single spaces string; sliced per item to avoid per-row allocation.
-    let spaces = " ".repeat(max_phase);
+    let sorted = sort_items(filtered, sort);
+    let phase_col = PhaseColumn::new(sorted.iter().map(|(_, i)| i.phase.as_str()));
     let today = Local::now().date_naive();
-    for (_, item, display_w) in sorted_with_widths {
-        // Pad phase to max_phase display-width so the type badge column stays aligned.
-        // Slice the precomputed spaces string (single-byte, so index == byte offset).
-        let padding = max_phase.saturating_sub(display_w);
-        let phase_badge = format!("[{}{}]", item.phase, &spaces[..padding]);
-        println!("{}", format_row(&item, &phase_badge, today));
+    for (_, item) in &sorted {
+        println!("{}", format_row(item, &phase_col.badge(&item.phase), today));
         if verbose && !item.description.is_empty() {
             let snippet = item
                 .description

@@ -1,14 +1,38 @@
 use chrono::NaiveDate;
-use console::Style;
+use console::{Style, measure_text_width};
 
 use crate::{color, commands::start::active_start_ts, item::Item};
 
+/// Precomputed column alignment for phase badges.
+///
+/// Build once from the set of items to display, then call [`PhaseColumn::badge`]
+/// per item to get a fixed-width `[phase]` string.
+pub struct PhaseColumn {
+    max_width: usize,
+    spaces: String,
+}
+
+impl PhaseColumn {
+    /// Measure every phase string and record the widest one.
+    pub fn new<'a>(phases: impl Iterator<Item = &'a str>) -> Self {
+        let max_width = phases.map(measure_text_width).max().unwrap_or(0);
+        let spaces = " ".repeat(max_width);
+        Self { max_width, spaces }
+    }
+
+    /// Render a phase value as a bracket-wrapped, right-padded badge.
+    #[must_use]
+    pub fn badge(&self, phase: &str) -> String {
+        let padding = self.max_width.saturating_sub(measure_text_width(phase));
+        format!("[{}{}]", phase, &self.spaces[..padding])
+    }
+}
+
 /// Renders one item as a terminal row string (no trailing newline).
 ///
-/// `phase_badge` must already be padded to the desired column width by the
-/// caller (typically via [`console::measure_text_width`] + a precomputed
-/// spaces string). `today` is supplied once by the caller so it is not
-/// recomputed per item.
+/// `phase_badge` must already be padded to the desired column width
+/// (see [`PhaseColumn::badge`]). `today` is supplied once by the caller
+/// so it is not recomputed per item.
 #[must_use]
 pub fn format_row(item: &Item, phase_badge: &str, today: NaiveDate) -> String {
     let icon = color::status_icon_styled(&item.status);
