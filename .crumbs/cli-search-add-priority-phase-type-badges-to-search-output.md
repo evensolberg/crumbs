@@ -1,7 +1,7 @@
 ---
 id: cr-7z0
 title: 'CLI search: add priority/phase/type badges to search output'
-status: open
+status: in_progress
 type: feature
 priority: 2
 tags:
@@ -15,3 +15,5 @@ phase: ''
 ---
 
 # CLI search: add priority/phase/type badges to search output
+
+[start] 2026-04-05 22:26:52  Add priority/phase/type badges to search output matching list format
