@@ -388,13 +388,20 @@ mod tests {
             .next()
             .unwrap()
             .to_owned();
-        assert!(
-            header.contains("blocks"),
-            "missing blocks column, got: {header}"
+        let cols: Vec<&str> = header.split(',').collect();
+        let dep_idx = cols
+            .iter()
+            .position(|c| *c == "dependencies")
+            .unwrap_or_else(|| panic!("missing dependencies column, got: {header}"));
+        assert_eq!(
+            cols.get(dep_idx + 1),
+            Some(&"blocks"),
+            "expected blocks immediately after dependencies, got: {header}"
         );
-        assert!(
-            header.contains("blocked_by"),
-            "missing blocked_by column, got: {header}"
+        assert_eq!(
+            cols.get(dep_idx + 2),
+            Some(&"blocked_by"),
+            "expected blocked_by immediately after blocks, got: {header}"
         );
     }
 
@@ -408,14 +415,29 @@ mod tests {
         };
         write_item(dir.path(), &item).unwrap();
         reindex(dir.path()).unwrap();
-        let content = std::fs::read_to_string(dir.path().join("index.csv")).unwrap();
-        assert!(
-            content.contains("cr-aaa|cr-bbb"),
-            "missing blocks values, got:\n{content}"
+
+        let index_path = dir.path().join("index.csv");
+        let mut rdr = csv::Reader::from_path(&index_path).unwrap();
+        let headers = rdr.headers().unwrap().clone();
+        let col = |name: &str| headers.iter().position(|h| h == name).unwrap();
+        let blocks_idx = col("blocks");
+        let blocked_by_idx = col("blocked_by");
+
+        let row = rdr
+            .records()
+            .map(|r| r.unwrap())
+            .find(|r| r.get(col("id")) == Some("cr-x01"))
+            .expect("row for cr-x01 not found");
+
+        assert_eq!(
+            row.get(blocks_idx),
+            Some("cr-aaa|cr-bbb"),
+            "wrong blocks value"
         );
-        assert!(
-            content.contains(",cr-zzz,") || content.contains(",cr-zzz\n"),
-            "missing blocked_by values, got:\n{content}"
+        assert_eq!(
+            row.get(blocked_by_idx),
+            Some("cr-zzz"),
+            "wrong blocked_by value"
         );
     }
 
