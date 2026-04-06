@@ -1,13 +1,13 @@
 ---
 id: cr-kel
 title: 'GUI: Move Phase further up in the Properties pane'
-status: in_progress
+status: closed
 type: task
 priority: 2
 tags: []
 created: 2026-04-05
 updated: 2026-04-05
-closed_reason: 'Phase field now appears after status across CLI show, CSV export, reindex CSV, GUI columns, detail pane, and toolbar filters; merged in PR #14'
+closed_reason: 'All phase field reordering complete: CLI show/list, CSV export, reindex, GUI columns/detail/toolbar filters. PRs #14, #15, #16.'
 dependencies: []
 phase: ''
 ---
