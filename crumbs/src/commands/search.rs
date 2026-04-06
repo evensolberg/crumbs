@@ -25,7 +25,7 @@ pub fn run(dir: &Path, query: &str) -> Result<()> {
                 || item.tags.iter().any(|t| t.to_lowercase().contains(lq))
                 || item
                     .due
-                    .map_or(false, |d| d.to_string().contains(lq.as_str()))
+                    .is_some_and(|d| d.to_string().contains(lq.as_str()))
         })
         .collect();
 

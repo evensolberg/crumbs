@@ -16,10 +16,9 @@ pub fn run(dir: &Path, id: &str, reason: Option<String>) -> Result<()> {
             if active_start_ts(&item.description).is_some() {
                 super::stop::run(dir, id, None)?;
                 // reload after stop rewrote the file
-                let (new_path, new_item) = store::find_by_id(dir, id)?
+                let (_, new_item) = store::find_by_id(dir, id)?
                     .ok_or_else(|| anyhow::anyhow!("item {id} disappeared after timer stop"))?;
                 item = new_item;
-                let _ = new_path; // path is unchanged
             }
 
             // cr-by7: prompt for reason when stdin is a TTY and none was supplied

@@ -323,12 +323,14 @@ fn close_unknown_id_errors() {
 #[test]
 fn close_stops_active_timer() {
     // cr-613: closing an item with a running timer must write a [stop] entry
+    // and still set status to Closed.
     let dir = tempdir().unwrap();
     let id = create_task(dir.path(), "Timer Close");
     commands::start::run(dir.path(), &id, None).unwrap();
     commands::close::run(dir.path(), &id, None).unwrap();
 
-    let (path, _) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    let (path, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    assert_eq!(item.status, Status::Closed);
     let raw = std::fs::read_to_string(path).unwrap();
     assert!(
         raw.contains("[stop]"),
@@ -357,7 +359,7 @@ fn close_prompts_for_reason_when_not_interactive() {
 
     let output = Command::cargo_bin("crumbs")
         .unwrap()
-        .args(["--dir", d.to_str().unwrap(), "close", &id])
+        .args(["--dir", dir.path().to_str().unwrap(), "close", &id])
         .output()
         .unwrap();
     assert!(

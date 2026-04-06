@@ -7,6 +7,11 @@ use crate::{item::Status, store};
 
 /// Returns the start timestamp ("YYYY-MM-DD HH:MM:SS") if an unmatched
 /// `[start]` entry exists in the description.
+///
+/// `description` must be the **parsed body text** (heading stripped, surrounding
+/// newlines trimmed) as stored in `Item::description` — not the raw file content.
+/// Both `close::run` and `stop::run` independently parse the body; the trimming
+/// logic must remain consistent with how this function scans its input.
 #[must_use]
 pub fn active_start_ts(description: &str) -> Option<String> {
     let mut last: Option<String> = None;
