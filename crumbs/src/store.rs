@@ -182,6 +182,8 @@ pub fn reindex(dir: &Path) -> Result<()> {
         "updated",
         "closed_reason",
         "dependencies",
+        "blocks",
+        "blocked_by",
         "due",
         "story_points",
     ])?;
@@ -198,6 +200,8 @@ pub fn reindex(dir: &Path) -> Result<()> {
             &item.updated.to_string(),
             &item.closed_reason,
             &item.dependencies.join("|"),
+            &item.blocks.join("|"),
+            &item.blocked_by.join("|"),
             &item.due.map(|d| d.to_string()).unwrap_or_default(),
             &item
                 .story_points
@@ -372,6 +376,47 @@ mod tests {
         reindex(dir.path()).unwrap();
         let content = std::fs::read_to_string(dir.path().join("index.csv")).unwrap();
         assert!(content.starts_with("id,title,status"));
+    }
+
+    #[test]
+    fn reindex_csv_has_blocks_and_blocked_by_headers() {
+        let dir = tempdir().unwrap();
+        reindex(dir.path()).unwrap();
+        let header = std::fs::read_to_string(dir.path().join("index.csv"))
+            .unwrap()
+            .lines()
+            .next()
+            .unwrap()
+            .to_owned();
+        assert!(
+            header.contains("blocks"),
+            "missing blocks column, got: {header}"
+        );
+        assert!(
+            header.contains("blocked_by"),
+            "missing blocked_by column, got: {header}"
+        );
+    }
+
+    #[test]
+    fn reindex_csv_writes_blocks_and_blocked_by_values() {
+        let dir = tempdir().unwrap();
+        let item = Item {
+            blocks: vec!["cr-aaa".to_string(), "cr-bbb".to_string()],
+            blocked_by: vec!["cr-zzz".to_string()],
+            ..sample_item("cr-x01", "Blocker Item")
+        };
+        write_item(dir.path(), &item).unwrap();
+        reindex(dir.path()).unwrap();
+        let content = std::fs::read_to_string(dir.path().join("index.csv")).unwrap();
+        assert!(
+            content.contains("cr-aaa|cr-bbb"),
+            "missing blocks values, got:\n{content}"
+        );
+        assert!(
+            content.contains("cr-zzz"),
+            "missing blocked_by values, got:\n{content}"
+        );
     }
 
     // --- find_by_id ---
