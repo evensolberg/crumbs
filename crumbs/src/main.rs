@@ -319,7 +319,7 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
                     tag_filter: tag,
                     priority_filter: priority,
                     type_filter,
-                    phase_filter: phase.map(|p| p.trim().to_string()),
+                    phase_filter: phase,
                     all,
                     verbose,
                     sort: Some(sort),
