@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::NaiveDate;
 use console::{Style, measure_text_width};
 
@@ -10,20 +12,33 @@ use crate::{color, commands::start::active_start_ts, item::Item};
 pub struct PhaseColumn {
     max_width: usize,
     spaces: String,
+    widths: HashMap<String, usize>,
 }
 
 impl PhaseColumn {
-    /// Measure every phase string and record the widest one.
+    /// Measure every phase string once and record the widest one.
     pub fn new<'a>(phases: impl Iterator<Item = &'a str>) -> Self {
-        let max_width = phases.map(measure_text_width).max().unwrap_or(0);
+        let widths: HashMap<String, usize> = phases
+            .map(|p| (p.to_owned(), measure_text_width(p)))
+            .collect();
+        let max_width = widths.values().copied().max().unwrap_or(0);
         let spaces = " ".repeat(max_width);
-        Self { max_width, spaces }
+        Self {
+            max_width,
+            spaces,
+            widths,
+        }
     }
 
     /// Render a phase value as a bracket-wrapped, right-padded badge.
     #[must_use]
     pub fn badge(&self, phase: &str) -> String {
-        let padding = self.max_width.saturating_sub(measure_text_width(phase));
+        let w = self
+            .widths
+            .get(phase)
+            .copied()
+            .unwrap_or_else(|| measure_text_width(phase));
+        let padding = self.max_width.saturating_sub(w);
         format!("[{}{}]", phase, &self.spaces[..padding])
     }
 }
