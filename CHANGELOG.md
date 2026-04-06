@@ -2,12 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
+## [0.19.0] - 2026-04-06
 
 ### Chore
 
 - Bump flatted from 3.4.1 to 3.4.2 in /crumbs-gui
 - Bump version to 0.17.2
+- Revert unrelated crumb file change from branch
+- Close cr-vcm and push related crumb files
+- Close cr-kel (phase field reordering complete)
 
 ### Docs
 
@@ -19,6 +22,10 @@ All notable changes to this project will be documented in this file.
 
 - Add ValueEnum to SortKey for shell completions
 - Add phase field for roadmap grouping (#13)
+- Show phase as inline badge in list output
+- Pad phase badge to widest phase for column alignment (0.18.1)
+- Add badges to search output — align with list format (cr-7z0) (#19)
+- Stop timer on close; prompt for reason interactively (0.18.3) (#20)
 
 ### Fix
 
@@ -31,6 +38,16 @@ All notable changes to this project will be documented in this file.
 - Skip serializing empty closed_reason; add append+reopen test
 - Next skips open blockers; --tag AND semantics; preview top-aligned (#12)
 - Sync dist files with source; add deps/due columns to reindex CSV
+- Add column-order assertion; rename test; document [ ] intent
+- Allow struct_excessive_bools on UpdateArgs; fix SKILL.md note
+- Use display width for phase padding; tighten test; fix README
+- Precompute spaces string; add Unicode-width padding test
+- Trim phase_filter in list::run, not in main.rs (cr-9ot) (#17)
+- Reset all filter state on store switch (cr-74x) (#18)
+
+### Perf
+
+- Compute phase display widths once; avoid double measurement
 
 ### Refactor
 
