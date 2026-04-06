@@ -1653,6 +1653,48 @@ fn list_phase_filter_shows_matching_items_only() {
 }
 
 #[test]
+fn list_phase_filter_whitespace_only_is_no_filter() {
+    // An all-whitespace --phase value must be treated as "no filter" rather
+    // than silently matching items that have no phase set.
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "Has Phase".to_string(),
+            phase: "phase-1".to_string(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::create::run(
+        &d,
+        CreateArgs {
+            title: "No Phase".to_string(),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let output = Command::cargo_bin("crumbs")
+        .unwrap()
+        .args(["--dir", d.to_str().unwrap(), "list", "--phase", "   "])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        stdout.contains("Has Phase"),
+        "whitespace-only phase filter must show phased items, got:\n{stdout}"
+    );
+    assert!(
+        stdout.contains("No Phase"),
+        "whitespace-only phase filter must show unphased items too, got:\n{stdout}"
+    );
+}
+
+#[test]
 fn list_output_shows_phase_badge() {
     // Items with a phase set should show a [phase] badge inline between the
     // priority and type badges; items without a phase should show [ ].
