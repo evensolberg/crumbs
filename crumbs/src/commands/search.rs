@@ -12,7 +12,7 @@ use crate::{color, commands::start::active_start_ts, store};
 pub fn run(dir: &Path, query: &str) -> Result<()> {
     let items = store::load_all(dir)?;
     let q = query.to_lowercase();
-    let mut matches: Vec<_> = items
+    let matches: Vec<_> = items
         .into_iter()
         .filter(|(path, item)| {
             item.title.to_lowercase().contains(&q)
