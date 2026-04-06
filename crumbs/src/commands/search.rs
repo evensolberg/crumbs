@@ -14,11 +14,14 @@ pub fn run(dir: &Path, query: &str) -> Result<()> {
     let q = query.to_lowercase();
     let matches: Vec<_> = items
         .into_iter()
-        .filter(|(path, item)| {
-            item.title.to_lowercase().contains(&q)
-                || std::fs::read_to_string(path)
-                    .map(|s| s.to_lowercase().contains(&q))
-                    .unwrap_or(false)
+        .filter(|(_, item)| {
+            let lq = &q;
+            item.title.to_lowercase().contains(lq)
+                || item.description.to_lowercase().contains(lq)
+                || item.id.to_lowercase().contains(lq)
+                || item.phase.to_lowercase().contains(lq)
+                || item.item_type.to_string().to_lowercase().contains(lq)
+                || item.tags.iter().any(|t| t.to_lowercase().contains(lq))
         })
         .collect();
 

@@ -623,6 +623,11 @@ fn search_output_shows_priority_badge() {
         .args(["--dir", d.to_str().unwrap(), "search", "High Pri"])
         .output()
         .unwrap();
+    assert!(
+        output.status.success(),
+        "crumbs search failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(
         stdout.contains("[P1]"),
@@ -650,6 +655,11 @@ fn search_output_shows_phase_badge() {
         .args(["--dir", d.to_str().unwrap(), "search", "Phased"])
         .output()
         .unwrap();
+    assert!(
+        output.status.success(),
+        "crumbs search failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(
         stdout.contains("[phase-1]"),
@@ -680,12 +690,42 @@ fn search_output_column_order() {
         .args(["--dir", d.to_str().unwrap(), "search", "Order Check"])
         .output()
         .unwrap();
+    assert!(
+        output.status.success(),
+        "crumbs search failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let stdout = String::from_utf8(output.stdout).unwrap();
     let p0_pos = stdout.find("[P0]").expect("must contain [P0]");
     let phase_pos = stdout.find("[alpha]").expect("must contain [alpha]");
     let type_pos = stdout.find("[bug]").expect("must contain [bug]");
     assert!(p0_pos < phase_pos, "priority must come before phase");
     assert!(phase_pos < type_pos, "phase must come before type");
+}
+
+#[test]
+fn search_output_shows_timer_marker() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "Timer Item");
+    commands::start::run(&d, &id, None).unwrap();
+
+    let output = Command::cargo_bin("crumbs")
+        .unwrap()
+        .args(["--dir", d.to_str().unwrap(), "search", "Timer Item"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "crumbs search failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        stdout.contains('▶'),
+        "search output must include timer marker for active timer, got:\n{stdout}"
+    );
 }
 
 // ── reindex ───────────────────────────────────────────────────────────────────
