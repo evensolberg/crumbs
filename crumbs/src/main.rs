@@ -1,3 +1,4 @@
+use std::io::IsTerminal;
 use std::path::PathBuf;
 
 use anyhow::Result;
@@ -431,7 +432,22 @@ fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
             targets,
             remove,
         } => commands::link::run(dir, &id, &relation, &split_csv(&targets), remove)?,
-        Command::Close { id, reason } => commands::close::run(dir, &id, reason)?,
+        Command::Close { id, reason } => {
+            // cr-by7: prompt interactively only in the CLI layer, so the
+            // library function stays non-interactive (safe for GUI and tests).
+            let reason = match reason {
+                Some(r) => Some(r),
+                None if std::io::stdin().is_terminal() => {
+                    let r = dialoguer::Input::<String>::new()
+                        .with_prompt("Close reason (optional, Enter to skip)")
+                        .allow_empty(true)
+                        .interact_text()?;
+                    Some(r)
+                }
+                None => None,
+            };
+            commands::close::run(dir, &id, reason)?;
+        }
         Command::Delete { id } => commands::delete::run(dir, &id)?,
         Command::Clean => commands::clean::run(dir)?,
         Command::Reindex => commands::reindex::run(dir)?,

@@ -132,10 +132,13 @@ Start/stop entries are plain lines in the markdown body, interleaved with any no
 
 ### Close / delete / clean
 ```sh
+crumbs close cr-x7q                         # prompts for reason interactively (TTY only)
 crumbs close cr-x7q --reason "fixed in PR #42"
 crumbs delete cr-x7q
-crumbs clean                     # purge all closed items
+crumbs clean                                 # purge all closed items
 ```
+
+Closing an item with an active timer automatically stops the timer first and writes a `[stop]` entry before setting `status: closed`.
 
 ### Export
 ```sh

@@ -205,11 +205,13 @@ crumbs link bc-x7q blocks bc-y8r --remove    # unlink; restores open if unblocke
 ### Close / delete
 
 ```sh
-crumbs close bc-x7q
+crumbs close bc-x7q                           # prompts for a reason interactively (TTY only)
 crumbs close bc-x7q --reason "fixed in PR #42"
 crumbs delete cr-x7q
-crumbs clean                      # purge all closed items
+crumbs clean                                   # purge all closed items
 ```
+
+If an item has an active timer when closed, the timer is stopped automatically before the status is set — no need to run `crumbs stop` first. The close reason prompt is skipped when stdin is not a terminal (scripts, CI, piped input).
 
 ### Export
 

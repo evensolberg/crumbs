@@ -320,6 +320,59 @@ fn close_unknown_id_errors() {
     assert!(result.is_err());
 }
 
+#[test]
+fn close_stops_active_timer() {
+    // cr-613: closing an item with a running timer must write a [stop] entry
+    // and still set status to Closed.
+    let dir = tempdir().unwrap();
+    let id = create_task(dir.path(), "Timer Close");
+    commands::start::run(dir.path(), &id, None).unwrap();
+    commands::close::run(dir.path(), &id, None).unwrap();
+
+    let (path, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    assert_eq!(item.status, Status::Closed);
+    let raw = std::fs::read_to_string(path).unwrap();
+    assert!(
+        raw.contains("[stop]"),
+        "close should have written a [stop] entry, got:\n{raw}"
+    );
+}
+
+#[test]
+fn close_without_active_timer_succeeds() {
+    // cr-613: closing an item with no running timer must still succeed normally
+    let dir = tempdir().unwrap();
+    let id = create_task(dir.path(), "No Timer Close");
+    commands::close::run(dir.path(), &id, None).unwrap();
+    let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
+    assert_eq!(item.status, Status::Closed);
+}
+
+#[test]
+fn close_without_reason_when_not_interactive_succeeds_without_prompt() {
+    // cr-by7: the CLI must not hang or prompt when stdin is not a TTY.
+    // Drive the binary directly with stdin=null to exercise the main.rs
+    // dispatch path (where the prompt lives).
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "No Reason Close");
+    let bin = env!("CARGO_BIN_EXE_crumbs");
+    let output = std::process::Command::new(bin)
+        .args(["--dir", dir.path().to_str().unwrap(), "close", &id])
+        .stdin(std::process::Stdio::null())
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "close failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let (_, item) = store::find_by_id(&d, &id).unwrap().unwrap();
+    assert_eq!(item.status, Status::Closed);
+    assert_eq!(item.closed_reason, "");
+}
+
 // ── list ─────────────────────────────────────────────────────────────────────
 
 #[test]
