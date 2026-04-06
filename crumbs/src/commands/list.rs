@@ -199,18 +199,24 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
         return Ok(());
     }
 
-    let sorted = sort_items(filtered, sort);
-    // Pad all phase badges to the widest phase so the type column aligns.
-    // Use display width (via console) so multi-byte Unicode phases align correctly.
-    let max_phase = sorted
+    // Compute each phase's display width once, then derive max_phase from those widths.
+    // This avoids measuring the same phase string twice (once for max, once per row).
+    let sorted_with_widths: Vec<_> = sort_items(filtered, sort)
+        .into_iter()
+        .map(|(p, i)| {
+            let w = measure_text_width(&i.phase);
+            (p, i, w)
+        })
+        .collect();
+    let max_phase = sorted_with_widths
         .iter()
-        .map(|(_, i)| measure_text_width(&i.phase))
+        .map(|(_, _, w)| *w)
         .max()
         .unwrap_or(0);
     // Precompute a single spaces string; sliced per item to avoid per-row allocation.
     let spaces = " ".repeat(max_phase);
     let today = Local::now().date_naive();
-    for (_, item) in sorted {
+    for (_, item, display_w) in sorted_with_widths {
         let icon = color::status_icon_styled(&item.status);
         let p_style = color::priority(item.priority);
         let t_style = color::item_type(&item.item_type);
@@ -231,7 +237,6 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
             .map_or_else(String::new, |sp| format!(" [{sp}sp]"));
         // Pad phase to max_phase display-width so the type badge column stays aligned.
         // Slice the precomputed spaces string (single-byte, so index == byte offset).
-        let display_w = measure_text_width(&item.phase);
         let padding = max_phase.saturating_sub(display_w);
         let phase_badge = format!("[{}{}]", item.phase, &spaces[..padding]);
         let timer_marker = if active_start_ts(&item.description).is_some() {
