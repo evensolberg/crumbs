@@ -10,7 +10,7 @@ use crate::{color, commands::start::active_start_ts, item::Item};
 /// spaces string). `today` is supplied once by the caller so it is not
 /// recomputed per item.
 #[must_use]
-pub fn format_row(item: &Item, phase_badge: &str, today: NaiveDate) -> String {
+pub(crate) fn format_row(item: &Item, phase_badge: &str, today: NaiveDate) -> String {
     let icon = color::status_icon_styled(&item.status);
     let p_style = color::priority(item.priority);
     let t_style = color::item_type(&item.item_type);
@@ -42,4 +42,87 @@ pub fn format_row(item: &Item, phase_badge: &str, today: NaiveDate) -> String {
         t_style.apply_to(format!("[{}]", item.item_type)),
         item.title,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::NaiveDate;
+
+    use super::format_row;
+    use crate::item::{Item, ItemType, Status};
+
+    fn base_item() -> Item {
+        Item {
+            id: "cr-abc".to_string(),
+            title: "Test Item".to_string(),
+            status: Status::Open,
+            item_type: ItemType::Task,
+            priority: 2,
+            tags: vec![],
+            created: NaiveDate::from_ymd_opt(2026, 1, 1).unwrap(),
+            updated: NaiveDate::from_ymd_opt(2026, 1, 1).unwrap(),
+            closed_reason: String::new(),
+            dependencies: vec![],
+            blocks: vec![],
+            blocked_by: vec![],
+            due: None,
+            description: String::new(),
+            story_points: None,
+            phase: String::new(),
+        }
+    }
+
+    fn today() -> NaiveDate {
+        NaiveDate::from_ymd_opt(2026, 4, 6).unwrap()
+    }
+
+    #[test]
+    fn format_row_contains_core_fields() {
+        let item = base_item();
+        let row = format_row(&item, "[   ]", today());
+        assert!(row.contains("cr-abc"), "missing id");
+        assert!(row.contains("[P2]"), "missing priority badge");
+        assert!(row.contains("[   ]"), "missing phase badge");
+        assert!(row.contains("Test Item"), "missing title");
+    }
+
+    #[test]
+    fn format_row_shows_tags() {
+        let item = Item {
+            tags: vec!["foo".to_string(), "bar".to_string()],
+            ..base_item()
+        };
+        let row = format_row(&item, "[]", today());
+        assert!(row.contains("[foo, bar]"), "missing tags, got:\n{row}");
+    }
+
+    #[test]
+    fn format_row_shows_overdue_marker() {
+        let item = Item {
+            due: Some(NaiveDate::from_ymd_opt(2025, 1, 1).unwrap()),
+            ..base_item()
+        };
+        let row = format_row(&item, "[]", today());
+        assert!(row.contains("!due"), "missing overdue marker, got:\n{row}");
+    }
+
+    #[test]
+    fn format_row_shows_story_points() {
+        let item = Item {
+            story_points: Some(5),
+            ..base_item()
+        };
+        let row = format_row(&item, "[]", today());
+        assert!(row.contains("[5sp]"), "missing story points, got:\n{row}");
+    }
+
+    #[test]
+    fn format_row_shows_timer_marker() {
+        let item = Item {
+            description: "[start] 2026-04-06 10:00:00".to_string(),
+            ..base_item()
+        };
+        let row = format_row(&item, "[]", today());
+        assert!(row.contains('▶'), "missing timer marker, got:\n{row}");
+    }
 }
