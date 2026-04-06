@@ -1,4 +1,3 @@
-use std::io::IsTerminal;
 use std::path::Path;
 
 use anyhow::{Result, bail};
@@ -20,21 +19,7 @@ pub fn run(dir: &Path, id: &str, reason: Option<String>) -> Result<()> {
                 item = store::read_item(&path)?;
             }
 
-            // cr-by7: prompt for reason when stdin is a TTY and none was supplied
-            let reason = match reason {
-                Some(r) => r,
-                None => {
-                    if std::io::stdin().is_terminal() {
-                        dialoguer::Input::<String>::new()
-                            .with_prompt("Close reason (optional, Enter to skip)")
-                            .allow_empty(true)
-                            .interact_text()
-                            .unwrap_or_default()
-                    } else {
-                        String::new()
-                    }
-                }
-            };
+            let reason = reason.unwrap_or_default();
 
             item.status = Status::Closed;
             item.closed_reason = reason;
