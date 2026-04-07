@@ -239,11 +239,14 @@ enum Command {
     Clean,
     /// Rebuild the CSV index from .md files
     Reindex,
-    /// Export items to CSV, JSON, or TOON
+    /// Export items to CSV, JSON, TOON, or Markdown
     Export {
-        /// Output format: csv, json, or toon
+        /// Output format: csv, json, toon, or markdown
         #[arg(short, long, default_value = "json")]
         format: String,
+        /// Group markdown output by field: type, priority, phase, or status
+        #[arg(long, value_name = "FIELD")]
+        group_by: Option<String>,
         /// Write output to a file; omit value for `crumbs_export.<ext>` (default: stdout)
         #[arg(short, long, num_args = 0..=1, default_missing_value = "crumbs_export")]
         output: Option<PathBuf>,
@@ -381,6 +384,7 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
     Ok(())
 }
 
+#[allow(clippy::too_many_lines)] // one match arm per CLI subcommand; no natural split point
 fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
     match command {
         Command::Init { .. } | Command::Completions { .. } => unreachable!(),
@@ -458,15 +462,30 @@ fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
         Command::Clean => commands::clean::run(dir)?,
         Command::Reindex => commands::reindex::run(dir)?,
         Command::Search { query } => commands::search::run(dir, &query)?,
-        Command::Export { format, output } => {
+        Command::Export {
+            format,
+            group_by,
+            output,
+        } => {
+            if group_by.is_some() && format != "markdown" {
+                anyhow::bail!("--group-by requires --format markdown");
+            }
+            let effective_format = group_by
+                .as_deref()
+                .map_or_else(|| format.clone(), |field| format!("markdown?group={field}"));
             let output = output.map(|p| {
                 if p.as_os_str() == "crumbs_export" {
-                    PathBuf::from(format!("crumbs_export.{format}"))
+                    let ext = if format.starts_with("markdown") || group_by.is_some() {
+                        "md"
+                    } else {
+                        &format
+                    };
+                    PathBuf::from(format!("crumbs_export.{ext}"))
                 } else {
                     p
                 }
             });
-            commands::export::run(dir, &format, output.as_deref())?;
+            commands::export::run(dir, &effective_format, output.as_deref())?;
         }
     }
     Ok(())
