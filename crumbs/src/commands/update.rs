@@ -129,7 +129,7 @@ pub fn run_labeled(
                 item.phase = p.trim().to_string();
             }
             if let Some(r) = args.resolution {
-                item.resolution = r;
+                item.resolution = r.trim().to_string();
             }
             item.updated = Local::now().date_naive();
 
