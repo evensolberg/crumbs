@@ -1,7 +1,7 @@
 ---
 id: cr-bqx
 title: Extract phase-badge builder from list/search into row.rs
-status: open
+status: closed
 type: task
 priority: 3
 tags:
