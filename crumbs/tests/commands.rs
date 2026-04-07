@@ -1,5 +1,6 @@
 use assert_cmd::Command;
 use chrono::NaiveDate;
+use predicates::str as pstr;
 use tempfile::tempdir;
 
 use crumbs::{
@@ -2237,4 +2238,65 @@ fn export_markdown_grouped_by_status_has_sections() {
     let md = crumbs::commands::export::to_string(&d, "markdown?group=status").unwrap();
     assert!(md.contains("## in_progress"), "missing in_progress section");
     assert!(md.contains("## open"), "missing open section");
+}
+
+#[test]
+fn export_markdown_cli_group_by_type_writes_md_file() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "A Feature");
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            item_type: Some("feature".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    create_task(&d, "A Task");
+
+    let out_path = dir.path().join("roadmap.md");
+    Command::cargo_bin("crumbs")
+        .unwrap()
+        .args([
+            "--dir",
+            d.to_str().unwrap(),
+            "export",
+            "--format",
+            "markdown",
+            "--group-by",
+            "type",
+            "--output",
+            out_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let content = std::fs::read_to_string(&out_path).unwrap();
+    assert!(content.contains("## Feature"), "missing Feature section");
+    assert!(content.contains("## Task"), "missing Task section");
+}
+
+#[test]
+fn export_markdown_cli_group_by_without_markdown_format_errors() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+
+    Command::cargo_bin("crumbs")
+        .unwrap()
+        .args([
+            "--dir",
+            d.to_str().unwrap(),
+            "export",
+            "--format",
+            "json",
+            "--group-by",
+            "type",
+        ])
+        .assert()
+        .failure()
+        .stderr(pstr::contains("--group-by requires --format markdown"));
 }
