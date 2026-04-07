@@ -625,6 +625,7 @@ button:disabled {
   min-height: 0;
   overflow: hidden;
 }
+#editor-area.hidden { display: none; }
 
 #detail-editor {
   flex: 1;
