@@ -186,6 +186,7 @@ pub fn reindex(dir: &Path) -> Result<()> {
         "blocked_by",
         "due",
         "story_points",
+        "resolution",
     ])?;
     for (_, item) in &items {
         wtr.write_record([
@@ -207,6 +208,7 @@ pub fn reindex(dir: &Path) -> Result<()> {
                 .story_points
                 .map(|sp| sp.to_string())
                 .unwrap_or_default(),
+            &item.resolution,
         ])?;
     }
     wtr.flush()?;
@@ -262,6 +264,7 @@ mod tests {
             description: String::new(),
             story_points: None,
             phase: String::new(),
+            resolution: String::new(),
         }
     }
 

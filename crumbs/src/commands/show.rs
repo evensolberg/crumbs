@@ -80,6 +80,9 @@ fn show_one(dir: &Path, id: &str) -> Result<()> {
             if !item.closed_reason.is_empty() {
                 println!("  Closed:   {}", item.closed_reason);
             }
+            if !item.resolution.is_empty() {
+                println!("  Resolves: {}", item.resolution);
+            }
             if !item.dependencies.is_empty() {
                 println!("  Deps:     {}", item.dependencies.join(", "));
             }

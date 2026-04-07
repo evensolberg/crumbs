@@ -58,6 +58,7 @@ pub struct UpdateArgs {
     pub title: Option<String>,
     pub phase: Option<String>,
     pub clear_phase: bool,
+    pub resolution: Option<String>,
 }
 
 /// Update an item. Prints `"Updated <id>"` on success.
@@ -72,6 +73,7 @@ pub fn run(dir: &Path, id: &str, args: UpdateArgs) -> Result<()> {
 /// Like [`run`], but overrides the success verb (e.g. `"Appended to"`).
 /// Used by the CLI `append` subcommand; not intended for library consumers.
 #[doc(hidden)]
+#[allow(clippy::too_many_lines)] // one branch per updatable field; no natural split point
 pub fn run_labeled(
     dir: &Path,
     id: &str,
@@ -125,6 +127,9 @@ pub fn run_labeled(
                 item.phase = String::new();
             } else if let Some(p) = args.phase {
                 item.phase = p.trim().to_string();
+            }
+            if let Some(r) = args.resolution {
+                item.resolution = r.trim().to_string();
             }
             item.updated = Local::now().date_naive();
 

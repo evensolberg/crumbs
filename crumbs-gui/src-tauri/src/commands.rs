@@ -269,6 +269,20 @@ pub fn update_title(dir: String, id: String, title: String) -> Result<(), String
     .map_err(|e| e.to_string())
 }
 
+/// Update an item's resolution reference (PR/commit URL or identifier).
+#[tauri::command]
+pub fn update_resolution(dir: String, id: String, resolution: String) -> Result<(), String> {
+    update::run(
+        &to_path(&dir),
+        &id,
+        UpdateArgs {
+            resolution: Some(resolution),
+            ..Default::default()
+        },
+    )
+    .map_err(|e| e.to_string())
+}
+
 /// Close an item with an optional reason.
 #[tauri::command]
 pub fn close_item(dir: String, id: String, reason: String) -> Result<(), String> {

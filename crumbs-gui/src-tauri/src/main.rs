@@ -20,6 +20,7 @@ fn main() {
             commands::update_tags,
             commands::update_phase,
             commands::update_title,
+            commands::update_resolution,
             commands::close_item,
             commands::has_store,
             commands::init_store,

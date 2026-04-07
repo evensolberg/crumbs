@@ -31,6 +31,7 @@ pub fn items_to_string(items: &[Item], format: &str) -> Result<String> {
                 "blocked_by",
                 "due",
                 "story_points",
+                "resolution",
             ])?;
             for item in items {
                 wtr.write_record([
@@ -52,6 +53,7 @@ pub fn items_to_string(items: &[Item], format: &str) -> Result<String> {
                         .story_points
                         .map(|sp| sp.to_string())
                         .unwrap_or_default(),
+                    &item.resolution,
                 ])?;
             }
             Ok(String::from_utf8(wtr.into_inner()?)?)
@@ -107,6 +109,7 @@ mod tests {
             description: String::new(),
             story_points: None,
             phase: String::new(),
+            resolution: String::new(),
         }
     }
 

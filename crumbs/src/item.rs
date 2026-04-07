@@ -110,6 +110,9 @@ pub struct Item {
     /// field deserialise cleanly as `""`.
     #[serde(default)]
     pub phase: String,
+    /// PR or commit URL/reference that resolved this item (e.g. "owner/repo#42").
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub resolution: String,
 }
 
 pub const FIBONACCI: &[u8] = &[1, 2, 3, 5, 8, 13, 21];
