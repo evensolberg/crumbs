@@ -1,7 +1,7 @@
 ---
 id: cr-w8z
 title: Add pr / commit field for linking closed crumbs to their resolution
-status: in_progress
+status: closed
 type: feature
 priority: 2
 tags:
@@ -22,3 +22,5 @@ Structuring the resolution reference as a typed field (pr: 42 or commit: abc1234
 The freetext closed_reason field would remain for narrative explanation.
 
 [start] 2026-04-06 16:23:01  Adding resolution field (pr/commit) to Item; CLI update + GUI detail pane
+
+[stop]  2026-04-06 21:11:17  4h 48m 16s  Merged PR #23
