@@ -34,30 +34,6 @@ fn items_to_markdown(items: &[Item], group: Option<&str>) -> Result<String> {
         return Ok(out);
     };
 
-    // Collect group keys in insertion order (stable, preserves priority sort).
-    let key_of = |item: &Item| -> String {
-        match field {
-            "type" => {
-                let s = item.item_type.to_string();
-                // Capitalise first letter for the heading.
-                let mut c = s.chars();
-                c.next().map_or_else(String::new, |f| {
-                    f.to_uppercase().collect::<String>() + c.as_str()
-                })
-            }
-            "priority" => format!("P{}", item.priority),
-            "phase" => {
-                if item.phase.is_empty() {
-                    "Uncategorized".to_string()
-                } else {
-                    item.phase.clone()
-                }
-            }
-            "status" => item.status.to_string(),
-            other => format!("__unknown__{other}"),
-        }
-    };
-
     // Validate field before building output.
     match field {
         "type" | "priority" | "phase" | "status" => {}
@@ -65,6 +41,23 @@ fn items_to_markdown(items: &[Item], group: Option<&str>) -> Result<String> {
             "unknown group field: {other} (expected type, priority, phase, or status)"
         ),
     }
+
+    let key_of = |item: &Item| -> String {
+        match field {
+            "type" => {
+                let s = item.item_type.to_string();
+                let mut c = s.chars();
+                c.next().map_or_else(String::new, |f| {
+                    f.to_uppercase().collect::<String>() + c.as_str()
+                })
+            }
+            "priority" => format!("P{}", item.priority),
+            "phase" if item.phase.is_empty() => "Uncategorized".to_string(),
+            "phase" => item.phase.clone(),
+            "status" => item.status.to_string(),
+            _ => unreachable!("field validated above"),
+        }
+    };
 
     // Group preserving insertion order.
     let mut order: Vec<String> = Vec::new();
@@ -156,7 +149,7 @@ pub fn items_to_string(items: &[Item], format: &str) -> Result<String> {
             }
             Ok(String::from_utf8(wtr.into_inner()?)?)
         }
-        other => anyhow::bail!("unknown format: {other} (expected csv, json, or toon)"),
+        other => anyhow::bail!("unknown format: {other} (expected csv, json, markdown, or toon)"),
     }
 }
 

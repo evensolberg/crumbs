@@ -384,6 +384,7 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
     Ok(())
 }
 
+#[allow(clippy::too_many_lines)] // one match arm per CLI subcommand; no natural split point
 fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
     match command {
         Command::Init { .. } | Command::Completions { .. } => unreachable!(),
@@ -466,6 +467,9 @@ fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
             group_by,
             output,
         } => {
+            if group_by.is_some() && format != "markdown" {
+                anyhow::bail!("--group-by requires --format markdown");
+            }
             let effective_format = group_by
                 .as_deref()
                 .map_or_else(|| format.clone(), |field| format!("markdown?group={field}"));

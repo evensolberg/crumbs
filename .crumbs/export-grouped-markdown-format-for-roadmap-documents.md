@@ -1,7 +1,7 @@
 ---
 id: cr-rxy
 title: 'Export: grouped markdown format for roadmap documents'
-status: closed
+status: in_progress
 type: feature
 priority: 2
 tags:
@@ -24,3 +24,5 @@ crumbs export --format toon is good for LLM context but there is no format that 
 [start] 2026-04-06 21:15:08  Starting implementation
 
 [stop]  2026-04-06 21:18:58  3m 50s  Implemented; PR pending
+
+[start] 2026-04-06 21:46:22

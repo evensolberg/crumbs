@@ -2183,3 +2183,58 @@ fn resolution_not_in_frontmatter_when_empty() {
         "resolution key should be absent when empty, got:\n{raw}"
     );
 }
+
+// ── export (markdown) ─────────────────────────────────────────────────────────
+
+#[test]
+fn export_markdown_flat_produces_table() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    create_task(&d, "Alpha");
+    let md = crumbs::commands::export::to_string(&d, "markdown").unwrap();
+    assert!(md.contains("| ID |"), "missing table header");
+    assert!(md.contains("Alpha"), "missing item title");
+}
+
+#[test]
+fn export_markdown_grouped_by_type_has_sections() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "A Task");
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            item_type: Some("feature".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    create_task(&d, "Another Task");
+    let md = crumbs::commands::export::to_string(&d, "markdown?group=type").unwrap();
+    assert!(md.contains("## Feature"), "missing Feature section");
+    assert!(md.contains("## Task"), "missing Task section");
+}
+
+#[test]
+fn export_markdown_grouped_by_status_has_sections() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("cr".to_string())).unwrap();
+    let id = create_task(&d, "In Progress Item");
+    commands::update::run(
+        &d,
+        &id,
+        UpdateArgs {
+            status: Some("in_progress".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    create_task(&d, "Open Item");
+    let md = crumbs::commands::export::to_string(&d, "markdown?group=status").unwrap();
+    assert!(md.contains("## in_progress"), "missing in_progress section");
+    assert!(md.contains("## open"), "missing open section");
+}
