@@ -475,7 +475,7 @@ fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
                 .map_or_else(|| format.clone(), |field| format!("markdown?group={field}"));
             let output = output.map(|p| {
                 if p.as_os_str() == "crumbs_export" {
-                    let ext = if format == "markdown" || group_by.is_some() {
+                    let ext = if format.starts_with("markdown") || group_by.is_some() {
                         "md"
                     } else {
                         &format

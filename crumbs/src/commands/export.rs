@@ -13,16 +13,17 @@ use crate::{item::Item, store};
 fn items_to_markdown(items: &[Item], group: Option<&str>) -> Result<String> {
     let header = "| ID | Title | Status | Type | P | Phase | Tags |\n\
                   |:---|:------|:-------|:-----|:-:|:------|:-----|\n";
+    let esc = |s: &str| s.replace('|', "\\|");
     let row = |item: &Item| {
         format!(
             "| {} | {} | {} | {} | {} | {} | {} |\n",
             item.id,
-            item.title,
+            esc(&item.title),
             item.status,
             item.item_type,
             item.priority,
-            item.phase,
-            item.tags.join(", "),
+            esc(&item.phase),
+            esc(&item.tags.join(", ")),
         )
     };
 
