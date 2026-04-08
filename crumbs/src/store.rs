@@ -494,7 +494,7 @@ mod tests {
     #[test]
     fn find_by_id_bare_suffix_expands_with_prefix() {
         let dir = tempdir().unwrap();
-        // Write a config.toml so the prefix is "bc" (matches item IDs used here).
+        // Write a crumbs.toml so the prefix is "bc" (matches item IDs used here).
         crate::store_config::save(
             dir.path(),
             &crate::store_config::StoreConfig {

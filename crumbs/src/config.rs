@@ -79,7 +79,7 @@ mod tests {
         // Even if a directory contains store files, only the .crumbs suffix
         // prevents the append — file contents are not checked.
         let dir = tempdir().unwrap();
-        std::fs::write(dir.path().join("config.toml"), "").unwrap();
+        std::fs::write(dir.path().join("crumbs.toml"), "").unwrap();
         std::fs::write(dir.path().join("index.csv"), "").unwrap();
         let result = resolve_dir(Some(dir.path().to_path_buf()), false);
         assert_eq!(result, dir.path().join(".crumbs"));
