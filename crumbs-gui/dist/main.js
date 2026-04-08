@@ -549,6 +549,7 @@ function rebuildTableHeader() {
       else { sortCol = key; sortDir = 'asc'; }
       updateSortHeaders();
       renderTable();
+      saveViewState();
     });
     theadRow.appendChild(th);
   }
@@ -617,7 +618,6 @@ function renderTable() {
     tr.addEventListener('mousedown', e => startRowDrag(e, item, tr));
     itemsBody.appendChild(tr);
   }
-  saveViewState();
 }
 
 // ── Column sorting + resizing (dynamic, called after rebuildTableHeader) ──
@@ -1635,16 +1635,17 @@ function saveViewState() {
 }
 
 function loadViewState(dir) {
-  try {
-    const raw = localStorage.getItem(`crumbs_view_${dir}`);
-    if (raw) return JSON.parse(raw);
-  } catch { /* ignore corrupt data */ }
-  return {
+  const defaults = {
     filterStatus: 'all', filterPriority: 'any', filterType: 'any',
     filterTag: '', filterPhase: '',
     showClosed: false,
     sortCol: 'priority', sortDir: 'asc',
   };
+  try {
+    const raw = localStorage.getItem(`crumbs_view_${dir}`);
+    if (raw) return { ...defaults, ...JSON.parse(raw) };
+  } catch { /* ignore corrupt data */ }
+  return defaults;
 }
 
 function applyViewState(state) {
@@ -1664,6 +1665,7 @@ function applyViewState(state) {
   document.getElementById('filter-tag').value      = filterTag;
   document.getElementById('filter-phase').value    = filterPhase;
   showClosedEl.checked = state.showClosed;
+  updateSortHeaders();
 }
 
 function getStoreAliases() {
@@ -2023,7 +2025,7 @@ themeBtn.addEventListener('click', () => {
 // ── Event wiring ──────────────────────────────────────────────────────────
 
 refreshBtn.addEventListener('click', loadItems);
-showClosedEl.addEventListener('change', loadItems);
+showClosedEl.addEventListener('change', () => { saveViewState(); loadItems(); });
 
 // Status filter buttons
 for (const btn of document.querySelectorAll('.filter-btn')) {
@@ -2033,14 +2035,15 @@ for (const btn of document.querySelectorAll('.filter-btn')) {
     filterStatus = btn.dataset.status;
     if (filterStatus === 'closed') showClosedEl.checked = true;
     await loadItems();
+    saveViewState();
   });
 }
 
 // Additional filter controls
-document.getElementById('filter-priority').addEventListener('change', e => { filterPriority = e.target.value; renderTable(); });
-document.getElementById('filter-type').addEventListener('change', e => { filterType = e.target.value; renderTable(); });
-document.getElementById('filter-tag').addEventListener('input', e => { filterTag = e.target.value.trim(); renderTable(); });
-document.getElementById('filter-phase').addEventListener('input', e => { filterPhase = e.target.value.trim(); renderTable(); });
+document.getElementById('filter-priority').addEventListener('change', e => { filterPriority = e.target.value; renderTable(); saveViewState(); });
+document.getElementById('filter-type').addEventListener('change', e => { filterType = e.target.value; renderTable(); saveViewState(); });
+document.getElementById('filter-tag').addEventListener('input', e => { filterTag = e.target.value.trim(); renderTable(); saveViewState(); });
+document.getElementById('filter-phase').addEventListener('input', e => { filterPhase = e.target.value.trim(); renderTable(); saveViewState(); });
 
 // Column picker
 const colPickerBtn  = document.getElementById('col-picker-btn');
@@ -2500,6 +2503,7 @@ initColResizers();
 try {
   storeDir = await invoke('resolve_store', { dir: '' });
   storePathEl.textContent = storeDir;
+  applyViewState(loadViewState(storeDir));
   addRecentStore(storeDir);
   renderSidebar();
 } catch (e) {
