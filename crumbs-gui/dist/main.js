@@ -1624,6 +1624,12 @@ function removeRecentStore(path) {
 
 // ── Per-store view state (filters + sort) ─────────────────────────────────
 
+let _saveViewStateTimer = null;
+function saveViewStateDebounced() {
+  clearTimeout(_saveViewStateTimer);
+  _saveViewStateTimer = setTimeout(saveViewState, 400);
+}
+
 function saveViewState() {
   if (!storeDir) return;
   const state = {
@@ -1664,7 +1670,7 @@ function applyViewState(state) {
   document.getElementById('filter-type').value     = filterType;
   document.getElementById('filter-tag').value      = filterTag;
   document.getElementById('filter-phase').value    = filterPhase;
-  showClosedEl.checked = state.showClosed;
+  showClosedEl.checked = state.showClosed || state.filterStatus === 'closed';
   updateSortHeaders();
 }
 
@@ -2042,8 +2048,8 @@ for (const btn of document.querySelectorAll('.filter-btn')) {
 // Additional filter controls
 document.getElementById('filter-priority').addEventListener('change', e => { filterPriority = e.target.value; renderTable(); saveViewState(); });
 document.getElementById('filter-type').addEventListener('change', e => { filterType = e.target.value; renderTable(); saveViewState(); });
-document.getElementById('filter-tag').addEventListener('input', e => { filterTag = e.target.value.trim(); renderTable(); saveViewState(); });
-document.getElementById('filter-phase').addEventListener('input', e => { filterPhase = e.target.value.trim(); renderTable(); saveViewState(); });
+document.getElementById('filter-tag').addEventListener('input', e => { filterTag = e.target.value.trim(); renderTable(); saveViewStateDebounced(); });
+document.getElementById('filter-phase').addEventListener('input', e => { filterPhase = e.target.value.trim(); renderTable(); saveViewStateDebounced(); });
 
 // Column picker
 const colPickerBtn  = document.getElementById('col-picker-btn');
