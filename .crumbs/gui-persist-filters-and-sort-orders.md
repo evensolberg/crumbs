@@ -1,7 +1,7 @@
 ---
 id: cr-k7r
 title: 'GUI: Persist filters and sort orders'
-status: open
+status: closed
 type: task
 priority: 2
 tags: []
@@ -13,8 +13,4 @@ phase: ''
 
 # GUI: Persist filters and sort orders
 
-This is so I can focus on different things in different projects. Maybe save to the config.toml file?
-
-Initially, one setting per config file. 
-
-Future: different settings per view (All, Open, In Progress, ...)?
+Implemented via localStorage with a per-store key. No Rust changes were needed.

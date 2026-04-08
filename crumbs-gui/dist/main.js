@@ -549,6 +549,7 @@ function rebuildTableHeader() {
       else { sortCol = key; sortDir = 'asc'; }
       updateSortHeaders();
       renderTable();
+      saveViewState();
     });
     theadRow.appendChild(th);
   }
@@ -1588,22 +1589,14 @@ async function checkAndOpenDir(rawPath) {
 }
 
 async function switchStore(crumbsDir) {
+  clearTimeout(_saveViewStateTimer);
+  saveViewState();
   storeDir = crumbsDir;
   storePathEl.textContent = storeDir;
   selectedId = null;
   searchResults = null;
   searchInput.value = '';
-  filterStatus = 'all';
-  filterPriority = 'any';
-  filterType = 'any';
-  filterTag = '';
-  filterPhase = '';
-  for (const b of document.querySelectorAll('.filter-btn')) b.classList.toggle('active', b.dataset.status === 'all');
-  document.getElementById('filter-priority').value = 'any';
-  document.getElementById('filter-type').value = 'any';
-  document.getElementById('filter-tag').value = '';
-  document.getElementById('filter-phase').value = '';
-  showClosedEl.checked = false;
+  applyViewState(loadViewState(crumbsDir));
   addRecentStore(storeDir);
   renderSidebar();
   await loadItems();
@@ -1628,6 +1621,80 @@ function addRecentStore(path) {
 function removeRecentStore(path) {
   const stores = getRecentStores().filter(p => p !== path);
   localStorage.setItem('crumbs_recent_stores', JSON.stringify(stores));
+}
+
+// ── Per-store view state (filters + sort) ─────────────────────────────────
+
+let _saveViewStateTimer = null;
+function saveViewStateDebounced() {
+  clearTimeout(_saveViewStateTimer);
+  const dir = storeDir;
+  const state = dir ? {
+    filterStatus, filterPriority, filterType, filterTag, filterPhase,
+    showClosed: showClosedEl.checked,
+    sortCol, sortDir,
+  } : null;
+  _saveViewStateTimer = setTimeout(() => saveViewState(dir, state), 400);
+}
+
+function saveViewState(dir = storeDir, state = null) {
+  if (!dir) return;
+  const s = state ?? {
+    filterStatus, filterPriority, filterType, filterTag, filterPhase,
+    showClosed: showClosedEl.checked,
+    sortCol, sortDir,
+  };
+  localStorage.setItem(`crumbs_view_${dir}`, JSON.stringify(s));
+}
+
+function loadViewState(dir) {
+  const defaults = {
+    filterStatus: 'all', filterPriority: 'any', filterType: 'any',
+    filterTag: '', filterPhase: '',
+    showClosed: false,
+    sortCol: 'priority', sortDir: 'asc',
+  };
+  const VALID = {
+    filterStatus:   new Set(['all', 'open', 'in_progress', 'blocked', 'deferred', 'closed']),
+    filterPriority: new Set(['any', '0', '1', '2', '3', '4']),
+    filterType:     new Set(['any', 'bug', 'epic', 'feature', 'idea', 'task']),
+    sortDir:        new Set(['asc', 'desc']),
+    sortCol:        new Set(ALL_COLUMNS.filter(c => c.sortable).map(c => c.key)),
+  };
+  try {
+    const raw = localStorage.getItem(`crumbs_view_${dir}`);
+    if (raw) {
+      const merged = { ...defaults, ...JSON.parse(raw) };
+      for (const [key, allowed] of Object.entries(VALID)) {
+        if (!allowed.has(merged[key])) merged[key] = defaults[key];
+      }
+      merged.showClosed = Boolean(merged.showClosed);
+      merged.filterTag   = typeof merged.filterTag   === 'string' ? merged.filterTag.trim()   : defaults.filterTag;
+      merged.filterPhase = typeof merged.filterPhase === 'string' ? merged.filterPhase.trim() : defaults.filterPhase;
+      return merged;
+    }
+  } catch { /* ignore corrupt data */ }
+  return defaults;
+}
+
+function applyViewState(state) {
+  filterStatus   = state.filterStatus;
+  filterPriority = state.filterPriority;
+  filterType     = state.filterType;
+  filterTag      = state.filterTag;
+  filterPhase    = state.filterPhase;
+  sortCol        = state.sortCol;
+  sortDir        = state.sortDir;
+
+  for (const b of document.querySelectorAll('.filter-btn')) {
+    b.classList.toggle('active', b.dataset.status === filterStatus);
+  }
+  document.getElementById('filter-priority').value = filterPriority;
+  document.getElementById('filter-type').value     = filterType;
+  document.getElementById('filter-tag').value      = filterTag;
+  document.getElementById('filter-phase').value    = filterPhase;
+  showClosedEl.checked = state.showClosed || state.filterStatus === 'closed';
+  updateSortHeaders();
 }
 
 function getStoreAliases() {
@@ -1987,7 +2054,7 @@ themeBtn.addEventListener('click', () => {
 // ── Event wiring ──────────────────────────────────────────────────────────
 
 refreshBtn.addEventListener('click', loadItems);
-showClosedEl.addEventListener('change', loadItems);
+showClosedEl.addEventListener('change', () => { saveViewState(); loadItems(); });
 
 // Status filter buttons
 for (const btn of document.querySelectorAll('.filter-btn')) {
@@ -1997,14 +2064,15 @@ for (const btn of document.querySelectorAll('.filter-btn')) {
     filterStatus = btn.dataset.status;
     if (filterStatus === 'closed') showClosedEl.checked = true;
     await loadItems();
+    saveViewState();
   });
 }
 
 // Additional filter controls
-document.getElementById('filter-priority').addEventListener('change', e => { filterPriority = e.target.value; renderTable(); });
-document.getElementById('filter-type').addEventListener('change', e => { filterType = e.target.value; renderTable(); });
-document.getElementById('filter-tag').addEventListener('input', e => { filterTag = e.target.value.trim(); renderTable(); });
-document.getElementById('filter-phase').addEventListener('input', e => { filterPhase = e.target.value.trim(); renderTable(); });
+document.getElementById('filter-priority').addEventListener('change', e => { filterPriority = e.target.value; renderTable(); saveViewState(); });
+document.getElementById('filter-type').addEventListener('change', e => { filterType = e.target.value; renderTable(); saveViewState(); });
+document.getElementById('filter-tag').addEventListener('input', e => { filterTag = e.target.value.trim(); renderTable(); saveViewStateDebounced(); });
+document.getElementById('filter-phase').addEventListener('input', e => { filterPhase = e.target.value.trim(); renderTable(); saveViewStateDebounced(); });
 
 // Column picker
 const colPickerBtn  = document.getElementById('col-picker-btn');
@@ -2464,6 +2532,7 @@ initColResizers();
 try {
   storeDir = await invoke('resolve_store', { dir: '' });
   storePathEl.textContent = storeDir;
+  applyViewState(loadViewState(storeDir));
   addRecentStore(storeDir);
   renderSidebar();
 } catch (e) {
