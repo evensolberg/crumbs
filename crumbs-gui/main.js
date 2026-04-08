@@ -1647,9 +1647,23 @@ function loadViewState(dir) {
     showClosed: false,
     sortCol: 'priority', sortDir: 'asc',
   };
+  const VALID = {
+    filterStatus:   new Set(['all', 'open', 'in_progress', 'blocked', 'deferred', 'closed']),
+    filterPriority: new Set(['any', '0', '1', '2', '3', '4']),
+    filterType:     new Set(['any', 'bug', 'epic', 'feature', 'idea', 'task']),
+    sortDir:        new Set(['asc', 'desc']),
+    sortCol:        new Set(['id', 'title', 'status', 'phase', 'type', 'priority', 'due', 'tags', 'story_points', 'created', 'updated']),
+  };
   try {
     const raw = localStorage.getItem(`crumbs_view_${dir}`);
-    if (raw) return { ...defaults, ...JSON.parse(raw) };
+    if (raw) {
+      const merged = { ...defaults, ...JSON.parse(raw) };
+      for (const [key, allowed] of Object.entries(VALID)) {
+        if (!allowed.has(merged[key])) merged[key] = defaults[key];
+      }
+      merged.showClosed = Boolean(merged.showClosed);
+      return merged;
+    }
   } catch { /* ignore corrupt data */ }
   return defaults;
 }
