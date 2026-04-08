@@ -617,6 +617,7 @@ function renderTable() {
     tr.addEventListener('mousedown', e => startRowDrag(e, item, tr));
     itemsBody.appendChild(tr);
   }
+  saveViewState();
 }
 
 // ── Column sorting + resizing (dynamic, called after rebuildTableHeader) ──
@@ -1588,22 +1589,13 @@ async function checkAndOpenDir(rawPath) {
 }
 
 async function switchStore(crumbsDir) {
+  saveViewState();
   storeDir = crumbsDir;
   storePathEl.textContent = storeDir;
   selectedId = null;
   searchResults = null;
   searchInput.value = '';
-  filterStatus = 'all';
-  filterPriority = 'any';
-  filterType = 'any';
-  filterTag = '';
-  filterPhase = '';
-  for (const b of document.querySelectorAll('.filter-btn')) b.classList.toggle('active', b.dataset.status === 'all');
-  document.getElementById('filter-priority').value = 'any';
-  document.getElementById('filter-type').value = 'any';
-  document.getElementById('filter-tag').value = '';
-  document.getElementById('filter-phase').value = '';
-  showClosedEl.checked = false;
+  applyViewState(loadViewState(crumbsDir));
   addRecentStore(storeDir);
   renderSidebar();
   await loadItems();
@@ -1628,6 +1620,50 @@ function addRecentStore(path) {
 function removeRecentStore(path) {
   const stores = getRecentStores().filter(p => p !== path);
   localStorage.setItem('crumbs_recent_stores', JSON.stringify(stores));
+}
+
+// ── Per-store view state (filters + sort) ─────────────────────────────────
+
+function saveViewState() {
+  if (!storeDir) return;
+  const state = {
+    filterStatus, filterPriority, filterType, filterTag, filterPhase,
+    showClosed: showClosedEl.checked,
+    sortCol, sortDir,
+  };
+  localStorage.setItem(`crumbs_view_${storeDir}`, JSON.stringify(state));
+}
+
+function loadViewState(dir) {
+  try {
+    const raw = localStorage.getItem(`crumbs_view_${dir}`);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore corrupt data */ }
+  return {
+    filterStatus: 'all', filterPriority: 'any', filterType: 'any',
+    filterTag: '', filterPhase: '',
+    showClosed: false,
+    sortCol: 'priority', sortDir: 'asc',
+  };
+}
+
+function applyViewState(state) {
+  filterStatus   = state.filterStatus;
+  filterPriority = state.filterPriority;
+  filterType     = state.filterType;
+  filterTag      = state.filterTag;
+  filterPhase    = state.filterPhase;
+  sortCol        = state.sortCol;
+  sortDir        = state.sortDir;
+
+  for (const b of document.querySelectorAll('.filter-btn')) {
+    b.classList.toggle('active', b.dataset.status === filterStatus);
+  }
+  document.getElementById('filter-priority').value = filterPriority;
+  document.getElementById('filter-type').value     = filterType;
+  document.getElementById('filter-tag').value      = filterTag;
+  document.getElementById('filter-phase').value    = filterPhase;
+  showClosedEl.checked = state.showClosed;
 }
 
 function getStoreAliases() {
