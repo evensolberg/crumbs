@@ -732,7 +732,7 @@ function renderProps(item) {
   propRow('Phase', '').appendChild(phaseInput);
 
   propRow('Type', '').appendChild(makeSelect(
-    ['task', 'bug', 'feature', 'epic', 'idea'].map(t => [t, t]),
+    ['bug', 'epic', 'feature', 'idea', 'task'].map(t => [t, t]),
     item.type ?? '',
     v => doUpdateType(item.id, v),
   ));
@@ -824,6 +824,26 @@ function renderProps(item) {
   if (item.closed_reason) {
     propRow('Reason', escHtml(item.closed_reason));
   }
+
+  const resolutionInput = document.createElement('input');
+  resolutionInput.type = 'text';
+  resolutionInput.placeholder = 'e.g. owner/repo#42';
+  resolutionInput.value = item.resolution ?? '';
+  resolutionInput.style.cssText = 'width:100%;font:inherit;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:2px 4px;outline:none;box-sizing:border-box;';
+  let loadedResolution = resolutionInput.value;
+  resolutionInput.addEventListener('focus', () => { resolutionInput.style.borderColor = 'var(--accent)'; });
+  resolutionInput.addEventListener('blur', () => {
+    resolutionInput.style.borderColor = 'var(--border)';
+    if (resolutionInput.value !== loadedResolution) {
+      loadedResolution = resolutionInput.value;
+      doUpdateResolution(item.id, resolutionInput.value);
+    }
+  });
+  resolutionInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') resolutionInput.blur();
+    if (e.key === 'Escape') { resolutionInput.value = loadedResolution; resolutionInput.blur(); e.stopPropagation(); }
+  });
+  propRow('Resolution', '').appendChild(resolutionInput);
 }
 
 function setPreviewMode(on) {
@@ -1167,6 +1187,16 @@ async function doUpdatePhase(id, phase) {
   clearError();
   try {
     await invoke('update_phase', { dir: storeDir, id, phase });
+    await loadItems();
+  } catch (e) {
+    showError(`Update failed: ${e}`);
+  }
+}
+
+async function doUpdateResolution(id, resolution) {
+  clearError();
+  try {
+    await invoke('update_resolution', { dir: storeDir, id, resolution });
     await loadItems();
   } catch (e) {
     showError(`Update failed: ${e}`);

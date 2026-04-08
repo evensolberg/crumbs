@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [unreleased]
+
+### Chore
+
+- Bump version to 0.19.3 (#24)
+
+### Feat
+
+- Add blocks and blocked_by to reindex CSV (cr-2m8) (#22)
+- Add resolution field (PR/commit reference) to items (#23)
+- Markdown export with group-by field (cr-rxy) (#25)
+
+### Fix
+
+- Add #editor-area.hidden rule to fix preview toggle (cr-onl) (#26)
+
+### Refactor
+
+- Extract shared row formatter from list and search (cr-e3q) (#21)
+
 ## [0.19.0] - 2026-04-06
 
 ### Chore
@@ -11,6 +31,7 @@ All notable changes to this project will be documented in this file.
 - Revert unrelated crumb file change from branch
 - Close cr-vcm and push related crumb files
 - Close cr-kel (phase field reordering complete)
+- Update CHANGELOG and skill for v0.19.0
 
 ### Docs
 
