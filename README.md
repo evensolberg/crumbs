@@ -70,7 +70,7 @@ The GUI provides a full item management interface:
 - **Export** — saves all items as JSON, CSV, or TOON via a save dialog
 - **Reindex** — rebuilds `index.csv` from `.md` files on disk
 
-Column visibility and sidebar state persist across sessions via `localStorage`.
+Column visibility, sidebar state, filters, and sort order persist across sessions via `localStorage` (keyed per store).
 
 ---
 
@@ -95,7 +95,7 @@ crumbs init --global           # global store
 crumbs init --prefix myp       # skip interactive prompt, set prefix directly
 ```
 
-`crumbs init` prompts for an ID prefix (e.g. `cr`, `ma`), pre-filled from the directory name. The prefix is saved to `.crumbs/config.toml` and used for all new item IDs in that store.
+`crumbs init` prompts for an ID prefix (e.g. `cr`, `ma`), pre-filled from the directory name. The prefix is saved to `.crumbs/crumbs.toml` and used for all new item IDs in that store.
 
 ### Create an item
 
