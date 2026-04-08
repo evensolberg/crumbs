@@ -3,15 +3,14 @@ id: cr-njj
 title: Branch-independent crumbs persistence
 status: open
 type: idea
-priority: 3
+priority: 4
 tags:
 - project/crumbs
 - git
 created: 2026-03-07
-updated: 2026-03-07
-closed_reason: ''
+updated: 2026-04-07
 dependencies: []
-description: 'Speculated 5 approaches for keeping .crumbs/ persistent across git branch switches while retaining git history. Top pick: git worktree + orphan branch (crumbs-store). Crumbs tool requires zero changes -- .crumbs/ mounts as a worktree, survives all branch switches, and pushes to remote via git push origin crumbs-store. Could add crumbs worktree-init command to automate setup. Runner-up: .git/crumbs/ resolution tier (branch-independent, local-only, zero setup). Full analysis at ~/.claude/plans/cryptic-stirring-puzzle.md'
+phase: ''
 ---
 
 # Branch-independent crumbs persistence

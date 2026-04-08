@@ -732,7 +732,7 @@ function renderProps(item) {
   propRow('Phase', '').appendChild(phaseInput);
 
   propRow('Type', '').appendChild(makeSelect(
-    ['task', 'bug', 'feature', 'epic', 'idea'].map(t => [t, t]),
+    ['bug', 'epic', 'feature', 'idea', 'task'].map(t => [t, t]),
     item.type ?? '',
     v => doUpdateType(item.id, v),
   ));
