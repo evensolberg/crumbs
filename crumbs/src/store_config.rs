@@ -3,7 +3,8 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
-const CONFIG_FILE: &str = "config.toml";
+const CONFIG_FILE: &str = "crumbs.toml";
+const LEGACY_CONFIG_FILE: &str = "config.toml";
 const DEFAULT_PREFIX: &str = "cr";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -22,10 +23,21 @@ impl Default for StoreConfig {
 #[must_use]
 pub fn load(dir: &Path) -> StoreConfig {
     let path = dir.join(CONFIG_FILE);
-    let Ok(raw) = std::fs::read_to_string(&path) else {
+    if path.exists() {
+        let Ok(raw) = std::fs::read_to_string(&path) else {
+            return StoreConfig::default();
+        };
+        return toml::from_str(&raw).unwrap_or_default();
+    }
+
+    // Migrate legacy config.toml → crumbs.toml on first access.
+    let legacy = dir.join(LEGACY_CONFIG_FILE);
+    let Ok(raw) = std::fs::read_to_string(&legacy) else {
         return StoreConfig::default();
     };
-    toml::from_str(&raw).unwrap_or_default()
+    let cfg: StoreConfig = toml::from_str(&raw).unwrap_or_default();
+    let _ = std::fs::rename(&legacy, &path);
+    cfg
 }
 
 /// # Errors
@@ -34,7 +46,7 @@ pub fn load(dir: &Path) -> StoreConfig {
 pub fn save(dir: &Path, cfg: &StoreConfig) -> Result<()> {
     let path = dir.join(CONFIG_FILE);
     let raw = toml::to_string(cfg).context("serialize config")?;
-    std::fs::write(path, raw).context("write config.toml")?;
+    std::fs::write(path, raw).context("write crumbs.toml")?;
     Ok(())
 }
 
@@ -100,6 +112,18 @@ mod tests {
         // "glob" would come from the caller passing a path whose last component is "crumbs"
         // for the global store — tested indirectly via the init command
         assert_eq!(suggest_prefix(&PathBuf::from("glob")), "g");
+    }
+
+    #[test]
+    fn load_migrates_legacy_config_toml() {
+        let dir = tempfile::tempdir().unwrap();
+        // Write a legacy config.toml.
+        std::fs::write(dir.path().join("config.toml"), "prefix = \"lg\"\n").unwrap();
+        let cfg = load(dir.path());
+        assert_eq!(cfg.prefix, "lg");
+        // Legacy file should be gone; new file should exist.
+        assert!(!dir.path().join("config.toml").exists());
+        assert!(dir.path().join("crumbs.toml").exists());
     }
 
     #[test]

@@ -441,7 +441,7 @@ fn move_transfers_item_to_destination() {
     let src = tempdir().unwrap();
     let dst = tempdir().unwrap();
     // init::run returns early if the dir already exists, so point it at the
-    // .crumbs subdirectory (which doesn't exist yet) so config.toml is written.
+    // .crumbs subdirectory (which doesn't exist yet) so crumbs.toml is written.
     let src_store = src.path().join(".crumbs");
     let dst_store = dst.path().join(".crumbs");
     commands::init::run(&src_store, Some("src".to_string())).unwrap();
@@ -463,7 +463,7 @@ fn import_direction_is_src_to_dst_not_dst_to_src() {
     // not from dst to src.
     //
     // init::run returns early if the dir already exists, so point it at the
-    // .crumbs subdirectory (which doesn't exist yet) so config.toml is written.
+    // .crumbs subdirectory (which doesn't exist yet) so crumbs.toml is written.
     let src = tempdir().unwrap();
     let dst = tempdir().unwrap();
     let src_store = src.path().join(".crumbs");
@@ -955,7 +955,7 @@ fn show_unknown_id_errors() {
 #[test]
 fn show_bare_suffix_expands_with_store_prefix() {
     let dir = tempdir().unwrap();
-    // Initialize the store so config.toml is written with prefix "cr".
+    // Initialize the store so crumbs.toml is written with prefix "cr".
     commands::init::run(&dir.path().join(".crumbs"), Some("cr".to_string())).unwrap();
     // For this test we work directly with the store dir for simplicity.
     let store_dir = dir.path().join(".crumbs");
