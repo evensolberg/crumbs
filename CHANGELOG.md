@@ -2,30 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
-
-## [0.21.0] - 2026-04-07
-
-### Chore
-
-- Sort type filter dropdown alphabetically (cr-gnf) (#27)
-
-### Feat
-
-- Rename config.toml to crumbs.toml with auto-migration (cr-vzh) (#28)
-- Persist GUI filters and sort order per store (cr-k7r) (#29)
-
-## [0.20.0] - 2026-03-29
+## [0.21.0] - 2026-04-08
 
 ### Chore
 
 - Bump version to 0.19.3 (#24)
+- Sort type filter dropdown alphabetically (cr-gnf) (#27)
+- Bump version to 0.21.0
 
 ### Feat
 
 - Add blocks and blocked_by to reindex CSV (cr-2m8) (#22)
 - Add resolution field (PR/commit reference) to items (#23)
 - Markdown export with group-by field (cr-rxy) (#25)
+- Rename config.toml to crumbs.toml with auto-migration (cr-vzh) (#28)
+- Persist GUI filters and sort order per store (cr-k7r) (#29)
 
 ### Fix
 
