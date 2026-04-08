@@ -1652,7 +1652,7 @@ function loadViewState(dir) {
     filterPriority: new Set(['any', '0', '1', '2', '3', '4']),
     filterType:     new Set(['any', 'bug', 'epic', 'feature', 'idea', 'task']),
     sortDir:        new Set(['asc', 'desc']),
-    sortCol:        new Set(['id', 'title', 'status', 'phase', 'type', 'priority', 'due', 'tags', 'story_points', 'created', 'updated']),
+    sortCol:        new Set(ALL_COLUMNS.filter(c => c.sortable).map(c => c.key)),
   };
   try {
     const raw = localStorage.getItem(`crumbs_view_${dir}`);
@@ -1662,6 +1662,8 @@ function loadViewState(dir) {
         if (!allowed.has(merged[key])) merged[key] = defaults[key];
       }
       merged.showClosed = Boolean(merged.showClosed);
+      merged.filterTag   = typeof merged.filterTag   === 'string' ? merged.filterTag.trim()   : defaults.filterTag;
+      merged.filterPhase = typeof merged.filterPhase === 'string' ? merged.filterPhase.trim() : defaults.filterPhase;
       return merged;
     }
   } catch { /* ignore corrupt data */ }
