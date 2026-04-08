@@ -1589,6 +1589,7 @@ async function checkAndOpenDir(rawPath) {
 }
 
 async function switchStore(crumbsDir) {
+  clearTimeout(_saveViewStateTimer);
   saveViewState();
   storeDir = crumbsDir;
   storePathEl.textContent = storeDir;
@@ -1627,17 +1628,23 @@ function removeRecentStore(path) {
 let _saveViewStateTimer = null;
 function saveViewStateDebounced() {
   clearTimeout(_saveViewStateTimer);
-  _saveViewStateTimer = setTimeout(saveViewState, 400);
+  const dir = storeDir;
+  const state = dir ? {
+    filterStatus, filterPriority, filterType, filterTag, filterPhase,
+    showClosed: showClosedEl.checked,
+    sortCol, sortDir,
+  } : null;
+  _saveViewStateTimer = setTimeout(() => saveViewState(dir, state), 400);
 }
 
-function saveViewState() {
-  if (!storeDir) return;
-  const state = {
+function saveViewState(dir = storeDir, state = null) {
+  if (!dir) return;
+  const s = state ?? {
     filterStatus, filterPriority, filterType, filterTag, filterPhase,
     showClosed: showClosedEl.checked,
     sortCol, sortDir,
   };
-  localStorage.setItem(`crumbs_view_${storeDir}`, JSON.stringify(state));
+  localStorage.setItem(`crumbs_view_${dir}`, JSON.stringify(s));
 }
 
 function loadViewState(dir) {
