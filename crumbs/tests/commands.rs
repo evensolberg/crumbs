@@ -5,6 +5,7 @@ use tempfile::tempdir;
 
 use crumbs::{
     commands,
+    commands::batch_create::BatchCreateItem,
     commands::create::CreateArgs,
     commands::list::{ListArgs, SortKey},
     commands::update::UpdateArgs,
@@ -434,7 +435,7 @@ fn list_tag_filter_only_shows_matching() {
     assert_eq!(with_tag[0].1.title, "Tagged");
 }
 
-// ── move / import ────────────────────────────────────────────────────────────
+// ── move / pull ───────────────────────────────────────────────────────────────
 
 #[test]
 fn move_transfers_item_to_destination() {
@@ -456,8 +457,8 @@ fn move_transfers_item_to_destination() {
 }
 
 #[test]
-fn import_direction_is_src_to_dst_not_dst_to_src() {
-    // Regression test for the import CLI dispatch bug: move_::run(&dir, &id, &src)
+fn pull_direction_is_src_to_dst_not_dst_to_src() {
+    // Regression test for the pull CLI dispatch bug: move_::run(&dir, &id, &src)
     // was called with src and dst swapped, moving the item the wrong way.
     // This test verifies that run(src, id, dst) moves the item FROM src TO dst,
     // not from dst to src.
@@ -470,7 +471,7 @@ fn import_direction_is_src_to_dst_not_dst_to_src() {
     let dst_store = dst.path().join(".crumbs");
     commands::init::run(&src_store, Some("src".to_string())).unwrap();
     commands::init::run(&dst_store, Some("dst".to_string())).unwrap();
-    let id = create_task(&src_store, "Import Me");
+    let id = create_task(&src_store, "Pull Me");
     // If the args were swapped (bug), run(dst, id, src) would look for "id" in dst
     // (where it doesn't exist) and return an error. Running correctly should succeed.
     commands::move_::run(&src_store, &id, &dst_store).unwrap();
@@ -482,7 +483,7 @@ fn import_direction_is_src_to_dst_not_dst_to_src() {
     // Item appears in destination — confirms it arrived.
     let dst_items = store::load_all(&dst_store).unwrap();
     assert!(
-        dst_items.iter().any(|(_, i)| i.title == "Import Me"),
+        dst_items.iter().any(|(_, i)| i.title == "Pull Me"),
         "item must arrive in dst"
     );
     // Source is empty — nothing was moved into it.
@@ -494,8 +495,8 @@ fn import_direction_is_src_to_dst_not_dst_to_src() {
 }
 
 #[test]
-fn import_cli_dispatch_moves_item_from_src_to_dst() {
-    // Binary-level regression test for the CLI dispatch bug: `Command::Import`
+fn pull_cli_dispatch_moves_item_from_src_to_dst() {
+    // Binary-level regression test for the CLI dispatch bug: `Command::Pull`
     // in main.rs previously called move_::run(&dir, &id, &src) with src/dst
     // swapped. This test drives the real binary to catch any future regression
     // at the dispatch layer, which the library-level test above cannot reach.
@@ -528,7 +529,7 @@ fn import_cli_dispatch_moves_item_from_src_to_dst() {
             "--dir",
             src_store.to_str().unwrap(),
             "create",
-            "CLI Import Me",
+            "CLI Pull Me",
         ])
         .assert()
         .success();
@@ -536,13 +537,13 @@ fn import_cli_dispatch_moves_item_from_src_to_dst() {
     let src_items = store::load_all(&src_store).unwrap();
     assert_eq!(src_items.len(), 1);
     let id = src_items[0].1.id.clone();
-    // Run `crumbs import <id> --from <src_store>` targeting the dst store.
+    // Run `crumbs pull <id> --from <src_store>` targeting the dst store.
     Command::cargo_bin("crumbs")
         .unwrap()
         .args([
             "--dir",
             dst_store.to_str().unwrap(),
-            "import",
+            "pull",
             &id,
             "--from",
             src_store.to_str().unwrap(),
@@ -552,13 +553,13 @@ fn import_cli_dispatch_moves_item_from_src_to_dst() {
     // Item must be gone from source.
     assert!(
         store::find_by_id(&src_store, &id).unwrap().is_none(),
-        "item must leave src after import"
+        "item must leave src after pull"
     );
     // Item must appear in destination.
     let dst_items = store::load_all(&dst_store).unwrap();
     assert!(
-        dst_items.iter().any(|(_, i)| i.title == "CLI Import Me"),
-        "item must arrive in dst after import"
+        dst_items.iter().any(|(_, i)| i.title == "CLI Pull Me"),
+        "item must arrive in dst after pull"
     );
 }
 
@@ -2299,4 +2300,374 @@ fn export_markdown_cli_group_by_without_markdown_format_errors() {
         .assert()
         .failure()
         .stderr(pstr::contains("--group-by requires --format markdown"));
+}
+
+// ── batch create ─────────────────────────────────────────────────────────────
+
+#[test]
+fn batch_create_from_json_creates_all_items() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("bc".to_string())).unwrap();
+
+    let items = vec![
+        BatchCreateItem {
+            title: "Batch Alpha".to_string(),
+            ..Default::default()
+        },
+        BatchCreateItem {
+            title: "Batch Beta".to_string(),
+            item_type: ItemType::Bug,
+            priority: 1,
+            ..Default::default()
+        },
+    ];
+    commands::batch_create::run(&d, items).unwrap();
+
+    let stored = store::load_all(&d).unwrap();
+    assert_eq!(stored.len(), 2);
+    assert!(stored.iter().any(|(_, i)| i.title == "Batch Alpha"));
+    assert!(stored.iter().any(|(_, i)| i.title == "Batch Beta"));
+}
+
+#[test]
+fn batch_create_generates_unique_ids_across_batch() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("bc".to_string())).unwrap();
+
+    let items: Vec<BatchCreateItem> = (0..10)
+        .map(|i| BatchCreateItem {
+            title: format!("Item {i}"),
+            ..Default::default()
+        })
+        .collect();
+    commands::batch_create::run(&d, items).unwrap();
+
+    let stored = store::load_all(&d).unwrap();
+    assert_eq!(stored.len(), 10);
+    let mut ids: Vec<_> = stored.iter().map(|(_, i)| i.id.clone()).collect();
+    ids.sort();
+    ids.dedup();
+    assert_eq!(ids.len(), 10, "all IDs must be unique");
+}
+
+#[test]
+fn batch_create_empty_vec_is_noop() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("bc".to_string())).unwrap();
+
+    commands::batch_create::run(&d, vec![]).unwrap();
+
+    let stored = store::load_all(&d).unwrap();
+    assert!(stored.is_empty());
+}
+
+#[test]
+fn batch_create_from_json_file_via_cli() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("bc".to_string())).unwrap();
+
+    let json = r#"[{"title":"From JSON File"},{"title":"Also JSON","type":"bug"}]"#;
+    let json_path = dir.path().join("items.json");
+    std::fs::write(&json_path, json).unwrap();
+
+    Command::cargo_bin("crumbs")
+        .unwrap()
+        .args([
+            "--dir",
+            d.to_str().unwrap(),
+            "batch-create",
+            "--from",
+            json_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let stored = store::load_all(&d).unwrap();
+    assert_eq!(stored.len(), 2);
+    assert!(stored.iter().any(|(_, i)| i.title == "From JSON File"));
+    assert!(stored.iter().any(|(_, i)| i.title == "Also JSON"));
+}
+
+#[test]
+fn batch_create_from_yaml_file_via_cli() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("bc".to_string())).unwrap();
+
+    let yaml = "- title: From YAML File\n- title: Also YAML\n  type: feature\n";
+    let yaml_path = dir.path().join("items.yaml");
+    std::fs::write(&yaml_path, yaml).unwrap();
+
+    Command::cargo_bin("crumbs")
+        .unwrap()
+        .args([
+            "--dir",
+            d.to_str().unwrap(),
+            "batch-create",
+            "--from",
+            yaml_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let stored = store::load_all(&d).unwrap();
+    assert_eq!(stored.len(), 2);
+    assert!(stored.iter().any(|(_, i)| i.title == "From YAML File"));
+    assert!(stored.iter().any(|(_, i)| i.title == "Also YAML"));
+}
+
+#[test]
+fn batch_create_infer_format_json_extension() {
+    let result =
+        crumbs::commands::batch_create::infer_format(std::path::Path::new("items.json"), None);
+    assert_eq!(result.unwrap(), "json");
+}
+
+#[test]
+fn batch_create_infer_format_yaml_extension() {
+    let result =
+        crumbs::commands::batch_create::infer_format(std::path::Path::new("items.yaml"), None);
+    assert_eq!(result.unwrap(), "yaml");
+}
+
+#[test]
+fn batch_create_infer_format_yml_extension() {
+    let result =
+        crumbs::commands::batch_create::infer_format(std::path::Path::new("items.yml"), None);
+    assert_eq!(result.unwrap(), "yaml");
+}
+
+#[test]
+fn batch_create_infer_format_explicit_overrides_extension() {
+    let result = crumbs::commands::batch_create::infer_format(
+        std::path::Path::new("items.json"),
+        Some("yaml"),
+    );
+    assert_eq!(result.unwrap(), "yaml");
+}
+
+#[test]
+fn batch_create_infer_format_no_extension_errors() {
+    let result = crumbs::commands::batch_create::infer_format(std::path::Path::new("items"), None);
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("use --format"));
+}
+
+#[test]
+fn batch_create_unknown_extension_without_format_errors() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("bc".to_string())).unwrap();
+
+    let path = dir.path().join("items.txt");
+    std::fs::write(&path, "[]").unwrap();
+
+    Command::cargo_bin("crumbs")
+        .unwrap()
+        .args([
+            "--dir",
+            d.to_str().unwrap(),
+            "batch-create",
+            "--from",
+            path.to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(pstr::contains("use --format"));
+}
+
+// ── file import ──────────────────────────────────────────────────────────────
+
+#[test]
+fn file_import_from_json_preserves_id_and_fields() {
+    let src = tempdir().unwrap();
+    let src_store = src.path().join(".crumbs");
+    commands::init::run(&src_store, Some("fi".to_string())).unwrap();
+    let id = create_task(&src_store, "Preserve Me");
+    let (_, item) = store::find_by_id(&src_store, &id).unwrap().unwrap();
+
+    let json = serde_json::to_string(&vec![item]).unwrap();
+    let json_path = src.path().join("export.json");
+    std::fs::write(&json_path, json).unwrap();
+
+    let dst = tempdir().unwrap();
+    let dst_store = dst.path().join(".crumbs");
+    commands::init::run(&dst_store, Some("fi".to_string())).unwrap();
+
+    commands::file_import::run(&dst_store, &json_path, None).unwrap();
+
+    let stored = store::load_all(&dst_store).unwrap();
+    assert_eq!(stored.len(), 1);
+    let imported = &stored[0].1;
+    assert_eq!(imported.id, id, "ID must be preserved");
+    assert_eq!(imported.title, "Preserve Me");
+}
+
+#[test]
+fn file_import_from_csv_creates_items() {
+    let src = tempdir().unwrap();
+    let src_store = src.path().join(".crumbs");
+    commands::init::run(&src_store, Some("fi".to_string())).unwrap();
+    create_task(&src_store, "CSV Import");
+    let items: Vec<_> = store::load_all(&src_store)
+        .unwrap()
+        .into_iter()
+        .map(|(_, i)| i)
+        .collect();
+
+    let csv_str = crumbs::commands::export::items_to_string(&items, "csv").unwrap();
+    let csv_path = src.path().join("export.csv");
+    std::fs::write(&csv_path, csv_str).unwrap();
+
+    let dst = tempdir().unwrap();
+    let dst_store = dst.path().join(".crumbs");
+    commands::init::run(&dst_store, Some("fi".to_string())).unwrap();
+
+    commands::file_import::run(&dst_store, &csv_path, None).unwrap();
+
+    let stored = store::load_all(&dst_store).unwrap();
+    assert_eq!(stored.len(), 1);
+    assert_eq!(stored[0].1.title, "CSV Import");
+}
+
+#[test]
+fn file_import_infers_format_from_json_extension() {
+    let result =
+        crumbs::commands::file_import::infer_format(std::path::Path::new("data.json"), None);
+    assert_eq!(result.unwrap(), "json");
+}
+
+#[test]
+fn file_import_infers_format_from_csv_extension() {
+    let result =
+        crumbs::commands::file_import::infer_format(std::path::Path::new("data.csv"), None);
+    assert_eq!(result.unwrap(), "csv");
+}
+
+#[test]
+fn file_import_toon_extension_errors_with_helpful_message() {
+    // TOON import is not supported due to serde_toon round-trip limitations.
+    let result =
+        crumbs::commands::file_import::infer_format(std::path::Path::new("data.toon"), None);
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("use --format"));
+}
+
+#[test]
+fn file_import_explicit_format_overrides_extension() {
+    let result =
+        crumbs::commands::file_import::infer_format(std::path::Path::new("data.csv"), Some("json"));
+    assert_eq!(result.unwrap(), "json");
+}
+
+#[test]
+fn file_import_unknown_extension_without_format_errors() {
+    let result =
+        crumbs::commands::file_import::infer_format(std::path::Path::new("data.txt"), None);
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("use --format"));
+}
+
+#[test]
+fn file_import_id_conflict_errors() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("fi".to_string())).unwrap();
+    let id = create_task(&d, "Original");
+    let (_, item) = store::find_by_id(&d, &id).unwrap().unwrap();
+
+    let json = serde_json::to_string(&vec![item]).unwrap();
+    let json_path = dir.path().join("export.json");
+    std::fs::write(&json_path, json).unwrap();
+
+    // Importing the same item again should error on the ID conflict.
+    let result = commands::file_import::run(&d, &json_path, None);
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("already exists"));
+}
+
+#[test]
+fn file_import_toon_format_returns_unsupported_error() {
+    // TOON import is unsupported: serde_toon cannot round-trip enum variants.
+    // Verify the error message points users toward JSON instead.
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("fi".to_string())).unwrap();
+
+    let toon_path = dir.path().join("export.toon");
+    std::fs::write(&toon_path, "[1]: []").unwrap();
+
+    let result = commands::file_import::run(&d, &toon_path, None);
+    assert!(result.is_err());
+    let msg = result.unwrap_err().to_string();
+    assert!(
+        msg.contains("not supported") || msg.contains("use --format"),
+        "{msg}"
+    );
+}
+
+#[test]
+fn file_import_duplicate_id_in_file_errors() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("fi".to_string())).unwrap();
+
+    // Build a JSON array where the same ID appears twice.
+    let id = create_task(&d, "Original");
+    let (_, item) = store::find_by_id(&d, &id).unwrap().unwrap();
+    let json = serde_json::to_string(&vec![item.clone(), item]).unwrap();
+
+    // Use a fresh destination store so the ID is not already there.
+    let dst = tempdir().unwrap();
+    let dst_store = dst.path().join(".crumbs");
+    commands::init::run(&dst_store, Some("fi".to_string())).unwrap();
+
+    let json_path = dst.path().join("dupes.json");
+    std::fs::write(&json_path, json).unwrap();
+
+    let result = commands::file_import::run(&dst_store, &json_path, None);
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("more than once"));
+}
+
+#[test]
+fn file_import_via_cli_json() {
+    let src = tempdir().unwrap();
+    let src_store = src.path().join(".crumbs");
+    commands::init::run(&src_store, Some("fi".to_string())).unwrap();
+    let id = create_task(&src_store, "CLI JSON Import");
+    let items: Vec<_> = store::load_all(&src_store)
+        .unwrap()
+        .into_iter()
+        .map(|(_, i)| i)
+        .collect();
+
+    let json = serde_json::to_string(&items).unwrap();
+    let json_path = src.path().join("export.json");
+    std::fs::write(&json_path, json).unwrap();
+
+    let dst = tempdir().unwrap();
+    let dst_store = dst.path().join(".crumbs");
+    commands::init::run(&dst_store, Some("fi".to_string())).unwrap();
+
+    Command::cargo_bin("crumbs")
+        .unwrap()
+        .args([
+            "--dir",
+            dst_store.to_str().unwrap(),
+            "import",
+            "--file",
+            json_path.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    let stored = store::load_all(&dst_store).unwrap();
+    assert_eq!(stored.len(), 1);
+    assert_eq!(stored[0].1.id, id, "ID must be preserved");
+    assert_eq!(stored[0].1.title, "CLI JSON Import");
 }

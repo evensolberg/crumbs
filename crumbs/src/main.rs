@@ -227,13 +227,32 @@ enum Command {
         #[arg(long)]
         to: String,
     },
-    /// Import an item from another store into the current store
-    Import {
-        /// Full ID of the item to import (e.g. glob-x7q)
+    /// Pull an item from another store into the current store
+    Pull {
+        /// Full ID of the item to pull (e.g. glob-x7q)
         id: String,
         /// Source store path, or "global" for the global store
         #[arg(long)]
         from: String,
+    },
+    /// Import items from a JSON, TOON, or CSV file (inverse of `export`)
+    Import {
+        /// Path to the file to import; use format of the export output
+        #[arg(long)]
+        file: PathBuf,
+        /// Override the format inferred from the file extension (json, toon, csv)
+        #[arg(long)]
+        format: Option<String>,
+    },
+    /// Create multiple items from a JSON or YAML file (or stdin with -)
+    #[command(name = "batch-create")]
+    BatchCreate {
+        /// Path to a JSON or YAML array of item specs; use - for stdin
+        #[arg(long)]
+        from: String,
+        /// Override the format inferred from the file extension (json, yaml)
+        #[arg(long)]
+        format: Option<String>,
     },
     /// Remove all closed items from the store
     Clean,
@@ -428,13 +447,32 @@ fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
             };
             commands::move_::run(dir, &id, &dst)?;
         }
-        Command::Import { id, from } => {
+        Command::Pull { id, from } => {
             let src = if from == "global" {
                 config::global_dir()
             } else {
                 config::resolve_dir(Some(PathBuf::from(&from)), false)
             };
             commands::move_::run(&src, &id, dir)?;
+        }
+        Command::Import { file, format } => {
+            commands::file_import::run(dir, &file, format.as_deref())?;
+        }
+        Command::BatchCreate { from, format } => {
+            if from == "-" {
+                use std::io::Read;
+                let mut buf = Vec::new();
+                std::io::stdin().read_to_end(&mut buf)?;
+                let fmt = format.as_deref().ok_or_else(|| {
+                    anyhow::anyhow!("reading from stdin requires --format (json or yaml)")
+                })?;
+                commands::batch_create::run_from_slice(dir, &buf, fmt)?;
+            } else {
+                let path = PathBuf::from(&from);
+                let fmt = commands::batch_create::infer_format(&path, format.as_deref())?;
+                let bytes = std::fs::read(&path)?;
+                commands::batch_create::run_from_slice(dir, &bytes, fmt)?;
+            }
         }
         Command::Link {
             id,
