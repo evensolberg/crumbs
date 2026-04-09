@@ -69,14 +69,6 @@ fn parse_csv(bytes: &[u8]) -> Result<Vec<Item>> {
                 .unwrap_or("")
         };
 
-        let parse_date = |s: &str| -> Option<NaiveDate> {
-            if s.is_empty() {
-                None
-            } else {
-                NaiveDate::parse_from_str(s, "%Y-%m-%d").ok()
-            }
-        };
-
         let split_pipe = |s: &str| -> Vec<String> {
             if s.is_empty() {
                 vec![]
@@ -87,6 +79,18 @@ fn parse_csv(bytes: &[u8]) -> Result<Vec<Item>> {
 
         let id = col("id").to_string();
         anyhow::ensure!(!id.is_empty(), "CSV row has an empty id field");
+
+        let parse_date = |s: &str| -> Result<Option<NaiveDate>> {
+            if s.is_empty() {
+                Ok(None)
+            } else {
+                NaiveDate::parse_from_str(s, "%Y-%m-%d")
+                    .map(Some)
+                    .map_err(|_| {
+                        anyhow::anyhow!("invalid date {s:?} for item {id:?} (expected YYYY-MM-DD)")
+                    })
+            }
+        };
         let title = col("title").to_string();
         anyhow::ensure!(
             !title.is_empty(),
@@ -130,6 +134,12 @@ fn parse_csv(bytes: &[u8]) -> Result<Vec<Item>> {
                 })?)
             }
         };
+        let created =
+            parse_date(col("created"))?.unwrap_or_else(|| chrono::Local::now().date_naive());
+        let updated =
+            parse_date(col("updated"))?.unwrap_or_else(|| chrono::Local::now().date_naive());
+        let due = parse_date(col("due"))?;
+        let _ = parse_date;
         let item = Item {
             id,
             title,
@@ -138,15 +148,13 @@ fn parse_csv(bytes: &[u8]) -> Result<Vec<Item>> {
             item_type,
             priority,
             tags: split_pipe(col("tags")),
-            created: parse_date(col("created"))
-                .unwrap_or_else(|| chrono::Local::now().date_naive()),
-            updated: parse_date(col("updated"))
-                .unwrap_or_else(|| chrono::Local::now().date_naive()),
+            created,
+            updated,
             closed_reason: col("closed_reason").to_string(),
             dependencies: split_pipe(col("dependencies")),
             blocks: split_pipe(col("blocks")),
             blocked_by: split_pipe(col("blocked_by")),
-            due: parse_date(col("due")),
+            due,
             story_points,
             description: String::new(),
             resolution: col("resolution").to_string(),

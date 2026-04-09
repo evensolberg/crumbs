@@ -83,8 +83,7 @@ pub fn run(dir: &Path, items: Vec<BatchCreateItem>) -> Result<()> {
     let prefix = store_config::load(dir).prefix;
     // Seed the ID collision set with items already in the store. We grow it
     // as we generate IDs so each new ID is unique within the batch too.
-    let mut used_ids: std::collections::HashSet<String> = store::load_all(dir)
-        .unwrap_or_default()
+    let mut used_ids: std::collections::HashSet<String> = store::load_all(dir)?
         .into_iter()
         .map(|(_, i)| i.id.to_lowercase())
         .collect();
