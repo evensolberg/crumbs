@@ -1,6 +1,6 @@
 ---
 id: cr-s89
-title: Right-justify numbers under crumbs stats
+title: 'CLI: Right-justify numbers under crumbs stats'
 status: open
 type: task
 priority: 2
@@ -11,4 +11,4 @@ dependencies: []
 phase: ''
 ---
 
-# Right-justify numbers under crumbs stats
+# CLI: Right-justify numbers under crumbs stats

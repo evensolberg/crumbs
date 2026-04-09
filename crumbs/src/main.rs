@@ -248,7 +248,7 @@ enum Command {
     #[command(name = "batch-create")]
     BatchCreate {
         /// Path to a JSON or YAML array of item specs; use - for stdin
-        #[arg(long)]
+        #[arg(long, allow_hyphen_values = true)]
         from: String,
         /// Override the format inferred from the file extension (json, yaml)
         #[arg(long)]

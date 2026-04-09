@@ -85,13 +85,33 @@ fn parse_csv(bytes: &[u8]) -> Result<Vec<Item>> {
             }
         };
 
+        let priority: u8 = {
+            let s = col("priority");
+            if s.is_empty() {
+                2
+            } else {
+                s.parse()
+                    .map_err(|_| anyhow::anyhow!("invalid priority value {s:?}"))?
+            }
+        };
+        let story_points: Option<u8> = {
+            let s = col("story_points");
+            if s.is_empty() {
+                None
+            } else {
+                Some(
+                    s.parse::<u8>()
+                        .map_err(|_| anyhow::anyhow!("invalid story_points value {s:?}"))?,
+                )
+            }
+        };
         let item = Item {
             id: col("id").to_string(),
             title: col("title").to_string(),
             status: col("status").parse().unwrap_or(crate::item::Status::Open),
             phase: col("phase").to_string(),
             item_type: col("type").parse().unwrap_or_default(),
-            priority: col("priority").parse().unwrap_or(2),
+            priority,
             tags: split_pipe(col("tags")),
             created: parse_date(col("created"))
                 .unwrap_or_else(|| chrono::Local::now().date_naive()),
@@ -102,10 +122,7 @@ fn parse_csv(bytes: &[u8]) -> Result<Vec<Item>> {
             blocks: split_pipe(col("blocks")),
             blocked_by: split_pipe(col("blocked_by")),
             due: parse_date(col("due")),
-            story_points: {
-                let s = col("story_points");
-                if s.is_empty() { None } else { s.parse().ok() }
-            },
+            story_points,
             description: String::new(),
             resolution: col("resolution").to_string(),
         };
@@ -145,10 +162,20 @@ pub fn run(dir: &Path, path: &Path, format: Option<&str>) -> Result<()> {
         }
     }
 
+    // Validate Fibonacci story_points before writing anything.
+    for item in &items {
+        if let Some(sp) = item.story_points
+            && !crate::item::is_fibonacci(sp)
+        {
+            anyhow::bail!(
+                "story_points must be a Fibonacci number (1, 2, 3, 5, 8, 13, 21); got {sp} for item {:?}",
+                item.id
+            );
+        }
+    }
+
     // Check for conflicts against items already in the store.
-    // unwrap_or_default: treat an unreadable/empty store as no existing items.
-    let existing: std::collections::HashSet<String> = store::load_all(dir)
-        .unwrap_or_default()
+    let existing: std::collections::HashSet<String> = store::load_all(dir)?
         .into_iter()
         .map(|(_, i)| i.id.to_lowercase())
         .collect();
