@@ -235,12 +235,12 @@ enum Command {
         #[arg(long)]
         from: String,
     },
-    /// Import items from a JSON, TOON, or CSV file (inverse of `export`)
+    /// Import items from a JSON or CSV file (inverse of `export`)
     Import {
         /// Path to the file to import; use format of the export output
         #[arg(long)]
         file: PathBuf,
-        /// Override the format inferred from the file extension (json, toon, csv)
+        /// Override the format inferred from the file extension (json, csv); TOON import is not supported
         #[arg(long)]
         format: Option<String>,
     },

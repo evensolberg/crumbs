@@ -2421,6 +2421,21 @@ fn batch_create_from_yaml_file_via_cli() {
 }
 
 #[test]
+fn batch_create_rejects_non_fibonacci_story_points() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("bc".to_string())).unwrap();
+    let items = vec![BatchCreateItem {
+        title: "Bad Points".to_string(),
+        story_points: Some(4), // not a Fibonacci number
+        ..Default::default()
+    }];
+    let result = commands::batch_create::run(&d, items);
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("Fibonacci"));
+}
+
+#[test]
 fn batch_create_infer_format_json_extension() {
     let result =
         crumbs::commands::batch_create::infer_format(std::path::Path::new("items.json"), None);

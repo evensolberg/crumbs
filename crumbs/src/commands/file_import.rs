@@ -33,8 +33,8 @@ pub fn infer_format<'a>(path: &Path, explicit: Option<&'a str>) -> Result<&'a st
     }
 }
 
-/// Deserialise items from `bytes` using `format` (`"json"`, `"toon"`, or
-/// `"csv"`).
+/// Deserialise items from `bytes` using `format` (`"json"` or `"csv"`).
+/// Passing `"toon"` returns an explicit unsupported error with a helpful message.
 ///
 /// # Errors
 ///
@@ -117,7 +117,8 @@ fn parse_csv(bytes: &[u8]) -> Result<Vec<Item>> {
 /// Import items from a file into `dir`.
 ///
 /// The format is inferred from the file extension unless `format` is supplied.
-/// Recognised extensions: `.json`, `.toon`, `.csv`.
+/// Recognised extensions: `.json`, `.csv`. TOON import is not supported;
+/// use `crumbs export --format json` for portable round-trips.
 ///
 /// Fails immediately if any imported item's ID already exists in the store.
 /// On success, the store is reindexed once.
