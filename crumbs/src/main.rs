@@ -240,7 +240,7 @@ enum Command {
         /// Path to the file to import; use format of the export output
         #[arg(long)]
         file: PathBuf,
-        /// Override the format inferred from the file extension (json, csv); TOON import is not supported
+        /// Override the format inferred from the file extension (json, csv)
         #[arg(long)]
         format: Option<String>,
     },
