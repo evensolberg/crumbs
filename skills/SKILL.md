@@ -138,7 +138,7 @@ crumbs import --file export.csv                   # format inferred from .csv ex
 crumbs import --file data.bin --format json       # explicit format override
 ```
 
-Imports full item records from a JSON or CSV file, preserving IDs, status, dates, and all fields. This is the inverse of `crumbs export`. Format is inferred from `.json` or `.csv`; `--format` is required for any other extension. Errors immediately if any item's ID already exists in the store, or if the file contains duplicate IDs. TOON import is not supported (use JSON for round-trips). `reindex` runs once at the end.
+Imports item records from a JSON or CSV file. JSON preserves all fields including the markdown body; CSV round-trips only the CSV columns (no body text — use JSON for full-fidelity imports). This is the inverse of `crumbs export`. Format is inferred from `.json` or `.csv`; `--format` is required for any other extension. Errors immediately if any item's ID already exists in the store, or if the file contains duplicate IDs. TOON import is not supported (use JSON for round-trips). `reindex` runs once at the end.
 
 ### Link (blocking relationships)
 ```sh

@@ -85,13 +85,39 @@ fn parse_csv(bytes: &[u8]) -> Result<Vec<Item>> {
             }
         };
 
+        let id = col("id").to_string();
+        anyhow::ensure!(!id.is_empty(), "CSV row has an empty id field");
+        let title = col("title").to_string();
+        anyhow::ensure!(
+            !title.is_empty(),
+            "CSV row has an empty title field (id: {id})"
+        );
+
+        let status: crate::item::Status = {
+            let s = col("status");
+            if s.is_empty() {
+                crate::item::Status::Open
+            } else {
+                s.parse()
+                    .map_err(|_| anyhow::anyhow!("invalid status value {s:?} for item {id:?}"))?
+            }
+        };
+        let item_type: crate::item::ItemType = {
+            let s = col("type");
+            if s.is_empty() {
+                crate::item::ItemType::default()
+            } else {
+                s.parse()
+                    .map_err(|_| anyhow::anyhow!("invalid type value {s:?} for item {id:?}"))?
+            }
+        };
         let priority: u8 = {
             let s = col("priority");
             if s.is_empty() {
                 2
             } else {
                 s.parse()
-                    .map_err(|_| anyhow::anyhow!("invalid priority value {s:?}"))?
+                    .map_err(|_| anyhow::anyhow!("invalid priority value {s:?} for item {id:?}"))?
             }
         };
         let story_points: Option<u8> = {
@@ -99,18 +125,17 @@ fn parse_csv(bytes: &[u8]) -> Result<Vec<Item>> {
             if s.is_empty() {
                 None
             } else {
-                Some(
-                    s.parse::<u8>()
-                        .map_err(|_| anyhow::anyhow!("invalid story_points value {s:?}"))?,
-                )
+                Some(s.parse::<u8>().map_err(|_| {
+                    anyhow::anyhow!("invalid story_points value {s:?} for item {id:?}")
+                })?)
             }
         };
         let item = Item {
-            id: col("id").to_string(),
-            title: col("title").to_string(),
-            status: col("status").parse().unwrap_or(crate::item::Status::Open),
+            id,
+            title,
+            status,
             phase: col("phase").to_string(),
-            item_type: col("type").parse().unwrap_or_default(),
+            item_type,
             priority,
             tags: split_pipe(col("tags")),
             created: parse_date(col("created"))

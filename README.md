@@ -235,7 +235,7 @@ All IDs are generated fresh and are unique across the batch and the store. The i
 
 ### Import from file (inverse of export)
 
-Import full item records from a JSON or CSV file, preserving IDs, status, dates, and all fields. This is the inverse of `crumbs export`:
+Import item records from a JSON or CSV file. JSON preserves all fields including the markdown body; CSV round-trips only the CSV columns (no body text — use JSON for full-fidelity imports). This is the inverse of `crumbs export`:
 
 ```sh
 crumbs import --file export.json            # format inferred from .json extension
