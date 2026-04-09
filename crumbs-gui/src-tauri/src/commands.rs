@@ -2,8 +2,8 @@ use std::path::PathBuf;
 
 use crumbs::{
     commands::{
-        clean, close, create, create::CreateArgs, delete, export, link, start, stop, update,
-        update::UpdateArgs,
+        clean, close, create, create::CreateArgs, delete, export, file_import, link, start, stop,
+        update, update::UpdateArgs,
     },
     config::global_dir,
     item::{Item, Status},
@@ -395,6 +395,15 @@ pub fn search_items(dir: String, query: String, include_closed: bool) -> Result<
 #[tauri::command]
 pub fn export_items(dir: String, format: String) -> Result<String, String> {
     export::to_string(&to_path(&dir), &format).map_err(|e| e.to_string())
+}
+
+/// Import items from a JSON or CSV file into the store.
+///
+/// The format is inferred from the file extension (`.json` or `.csv`).
+/// Returns an error if any imported ID already exists in the store.
+#[tauri::command]
+pub fn import_items_from_file(dir: String, path: String) -> Result<(), String> {
+    file_import::run(&to_path(&dir), &PathBuf::from(&path), None).map_err(|e| e.to_string())
 }
 
 /// Write text content to a file at the given absolute path.

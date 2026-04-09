@@ -32,6 +32,7 @@ fn main() {
             commands::defer_item,
             commands::search_items,
             commands::export_items,
+            commands::import_items_from_file,
             commands::write_text_file,
             commands::reindex_store,
             commands::start_timer,
