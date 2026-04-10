@@ -216,7 +216,7 @@ crumbs close --tag done                             # close all items tagged "do
 crumbs close --tag sprint/3 --reason "sprint done"  # with a shared close reason
 crumbs close --phase phase-1 --dry-run              # preview before acting
 crumbs close --tag done --yes                       # skip confirmation
-crumbs close --status open --phase phase-1 --all    # include already-closed in scope
+crumbs close --phase phase-1 --all                  # include already-closed in scope
 ```
 
 Filter flags (all optional, AND-combined):
