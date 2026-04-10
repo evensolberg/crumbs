@@ -432,12 +432,14 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
             dry_run,
             yes,
         } => {
+            // --filter-all alone is not a substantive filter: it only broadens scope
+            // and has no effect without at least one other criterion to match against.
+            // Requiring at least one other filter flag prevents a confusing no-op.
             let has_filter = filter_status.is_some()
                 || filter_tag.is_some()
                 || filter_priority.is_some()
                 || filter_type.is_some()
-                || filter_phase.is_some()
-                || filter_all;
+                || filter_phase.is_some();
 
             // --append wins over --message when both are supplied.
             let (final_message, final_append) = match (message, append) {
@@ -477,6 +479,10 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
                         .transpose()?;
 
                     // Confirmation prompt when updating multiple items interactively.
+                    // This pre-loads items to count matches for the prompt, which means
+                    // run_bulk will load them a second time. The double-load is intentional:
+                    // keeping library functions stateless (always read from disk) is more
+                    // important than saving one directory scan in this single-user tool.
                     if !dry_run && !yes && std::io::stdin().is_terminal() {
                         let items = store::load_all(dir)?;
                         let matched = commands::filter::apply(
@@ -627,12 +633,12 @@ fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
             dry_run,
             yes,
         } => {
+            // --all alone is not a substantive filter (see update equivalent above).
             let has_filter = status.is_some()
                 || tag.is_some()
                 || priority.is_some()
                 || item_type.is_some()
-                || phase.is_some()
-                || all;
+                || phase.is_some();
 
             match (id, has_filter) {
                 (Some(id), false) => {
@@ -670,6 +676,7 @@ fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
                     };
 
                     // Confirmation prompt when closing multiple items interactively.
+                    // Intentional double-load — see equivalent comment in Update branch.
                     if !dry_run && !yes && std::io::stdin().is_terminal() {
                         let items = store::load_all(dir)?;
                         let matched = commands::filter::apply(items, &filter)?;

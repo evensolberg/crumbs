@@ -2875,6 +2875,35 @@ fn filter_invalid_status_returns_error() {
     assert!(result.is_err());
 }
 
+#[test]
+fn filter_all_includes_closed_items() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("ts".to_string())).unwrap();
+    let id1 = create_task(&d, "Open Item");
+    let id2 = create_task(&d, "Closed Item");
+    commands::close::run(&d, &id2, None).unwrap();
+
+    // Without all: closed items are hidden
+    let items = store::load_all(&d).unwrap();
+    let without_all = filter_mod::apply(items, &FilterArgs::default()).unwrap();
+    assert_eq!(without_all.len(), 1, "closed item hidden by default");
+    assert_eq!(without_all[0].1.id, id1);
+
+    // With all: true — closed items are included
+    let items = store::load_all(&d).unwrap();
+    let with_all = filter_mod::apply(
+        items,
+        &FilterArgs {
+            all: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(with_all.len(), 2, "all: true includes closed items");
+    assert!(with_all.iter().any(|(_, i)| i.id == id2));
+}
+
 // ── update::run_bulk ──────────────────────────────────────────────────────────
 
 #[test]
