@@ -7,8 +7,9 @@ use crumbs::{
     commands,
     commands::batch_create::BatchCreateItem,
     commands::create::CreateArgs,
+    commands::filter::{self as filter_mod, FilterArgs},
     commands::list::{ListArgs, SortKey},
-    commands::update::UpdateArgs,
+    commands::update::{BulkUpdateArgs, UpdateArgs},
     item::{Item, ItemType, Status},
     store,
 };
@@ -2732,4 +2733,398 @@ fn file_import_via_cli_json() {
     assert_eq!(stored.len(), 1);
     assert_eq!(stored[0].1.id, id, "ID must be preserved");
     assert_eq!(stored[0].1.title, "CLI JSON Import");
+}
+
+// ── filter::apply ─────────────────────────────────────────────────────────────
+
+#[test]
+fn filter_by_tag_returns_matching_items() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("ts".to_string())).unwrap();
+    let id1 = create_task(&d, "Tagged Item");
+    let _id2 = create_task(&d, "Other Item");
+    commands::update::run(
+        &d,
+        &id1,
+        UpdateArgs {
+            tags: Some(vec!["sprint/3".to_string()]),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let items = store::load_all(&d).unwrap();
+    let filtered = filter_mod::apply(
+        items,
+        &FilterArgs {
+            tag: Some("sprint/3".to_string()),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    assert_eq!(filtered.len(), 1);
+    assert_eq!(filtered[0].1.id, id1);
+}
+
+#[test]
+fn filter_by_priority_returns_matching_items() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("ts".to_string())).unwrap();
+    let id1 = create_task(&d, "High Priority");
+    let _id2 = create_task(&d, "Normal Priority");
+    commands::update::run(
+        &d,
+        &id1,
+        UpdateArgs {
+            priority: Some(1),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let items = store::load_all(&d).unwrap();
+    let filtered = filter_mod::apply(
+        items,
+        &FilterArgs {
+            priority: Some(1),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    assert_eq!(filtered.len(), 1);
+    assert_eq!(filtered[0].1.id, id1);
+}
+
+#[test]
+fn filter_by_tag_and_priority_applies_and_semantics() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("ts".to_string())).unwrap();
+    // A: tag=sprint/3, priority=1 — matches both
+    let id_a = create_task(&d, "Item A");
+    // B: tag=sprint/3, priority=2 — only tag matches
+    let id_b = create_task(&d, "Item B");
+    // C: tag=other, priority=1 — only priority matches
+    let id_c = create_task(&d, "Item C");
+    commands::update::run(
+        &d,
+        &id_a,
+        UpdateArgs {
+            tags: Some(vec!["sprint/3".to_string()]),
+            priority: Some(1),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::update::run(
+        &d,
+        &id_b,
+        UpdateArgs {
+            tags: Some(vec!["sprint/3".to_string()]),
+            priority: Some(2),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    commands::update::run(
+        &d,
+        &id_c,
+        UpdateArgs {
+            tags: Some(vec!["other".to_string()]),
+            priority: Some(1),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let items = store::load_all(&d).unwrap();
+    let filtered = filter_mod::apply(
+        items,
+        &FilterArgs {
+            tag: Some("sprint/3".to_string()),
+            priority: Some(1),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    assert_eq!(filtered.len(), 1, "only item A matches both filters");
+    assert_eq!(filtered[0].1.id, id_a);
+}
+
+#[test]
+fn filter_invalid_status_returns_error() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("ts".to_string())).unwrap();
+    create_task(&d, "Any Item");
+
+    let items = store::load_all(&d).unwrap();
+    let result = filter_mod::apply(
+        items,
+        &FilterArgs {
+            status: Some("not_a_real_status".to_string()),
+            ..Default::default()
+        },
+    );
+
+    assert!(result.is_err());
+}
+
+#[test]
+fn filter_all_includes_closed_items() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("ts".to_string())).unwrap();
+    let id1 = create_task(&d, "Open Item");
+    let id2 = create_task(&d, "Closed Item");
+    commands::close::run(&d, &id2, None).unwrap();
+
+    // Without all: closed items are hidden
+    let items = store::load_all(&d).unwrap();
+    let without_all = filter_mod::apply(items, &FilterArgs::default()).unwrap();
+    assert_eq!(without_all.len(), 1, "closed item hidden by default");
+    assert_eq!(without_all[0].1.id, id1);
+
+    // With all: true — closed items are included
+    let items = store::load_all(&d).unwrap();
+    let with_all = filter_mod::apply(
+        items,
+        &FilterArgs {
+            all: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    assert_eq!(with_all.len(), 2, "all: true includes closed items");
+    assert!(with_all.iter().any(|(_, i)| i.id == id2));
+}
+
+// ── update::run_bulk ──────────────────────────────────────────────────────────
+
+#[test]
+fn bulk_update_priority_by_tag() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("ts".to_string())).unwrap();
+    let id1 = create_task(&d, "Sprint Item 1");
+    let id2 = create_task(&d, "Sprint Item 2");
+    let id3 = create_task(&d, "Untagged Item");
+    for id in &[&id1, &id2] {
+        commands::update::run(
+            &d,
+            id,
+            UpdateArgs {
+                tags: Some(vec!["sprint/3".to_string()]),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    }
+
+    commands::update::run_bulk(
+        &d,
+        BulkUpdateArgs {
+            filter: FilterArgs {
+                tag: Some("sprint/3".to_string()),
+                ..Default::default()
+            },
+            update: UpdateArgs {
+                priority: Some(1),
+                ..Default::default()
+            },
+            dry_run: false,
+        },
+    )
+    .unwrap();
+
+    let items = store::load_all(&d).unwrap();
+    let get = |id: &str| {
+        items
+            .iter()
+            .find(|(_, i)| i.id == id)
+            .map(|(_, i)| i.priority)
+            .unwrap()
+    };
+    assert_eq!(get(&id1), 1, "sprint item should have priority 1");
+    assert_eq!(get(&id2), 1, "sprint item should have priority 1");
+    assert_ne!(get(&id3), 1, "untagged item should be unchanged");
+}
+
+#[test]
+fn bulk_update_dry_run_does_not_mutate() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("ts".to_string())).unwrap();
+    let id1 = create_task(&d, "Tagged Item");
+    commands::update::run(
+        &d,
+        &id1,
+        UpdateArgs {
+            tags: Some(vec!["sprint/3".to_string()]),
+            priority: Some(5),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    commands::update::run_bulk(
+        &d,
+        BulkUpdateArgs {
+            filter: FilterArgs {
+                tag: Some("sprint/3".to_string()),
+                ..Default::default()
+            },
+            update: UpdateArgs {
+                priority: Some(1),
+                ..Default::default()
+            },
+            dry_run: true,
+        },
+    )
+    .unwrap();
+
+    let (_, item) = store::find_by_id(&d, &id1).unwrap().unwrap();
+    assert_eq!(item.priority, 5, "dry run must not mutate the item");
+}
+
+#[test]
+fn bulk_update_no_matches_returns_ok() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("ts".to_string())).unwrap();
+    create_task(&d, "Some Item");
+
+    let result = commands::update::run_bulk(
+        &d,
+        BulkUpdateArgs {
+            filter: FilterArgs {
+                tag: Some("nonexistent-tag".to_string()),
+                ..Default::default()
+            },
+            update: UpdateArgs {
+                priority: Some(1),
+                ..Default::default()
+            },
+            dry_run: false,
+        },
+    );
+
+    assert!(result.is_ok());
+}
+
+// ── close::run_bulk ───────────────────────────────────────────────────────────
+
+#[test]
+fn bulk_close_by_tag() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("ts".to_string())).unwrap();
+    let id1 = create_task(&d, "Done Item 1");
+    let id2 = create_task(&d, "Done Item 2");
+    let id3 = create_task(&d, "Keep Open");
+    for id in &[&id1, &id2] {
+        commands::update::run(
+            &d,
+            id,
+            UpdateArgs {
+                tags: Some(vec!["done".to_string()]),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    }
+
+    commands::close::run_bulk(
+        &d,
+        FilterArgs {
+            tag: Some("done".to_string()),
+            ..Default::default()
+        },
+        None,
+        false,
+    )
+    .unwrap();
+
+    let (_, i1) = store::find_by_id(&d, &id1).unwrap().unwrap();
+    let (_, i2) = store::find_by_id(&d, &id2).unwrap().unwrap();
+    let (_, i3) = store::find_by_id(&d, &id3).unwrap().unwrap();
+    assert_eq!(i1.status, Status::Closed, "tagged item should be closed");
+    assert_eq!(i2.status, Status::Closed, "tagged item should be closed");
+    assert_eq!(i3.status, Status::Open, "untagged item should remain open");
+}
+
+#[test]
+fn bulk_close_dry_run_does_not_mutate() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("ts".to_string())).unwrap();
+    let id1 = create_task(&d, "Tagged Item");
+    commands::update::run(
+        &d,
+        &id1,
+        UpdateArgs {
+            tags: Some(vec!["done".to_string()]),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    commands::close::run_bulk(
+        &d,
+        FilterArgs {
+            tag: Some("done".to_string()),
+            ..Default::default()
+        },
+        None,
+        true, // dry_run
+    )
+    .unwrap();
+
+    let (_, item) = store::find_by_id(&d, &id1).unwrap().unwrap();
+    assert_eq!(item.status, Status::Open, "dry run must not close the item");
+}
+
+#[test]
+fn bulk_close_skips_already_closed_items() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("ts".to_string())).unwrap();
+    let id1 = create_task(&d, "Already Closed");
+    let id2 = create_task(&d, "To Be Closed");
+    for id in &[&id1, &id2] {
+        commands::update::run(
+            &d,
+            id,
+            UpdateArgs {
+                tags: Some(vec!["done".to_string()]),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    }
+    // Close id1 before running bulk close
+    commands::close::run(&d, &id1, None).unwrap();
+
+    // Now run bulk close: should only close id2
+    commands::close::run_bulk(
+        &d,
+        FilterArgs {
+            tag: Some("done".to_string()),
+            ..Default::default()
+        },
+        None,
+        false,
+    )
+    .unwrap();
+
+    let (_, i1) = store::find_by_id(&d, &id1).unwrap().unwrap();
+    let (_, i2) = store::find_by_id(&d, &id2).unwrap().unwrap();
+    // Both are closed, but id1 was already closed (not double-closed, no error)
+    assert_eq!(i1.status, Status::Closed);
+    assert_eq!(i2.status, Status::Closed);
 }

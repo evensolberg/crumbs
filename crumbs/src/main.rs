@@ -8,9 +8,11 @@ use clap_complete::{Shell, generate};
 use crumbs::{
     commands,
     commands::create::CreateArgs,
+    commands::filter::FilterArgs,
     commands::list::{ListArgs, SortKey},
     config,
     item::ItemType,
+    store,
 };
 
 #[derive(Parser)]
@@ -29,6 +31,7 @@ struct Cli {
 }
 
 #[derive(Subcommand)]
+#[allow(clippy::large_enum_variant)] // Update variant is large by design; clap parses it transiently
 enum Command {
     // ── Browsing ──────────────────────────────────────────────────────────────
     /// List items
@@ -96,7 +99,8 @@ enum Command {
     },
     /// Update an item
     Update {
-        id: String,
+        /// ID of the item to update (omit to use --filter-* flags for bulk updates)
+        id: Option<String>,
         /// New title for the item
         #[arg(long)]
         title: Option<String>,
@@ -138,6 +142,30 @@ enum Command {
         /// PR or commit URL/reference that resolved this item (e.g. "owner/repo#42")
         #[arg(long)]
         resolution: Option<String>,
+        /// Filter by status (bulk mode: omit id)
+        #[arg(long, value_name = "STATUS")]
+        filter_status: Option<String>,
+        /// Filter by tag — comma-separated, AND semantics (bulk mode: omit id)
+        #[arg(long, value_name = "TAGS")]
+        filter_tag: Option<String>,
+        /// Filter by priority (bulk mode: omit id)
+        #[arg(long, value_name = "N")]
+        filter_priority: Option<u8>,
+        /// Filter by item type (bulk mode: omit id)
+        #[arg(long, value_name = "TYPE")]
+        filter_type: Option<String>,
+        /// Filter by phase (bulk mode: omit id)
+        #[arg(long, value_name = "PHASE")]
+        filter_phase: Option<String>,
+        /// Include closed items in filter scope (bulk mode)
+        #[arg(long)]
+        filter_all: bool,
+        /// Preview which items would be updated without making changes
+        #[arg(short = 'n', long)]
+        dry_run: bool,
+        /// Skip confirmation prompt when updating multiple items
+        #[arg(short = 'y', long)]
+        yes: bool,
     },
     /// Edit an item's title and body in an inline TUI editor
     Body { id: String },
@@ -169,9 +197,34 @@ enum Command {
     },
     /// Close an item
     Close {
-        id: String,
+        /// ID of the item to close (omit to use filter flags for bulk close)
+        id: Option<String>,
         #[arg(short, long)]
         reason: Option<String>,
+        /// Filter by status (bulk mode: omit id)
+        #[arg(short, long, value_name = "STATUS")]
+        status: Option<String>,
+        /// Filter by tag — comma-separated, AND semantics (bulk mode: omit id)
+        #[arg(long, value_name = "TAGS")]
+        tag: Option<String>,
+        /// Filter by priority (bulk mode: omit id)
+        #[arg(short, long, value_name = "N")]
+        priority: Option<u8>,
+        /// Filter by item type (bulk mode: omit id)
+        #[arg(short = 't', long = "type", value_name = "TYPE")]
+        item_type: Option<String>,
+        /// Filter by phase (bulk mode: omit id)
+        #[arg(long, value_name = "PHASE")]
+        phase: Option<String>,
+        /// Include closed items in filter scope (bulk mode)
+        #[arg(short, long)]
+        all: bool,
+        /// Preview which items would be closed without making changes
+        #[arg(short = 'n', long)]
+        dry_run: bool,
+        /// Skip confirmation prompt when closing multiple items
+        #[arg(short = 'y', long)]
+        yes: bool,
     },
     /// Defer an item (or reopen a deferred item)
     Defer {
@@ -283,6 +336,18 @@ fn split_csv(s: &str) -> Vec<String> {
     s.split(',').map(|p| p.trim().to_string()).collect()
 }
 
+fn parse_item_type(s: Option<&str>) -> Result<Option<ItemType>> {
+    // Trim first; treat empty/whitespace-only as absent (consistent with
+    // how filter.rs handles --filter-status and --filter-phase).
+    match s.map(str::trim) {
+        None | Some("") => Ok(None),
+        Some(t) => t
+            .parse::<ItemType>()
+            .map(Some)
+            .map_err(|e: String| anyhow::anyhow!(e)),
+    }
+}
+
 /// Dispatch commands whose CLI args require non-trivial parsing before calling into the library.
 ///
 /// # Invariant
@@ -370,33 +435,144 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
             phase,
             clear_phase,
             resolution,
+            filter_status,
+            filter_tag,
+            filter_priority,
+            filter_type,
+            filter_phase,
+            filter_all,
+            dry_run,
+            yes,
         } => {
+            // has_any_filter_flag: true when *any* filter-related flag was passed,
+            // including --filter-all. Used for conflict detection (id + filter flags)
+            // and for producing accurate "no filter provided" error messages.
+            let has_any_filter_flag = filter_status.is_some()
+                || filter_tag.is_some()
+                || filter_priority.is_some()
+                || filter_type.is_some()
+                || filter_phase.is_some()
+                || filter_all;
+
+            // has_substantive_filter: true only when at least one criterion beyond
+            // --filter-all is non-empty. Only this triggers bulk mode; --filter-all
+            // alone would match everything, which is too broad to be intentional.
+            let has_substantive_filter = filter_status
+                .as_deref()
+                .is_some_and(|s| !s.trim().is_empty())
+                || filter_tag
+                    .as_deref()
+                    .is_some_and(|t| t.split(',').any(|p| !p.trim().is_empty()))
+                || filter_priority.is_some()
+                || filter_type.as_deref().is_some_and(|s| !s.trim().is_empty())
+                || filter_phase
+                    .as_deref()
+                    .is_some_and(|s| !s.trim().is_empty());
+
             // --append wins over --message when both are supplied.
             let (final_message, final_append) = match (message, append) {
                 (_, Some(a)) => (Some(a), true),
                 (m, None) => (m, false),
             };
-            commands::update::run(
-                dir,
-                &id,
-                commands::update::UpdateArgs {
-                    status,
-                    priority,
-                    tags: tags.map(|t| split_csv(&t)),
-                    item_type,
-                    dependencies: depends.map(|d| split_csv(&d)),
-                    due,
-                    clear_due,
-                    message: final_message,
-                    append: final_append,
-                    story_points: points,
-                    clear_points,
-                    title,
-                    phase,
-                    clear_phase,
-                    resolution,
-                },
-            )?;
+
+            let update_args = commands::update::UpdateArgs {
+                status,
+                priority,
+                tags: tags.map(|t| split_csv(&t)),
+                item_type,
+                dependencies: depends.map(|d| split_csv(&d)),
+                due,
+                clear_due,
+                message: final_message,
+                append: final_append,
+                story_points: points,
+                clear_points,
+                title,
+                phase,
+                clear_phase,
+                resolution,
+            };
+
+            match (id, has_substantive_filter, has_any_filter_flag) {
+                (Some(id), false, false) => {
+                    commands::update::run(dir, &id, update_args)?;
+                }
+                // id + any filter flag → always an error, regardless of substantiveness
+                (Some(_), _, true) => {
+                    anyhow::bail!(
+                        "cannot combine an item ID with --filter-* flags\n\
+                         use either: crumbs update <id> --priority 1\n\
+                         or: crumbs update --filter-tag sprint/3 --priority 1"
+                    );
+                }
+                (None, true, _) => {
+                    // Validate mutations before doing any I/O or interactive prompts.
+                    // Applies even for dry-run: previewing a no-op update is misleading.
+                    if !update_args.has_any_mutation() {
+                        anyhow::bail!(
+                            "no update fields specified — provide at least one field to change\n\
+                             (e.g. --status, --priority, --tags, --message, --phase, …)"
+                        );
+                    }
+
+                    let filter = FilterArgs {
+                        status: filter_status,
+                        tag: filter_tag,
+                        priority: filter_priority,
+                        r#type: parse_item_type(filter_type.as_deref())?,
+                        phase: filter_phase,
+                        all: filter_all,
+                    };
+
+                    // Confirmation prompt when updating multiple items interactively.
+                    // This pre-loads items to count matches for the prompt, which means
+                    // run_bulk will load them a second time. The double-load is intentional:
+                    // keeping library functions stateless (always read from disk) is more
+                    // important than saving one directory scan in this single-user tool.
+                    if !dry_run && !yes && std::io::stdin().is_terminal() {
+                        let items = store::load_all(dir)?;
+                        let matched = commands::filter::apply(items, &filter)?;
+                        if matched.len() > 1
+                            && !dialoguer::Confirm::new()
+                                .with_prompt(format!("Update {} item(s)?", matched.len()))
+                                .default(false)
+                                .interact()?
+                        {
+                            println!("Aborted.");
+                            return Ok(());
+                        }
+                    }
+
+                    commands::update::run_bulk(
+                        dir,
+                        commands::update::BulkUpdateArgs {
+                            filter,
+                            update: update_args,
+                            dry_run,
+                        },
+                    )?;
+                }
+                // No effective filter: either --filter-all was the only flag, or the
+                // other filter flags had empty/whitespace values that were ignored.
+                (None, false, true) => {
+                    anyhow::bail!(
+                        "no effective filter: --filter-all requires a peer filter flag, \
+                         and empty/whitespace filter values are ignored\n\
+                         example: crumbs update --filter-tag sprint/3 --filter-all --priority 1"
+                    );
+                }
+                // No filter flags at all and no id
+                (None, false, false) => {
+                    anyhow::bail!(
+                        "specify an item ID or at least one --filter-* flag\n\
+                         example: crumbs update cr-abc --priority 1\n\
+                         example: crumbs update --filter-tag sprint/3 --priority 1"
+                    );
+                }
+                // Logically impossible: has_substantive_filter ⊆ has_any_filter_flag,
+                // so (Some, true, false) can never occur at runtime.
+                (Some(_), true, false) => unreachable!(),
+            }
         }
         _ => unreachable!(),
     }
@@ -480,21 +656,117 @@ fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
             targets,
             remove,
         } => commands::link::run(dir, &id, &relation, &split_csv(&targets), remove)?,
-        Command::Close { id, reason } => {
-            // cr-by7: prompt interactively only in the CLI layer, so the
-            // library function stays non-interactive (safe for GUI and tests).
-            let reason = match reason {
-                Some(r) => Some(r),
-                None if std::io::stdin().is_terminal() => {
-                    let r = dialoguer::Input::<String>::new()
-                        .with_prompt("Close reason (optional, Enter to skip)")
-                        .allow_empty(true)
-                        .interact_text()?;
-                    Some(r)
+        Command::Close {
+            id,
+            reason,
+            status,
+            tag,
+            priority,
+            item_type,
+            phase,
+            all,
+            dry_run,
+            yes,
+        } => {
+            // See update branch for the rationale behind the two-boolean split.
+            let has_any_filter_flag = status.is_some()
+                || tag.is_some()
+                || priority.is_some()
+                || item_type.is_some()
+                || phase.is_some()
+                || all;
+
+            let has_substantive_filter = status.as_deref().is_some_and(|s| !s.trim().is_empty())
+                || tag
+                    .as_deref()
+                    .is_some_and(|t| t.split(',').any(|p| !p.trim().is_empty()))
+                || priority.is_some()
+                || item_type.as_deref().is_some_and(|s| !s.trim().is_empty())
+                || phase.as_deref().is_some_and(|s| !s.trim().is_empty());
+
+            match (id, has_substantive_filter, has_any_filter_flag) {
+                (Some(id), false, false) => {
+                    // cr-by7: prompt interactively only in the CLI layer, so the
+                    // library function stays non-interactive (safe for GUI and tests).
+                    let reason = match reason {
+                        Some(r) => Some(r),
+                        None if std::io::stdin().is_terminal() => {
+                            let r = dialoguer::Input::<String>::new()
+                                .with_prompt("Close reason (optional, Enter to skip)")
+                                .allow_empty(true)
+                                .interact_text()?;
+                            Some(r)
+                        }
+                        None => None,
+                    };
+                    commands::close::run(dir, &id, reason)?;
                 }
-                None => None,
-            };
-            commands::close::run(dir, &id, reason)?;
+                // id + any filter flag → always an error
+                (Some(_), _, true) => {
+                    anyhow::bail!(
+                        "cannot combine an item ID with filter flags\n\
+                         use either: crumbs close <id>\n\
+                         or: crumbs close --tag done"
+                    );
+                }
+                (None, true, _) => {
+                    let filter = FilterArgs {
+                        status,
+                        tag,
+                        priority,
+                        r#type: parse_item_type(item_type.as_deref())?,
+                        phase,
+                        all,
+                    };
+
+                    // Confirmation prompt when closing multiple items interactively.
+                    // Intentional double-load — see equivalent comment in Update branch.
+                    // Count only non-closed items so the prompt matches what run_bulk
+                    // will actually act on (already-closed items are skipped).
+                    if !dry_run && !yes && std::io::stdin().is_terminal() {
+                        let items = store::load_all(dir)?;
+                        let matched = commands::filter::apply(items, &filter)?;
+                        let actionable = matched
+                            .iter()
+                            .filter(|(_, i)| i.status != crumbs::item::Status::Closed)
+                            .count();
+                        if actionable == 0 {
+                            println!("No items to close (all matched items were already closed).");
+                            return Ok(());
+                        }
+                        if actionable > 1
+                            && !dialoguer::Confirm::new()
+                                .with_prompt(format!("Close {actionable} item(s)?"))
+                                .default(false)
+                                .interact()?
+                        {
+                            println!("Aborted.");
+                            return Ok(());
+                        }
+                    }
+
+                    commands::close::run_bulk(dir, filter, reason, dry_run)?;
+                }
+                // No effective filter: either --all was the only flag, or the other
+                // filter flags had empty/whitespace values that were ignored.
+                (None, false, true) => {
+                    anyhow::bail!(
+                        "no effective filter: --all requires a peer filter flag, \
+                         and empty/whitespace filter values are ignored\n\
+                         example: crumbs close --tag done --all"
+                    );
+                }
+                // No filter flags at all and no id
+                (None, false, false) => {
+                    anyhow::bail!(
+                        "specify an item ID or at least one filter flag\n\
+                         example: crumbs close cr-abc\n\
+                         example: crumbs close --tag done"
+                    );
+                }
+                // Logically impossible: has_substantive_filter ⊆ has_any_filter_flag
+                (Some(_), true, false) => unreachable!(),
+            }
         }
         Command::Delete { id } => commands::delete::run(dir, &id)?,
         Command::Clean => commands::clean::run(dir)?,

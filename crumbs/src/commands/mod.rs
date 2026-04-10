@@ -9,6 +9,7 @@ pub mod delete;
 pub mod edit;
 pub mod export;
 pub mod file_import;
+pub mod filter;
 pub mod init;
 pub mod link;
 pub mod list;
