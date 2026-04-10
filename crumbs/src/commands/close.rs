@@ -64,19 +64,29 @@ pub fn run_bulk(
         return Ok(());
     }
 
-    let count = matched.len();
-
     if dry_run {
+        let mut count = 0usize;
         for (_, item) in &matched {
+            if item.status == Status::Closed {
+                continue;
+            }
             println!("Would close {} — {}", item.id, item.title);
+            count += 1;
         }
         println!("{count} item(s) would be closed.");
         return Ok(());
     }
 
     let reason_str = reason.unwrap_or_default();
+    let mut count = 0usize;
 
     for (path, mut item) in matched {
+        // Already closed — skip to keep bulk-close idempotent and avoid
+        // overwriting a pre-existing closed_reason with an empty string.
+        if item.status == Status::Closed {
+            continue;
+        }
+
         // stop::run rewrites the file on disk, making the in-memory item stale;
         // reload after to ensure subsequent writes are based on current content.
         if active_start_ts(&item.description).is_some() {
@@ -92,6 +102,7 @@ pub fn run_bulk(
 
         store::rewrite_frontmatter(&path, &item)?;
         println!("Closed {} — {}", item.id, item.title);
+        count += 1;
     }
 
     store::reindex(dir)?;
