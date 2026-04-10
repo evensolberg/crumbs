@@ -361,4 +361,4 @@ Body text in Markdown.
 
 ## File naming
 
-Files are named after a slug of the title (max 60 chars). On collision the item ID suffix is appended, e.g. `my-task-x7q.md`.
+Files are named after a slug of the title (max 60 chars). On collision the full item ID is appended, e.g. `my-task-cr-x7q.md`.

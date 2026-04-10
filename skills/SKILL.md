@@ -239,7 +239,7 @@ Timer entries live in the markdown body alongside other notes:
 - `:shortcode:` in body text (message, append, timer comments) is expanded to Unicode at write time — e.g. `:tada:` → 🎉, `:bug:` → 🐛, `:+1:` → 👍; unknown shortcodes pass through unchanged
 - `crumbs defer --until <date>` sets the due date; `crumbs next` skips deferred items with a future until date and skips items whose `blocked_by` items are still open
 - `crumbs start` / `crumbs stop` append timer entries to the body; `crumbs show` sums elapsed time as "Total tracked"
-- File names are title slugs; collisions get the ID suffix appended
+- File names are title slugs; collisions get the full ID (prefix + suffix) appended, e.g. `my-task-cr-x7q.md`
 - `.crumbs/` can be committed to git for full history
 - `move`/`pull` reassign a new ID using the destination store's prefix; `import --file` preserves the original ID
 - Use `"global"` as the path for `--to` / `--from` to refer to the global store
