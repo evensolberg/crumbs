@@ -5,14 +5,14 @@ use console::Style;
 
 use crate::{item::Item, store};
 
-/// Return `true` if `id` matches the expected `{prefix}-{3-char alphanumeric}` format.
+/// Return `true` if `id` matches the expected `{prefix}-{3-char alphanumeric}` format
+/// using only lowercase ASCII letters and digits.
 ///
-/// This guards against path traversal: imported IDs are used to derive file names
-/// inside the store directory, so we reject anything containing `/`, `\`, `..`, or
-/// characters outside `[a-z0-9-]`.
+/// This guards against path traversal and case-insensitive collisions: imported IDs
+/// are used to derive file names inside the store directory, so we reject anything
+/// containing `/`, `\`, `..`, uppercase letters, or characters outside `[a-z0-9-]`.
 fn is_valid_id(id: &str) -> bool {
-    let id_lower = id.to_lowercase();
-    let mut parts = id_lower.splitn(2, '-');
+    let mut parts = id.splitn(2, '-');
     let Some(prefix) = parts.next() else {
         return false;
     };
@@ -20,9 +20,13 @@ fn is_valid_id(id: &str) -> bool {
         return false;
     };
     !prefix.is_empty()
-        && prefix.chars().all(|c| c.is_ascii_alphanumeric())
+        && prefix
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
         && suffix.len() == 3
-        && suffix.chars().all(|c| c.is_ascii_alphanumeric())
+        && suffix
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
 }
 
 /// Infer the import format from the file extension, falling back to `explicit`
