@@ -2495,6 +2495,50 @@ fn batch_create_unknown_extension_without_format_errors() {
         .stderr(pstr::contains("use --format"));
 }
 
+#[test]
+fn batch_create_from_stdin_json_creates_items() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("bc".to_string())).unwrap();
+
+    let json = r#"[{"title":"Stdin JSON Item"},{"title":"Another Stdin Item"}]"#;
+
+    Command::cargo_bin("crumbs")
+        .unwrap()
+        .args([
+            "--dir",
+            d.to_str().unwrap(),
+            "batch-create",
+            "--from",
+            "-",
+            "--format",
+            "json",
+        ])
+        .write_stdin(json)
+        .assert()
+        .success();
+
+    let stored = store::load_all(&d).unwrap();
+    assert_eq!(stored.len(), 2);
+    assert!(stored.iter().any(|(_, i)| i.title == "Stdin JSON Item"));
+    assert!(stored.iter().any(|(_, i)| i.title == "Another Stdin Item"));
+}
+
+#[test]
+fn batch_create_from_stdin_missing_format_errors() {
+    let dir = tempdir().unwrap();
+    let d = dir.path().join(".crumbs");
+    commands::init::run(&d, Some("bc".to_string())).unwrap();
+
+    Command::cargo_bin("crumbs")
+        .unwrap()
+        .args(["--dir", d.to_str().unwrap(), "batch-create", "--from", "-"])
+        .write_stdin(r#"[{"title":"Should Fail"}]"#)
+        .assert()
+        .failure()
+        .stderr(pstr::contains("--format"));
+}
+
 // ── file import ──────────────────────────────────────────────────────────────
 
 #[test]

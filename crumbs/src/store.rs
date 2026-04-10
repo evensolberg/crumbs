@@ -55,7 +55,7 @@ pub fn item_path(dir: &Path, item: &Item) -> PathBuf {
 /// uniqueness even when items from different prefixes share the same 3-char
 /// suffix and the same title slug.
 fn fallback_path(dir: &Path, item: &Item) -> PathBuf {
-    let slug = slugify!(&item.title, max_length = 50);
+    let slug = slugify!(&item.title, max_length = 60);
     dir.join(format!("{slug}-{}.md", item.id))
 }
 
