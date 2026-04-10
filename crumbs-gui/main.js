@@ -688,6 +688,25 @@ function propRow(label, valueHtml) {
   return vEl;
 }
 
+async function navigateToItem(id) {
+  const existing = document.querySelector(`#items-body tr[data-id="${CSS.escape(id)}"]`);
+  if (existing) { selectRow(id, existing); return; }
+  // Target is hidden by active filters — reset them all and reload.
+  filterStatus   = 'all';
+  filterPriority = 'any';
+  filterType     = 'any';
+  filterTag      = '';
+  filterPhase    = '';
+  searchInput.value = '';
+  searchResults  = null;
+  showClosedEl.checked = true;
+  for (const b of document.querySelectorAll('.filter-btn')) {
+    b.classList.toggle('active', b.dataset.status === 'all');
+  }
+  await loadItems();
+  selectRow(id);
+}
+
 function navChips(ids) {
   const wrap = document.createElement('div');
   wrap.className = 'nav-chips';
@@ -697,7 +716,7 @@ function navChips(ids) {
     btn.className = 'nav-chip';
     btn.textContent = id;
     btn.title = `Go to ${id}`;
-    btn.addEventListener('click', () => selectRow(id));
+    btn.addEventListener('click', () => navigateToItem(id));
     wrap.appendChild(btn);
   }
   return wrap;
