@@ -78,7 +78,9 @@ impl UpdateArgs {
             || self.message.is_some()
             || self.story_points.is_some()
             || self.clear_points
-            || self.title.is_some()
+            // apply_update silently ignores empty/whitespace titles, so only
+            // count title as a mutation when there is actual content to write.
+            || self.title.as_deref().is_some_and(|t| !t.trim().is_empty())
             || self.phase.is_some()
             || self.clear_phase
             || self.resolution.is_some()

@@ -440,10 +440,20 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
             dry_run,
             yes,
         } => {
-            // --filter-all alone is not a substantive filter: it only broadens scope
-            // and has no effect without at least one other criterion to match against.
-            // Requiring at least one other filter flag prevents a confusing no-op.
-            let has_filter = filter_status
+            // has_any_filter_flag: true when *any* filter-related flag was passed,
+            // including --filter-all. Used for conflict detection (id + filter flags)
+            // and for producing accurate "no filter provided" error messages.
+            let has_any_filter_flag = filter_status.is_some()
+                || filter_tag.is_some()
+                || filter_priority.is_some()
+                || filter_type.is_some()
+                || filter_phase.is_some()
+                || filter_all;
+
+            // has_substantive_filter: true only when at least one criterion beyond
+            // --filter-all is non-empty. Only this triggers bulk mode; --filter-all
+            // alone would match everything, which is too broad to be intentional.
+            let has_substantive_filter = filter_status
                 .as_deref()
                 .is_some_and(|s| !s.trim().is_empty())
                 || filter_tag
@@ -479,11 +489,27 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
                 resolution,
             };
 
-            match (id, has_filter) {
-                (Some(id), false) => {
+            match (id, has_substantive_filter, has_any_filter_flag) {
+                (Some(id), false, false) => {
                     commands::update::run(dir, &id, update_args)?;
                 }
-                (None, true) => {
+                // id + any filter flag → always an error, regardless of substantiveness
+                (Some(_), _, true) => {
+                    anyhow::bail!(
+                        "cannot combine an item ID with --filter-* flags\n\
+                         use either: crumbs update <id> --priority 1\n\
+                         or: crumbs update --filter-tag sprint/3 --priority 1"
+                    );
+                }
+                (None, true, _) => {
+                    // Validate mutations before doing any I/O or interactive prompts.
+                    if !dry_run && !update_args.has_any_mutation() {
+                        anyhow::bail!(
+                            "no update fields specified — provide at least one field to change\n\
+                             (e.g. --status, --priority, --tags, --message, --phase, …)"
+                        );
+                    }
+
                     let filter = FilterArgs {
                         status: filter_status,
                         tag: filter_tag,
@@ -521,20 +547,18 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
                         },
                     )?;
                 }
-                (Some(_), true) => {
-                    anyhow::bail!(
-                        "cannot combine an item ID with --filter-* flags\n\
-                         use either: crumbs update <id> --priority 1\n\
-                         or: crumbs update --filter-tag sprint/3 --priority 1"
-                    );
-                }
-                (None, false) => {
+                // No id, no substantive filter, and either no flags at all or only
+                // --filter-all (which alone doesn't enable bulk mode)
+                (None, false, _) => {
                     anyhow::bail!(
                         "specify an item ID or at least one --filter-* flag\n\
                          example: crumbs update cr-abc --priority 1\n\
                          example: crumbs update --filter-tag sprint/3 --priority 1"
                     );
                 }
+                // Logically impossible: has_substantive_filter ⊆ has_any_filter_flag,
+                // so (Some, true, false) can never occur at runtime.
+                (Some(_), true, false) => unreachable!(),
             }
         }
         _ => unreachable!(),
@@ -631,8 +655,15 @@ fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
             dry_run,
             yes,
         } => {
-            // --all alone is not a substantive filter (see update equivalent above).
-            let has_filter = status.as_deref().is_some_and(|s| !s.trim().is_empty())
+            // See update branch for the rationale behind the two-boolean split.
+            let has_any_filter_flag = status.is_some()
+                || tag.is_some()
+                || priority.is_some()
+                || item_type.is_some()
+                || phase.is_some()
+                || all;
+
+            let has_substantive_filter = status.as_deref().is_some_and(|s| !s.trim().is_empty())
                 || tag
                     .as_deref()
                     .is_some_and(|t| t.split(',').any(|p| !p.trim().is_empty()))
@@ -640,8 +671,8 @@ fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
                 || item_type.as_deref().is_some_and(|s| !s.trim().is_empty())
                 || phase.as_deref().is_some_and(|s| !s.trim().is_empty());
 
-            match (id, has_filter) {
-                (Some(id), false) => {
+            match (id, has_substantive_filter, has_any_filter_flag) {
+                (Some(id), false, false) => {
                     // cr-by7: prompt interactively only in the CLI layer, so the
                     // library function stays non-interactive (safe for GUI and tests).
                     let reason = match reason {
@@ -657,7 +688,15 @@ fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
                     };
                     commands::close::run(dir, &id, reason)?;
                 }
-                (None, true) => {
+                // id + any filter flag → always an error
+                (Some(_), _, true) => {
+                    anyhow::bail!(
+                        "cannot combine an item ID with filter flags\n\
+                         use either: crumbs close <id>\n\
+                         or: crumbs close --tag done"
+                    );
+                }
+                (None, true, _) => {
                     let filter = FilterArgs {
                         status,
                         tag,
@@ -695,20 +734,15 @@ fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
 
                     commands::close::run_bulk(dir, filter, reason, dry_run)?;
                 }
-                (Some(_), true) => {
-                    anyhow::bail!(
-                        "cannot combine an item ID with filter flags\n\
-                         use either: crumbs close <id>\n\
-                         or: crumbs close --tag done"
-                    );
-                }
-                (None, false) => {
+                (None, false, _) => {
                     anyhow::bail!(
                         "specify an item ID or at least one filter flag\n\
                          example: crumbs close cr-abc\n\
                          example: crumbs close --tag done"
                     );
                 }
+                // Logically impossible: has_substantive_filter ⊆ has_any_filter_flag
+                (Some(_), true, false) => unreachable!(),
             }
         }
         Command::Delete { id } => commands::delete::run(dir, &id)?,
