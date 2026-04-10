@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [unreleased]
+
+### Chore
+
+- Update dependencies
+
+### Docs
+
+- Update README for crumbs.toml and localStorage state
+
+### Feat
+
+- Batch-create, file import, rename import→pull (v0.22.0) (#30)
+- Right-justify counts in crumbs stats (v0.22.1) (#31)
+
 ## [0.21.0] - 2026-04-08
 
 ### Chore

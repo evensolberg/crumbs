@@ -230,6 +230,7 @@ const timerBtn      = document.getElementById('timer-btn');
 const closeItemBtn  = document.getElementById('close-item-btn');
 const deleteBtn     = document.getElementById('delete-btn');
 const cleanBtn      = document.getElementById('clean-btn');
+const importBtn     = document.getElementById('import-btn');
 const exportBtn     = document.getElementById('export-btn');
 const reindexBtn    = document.getElementById('reindex-btn');
 const searchInput   = document.getElementById('search-input');
@@ -1299,6 +1300,26 @@ async function confirmExport() {
     showError(`Export failed: ${e}`);
   }
 }
+
+// ── Import ────────────────────────────────────────────────────────────────
+
+importBtn.addEventListener('click', async () => {
+  clearError();
+  try {
+    const filePath = await invoke('plugin:dialog|open', {
+      options: {
+        title: 'Import items',
+        filters: [{ name: 'crumbs export (JSON, CSV)', extensions: ['json', 'csv'] }],
+        multiple: false,
+      },
+    });
+    if (!filePath) return;
+    await invoke('import_items_from_file', { dir: storeDir, path: filePath });
+    await loadItems();
+  } catch (e) {
+    showError(`Import failed: ${e}`);
+  }
+});
 
 exportBtn.addEventListener('click', openExportModal);
 exportCancelBtn.addEventListener('click', () => { exportModal.classList.add('hidden'); });

@@ -6,11 +6,11 @@ type: idea
 priority: 3
 tags: []
 created: 2026-04-06
-updated: 2026-04-07
+updated: 2026-04-09
 dependencies: []
 phase: ''
 ---
 
 # reopen commend
 
-Should we have a reopen command? If so, should it start a timer, or just reopen, similar to changin the --status ?
+Should we have a reopen command? If so, should it start a timer, or just reopen, similar to changing the --status ?

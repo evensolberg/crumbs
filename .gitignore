@@ -3,3 +3,4 @@
 /crumbs-gui/node_modules
 .crumbs/index.csv
 index.csv
+.worktrees/
