@@ -669,12 +669,22 @@ fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
 
                     // Confirmation prompt when closing multiple items interactively.
                     // Intentional double-load — see equivalent comment in Update branch.
+                    // Count only non-closed items so the prompt matches what run_bulk
+                    // will actually act on (already-closed items are skipped).
                     if !dry_run && !yes && std::io::stdin().is_terminal() {
                         let items = store::load_all(dir)?;
                         let matched = commands::filter::apply(items, &filter)?;
-                        if matched.len() > 1
+                        let actionable = matched
+                            .iter()
+                            .filter(|(_, i)| i.status != crumbs::item::Status::Closed)
+                            .count();
+                        if actionable == 0 {
+                            println!("No items to close (all matched items were already closed).");
+                            return Ok(());
+                        }
+                        if actionable > 1
                             && !dialoguer::Confirm::new()
-                                .with_prompt(format!("Close {} item(s)?", matched.len()))
+                                .with_prompt(format!("Close {actionable} item(s)?"))
                                 .default(false)
                                 .interact()?
                         {

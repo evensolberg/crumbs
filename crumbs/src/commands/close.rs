@@ -105,6 +105,11 @@ pub fn run_bulk(
         count += 1;
     }
 
+    if count == 0 {
+        println!("No items to close (all matched items were already closed).");
+        return Ok(());
+    }
+
     store::reindex(dir)?;
     println!("Closed {count} item(s).");
     Ok(())
