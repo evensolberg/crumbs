@@ -688,6 +688,21 @@ function propRow(label, valueHtml) {
   return vEl;
 }
 
+function navChips(ids) {
+  const wrap = document.createElement('div');
+  wrap.className = 'nav-chips';
+  for (const id of ids) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'nav-chip';
+    btn.textContent = id;
+    btn.title = `Go to ${id}`;
+    btn.addEventListener('click', () => selectRow(id));
+    wrap.appendChild(btn);
+  }
+  return wrap;
+}
+
 function makeSelect(options, current, onChange) {
   const sel = document.createElement('select');
   for (const [val, lbl] of options) {
@@ -816,12 +831,16 @@ function renderProps(item) {
     if (e.key === 'Enter') depsInput.blur();
     if (e.key === 'Escape') { depsInput.value = loadedDeps; depsInput.blur(); e.stopPropagation(); }
   });
-  propRow('Depends on', '').appendChild(depsInput);
+  const depsRow = propRow('Depends on', '');
+  depsRow.appendChild(depsInput);
+  if ((item.dependencies ?? []).length > 0) {
+    depsRow.appendChild(navChips(item.dependencies));
+  }
   if ((item.blocks ?? []).length > 0) {
-    propRow('Blocks', escHtml(item.blocks.join(', ')));
+    propRow('Blocks', '').appendChild(navChips(item.blocks));
   }
   if ((item.blocked_by ?? []).length > 0) {
-    propRow('Blocked by', escHtml(item.blocked_by.join(', ')));
+    propRow('Blocked by', '').appendChild(navChips(item.blocked_by));
   }
   if (item.closed_reason) {
     propRow('Reason', escHtml(item.closed_reason));

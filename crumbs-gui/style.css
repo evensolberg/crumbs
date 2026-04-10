@@ -555,6 +555,14 @@ button:disabled {
 .prop-value select:focus,
 .prop-value input:focus { border-color: var(--accent); }
 
+.nav-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.nav-chip {
+  font-size: 11px; padding: 1px 7px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--accent); cursor: pointer; font-family: inherit;
+}
+.nav-chip:hover { background: var(--accent); color: var(--bg); }
+
 .detail-actions {
   padding: 8px 10px;
   display: flex;
@@ -1071,7 +1079,7 @@ tbody td {
   overflow-y: auto;
   box-shadow: 0 4px 12px rgba(0,0,0,0.25);
 }
-.emoji-picker .ep-tabs  { display: flex; gap: 2px; flex-wrap: wrap; margin-bottom: 4px; }
+.emoji-picker .ep-tabs  { display: flex; gap: 2px; flex-wrap: wrap; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid var(--border); }
 .emoji-picker .ep-tab   { font-size: 16px; background: none; border: none;
                           cursor: pointer; padding: 2px 5px; border-radius: 3px; }
 .emoji-picker .ep-tab:hover, .emoji-picker .ep-tab.active { background: var(--surface2); }
