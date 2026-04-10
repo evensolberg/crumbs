@@ -700,11 +700,16 @@ async function navigateToItem(id) {
   searchInput.value = '';
   searchResults  = null;
   showClosedEl.checked = true;
+  document.getElementById('filter-priority').value = filterPriority;
+  document.getElementById('filter-type').value     = filterType;
+  document.getElementById('filter-tag').value      = filterTag;
+  document.getElementById('filter-phase').value    = filterPhase;
   for (const b of document.querySelectorAll('.filter-btn')) {
     b.classList.toggle('active', b.dataset.status === 'all');
   }
   await loadItems();
-  selectRow(id);
+  const tr = document.querySelector(`#items-body tr[data-id="${CSS.escape(id)}"]`);
+  if (tr) { selectRow(id, tr); } else { console.warn(`navigateToItem: '${id}' not found after filter reset`); }
 }
 
 function navChips(ids) {
