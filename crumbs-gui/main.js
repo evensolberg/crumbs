@@ -723,7 +723,11 @@ async function navigateToItem(id) {
   // Only wipe filters once the item is confirmed to exist in this store.
   const prevShowClosed = showClosedEl.checked;
   showClosedEl.checked = true;
-  await loadItems();
+  if (!await loadItems()) {
+    // loadItems already called showError; restore checkbox and bail.
+    showClosedEl.checked = prevShowClosed;
+    return;
+  }
   if (!allItems.some(i => i.id === id)) {
     // Item not found even with closed items — likely a typo or wrong store.
     // Restore the user's prior showClosed state only if we changed it.
@@ -1181,8 +1185,10 @@ async function loadItems() {
     });
     renderTable();
     renderDetail(selectedItem());
+    return true;
   } catch (e) {
     showError(`Failed to load items: ${e}`);
+    return false;
   }
 }
 
