@@ -557,20 +557,24 @@ button:disabled {
 
 .nav-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; align-items: center; }
 .nav-chip {
-  display: inline-flex; align-items: center; gap: 3px;
-  font-size: 11px; padding: 1px 6px; border-radius: 10px;
+  display: inline-flex; align-items: center; gap: 0;
+  font-size: 11px; border-radius: 10px;
   border: 1px solid var(--border); background: var(--surface2);
-  color: var(--accent); cursor: pointer; font-family: inherit;
+  color: var(--accent); font-family: inherit;
 }
 .nav-chip:hover { background: var(--accent); color: var(--bg); }
 .nav-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.nav-chip-label { pointer-events: none; }
-.nav-chip-remove {
-  font-size: 10px; line-height: 1; opacity: 0.6;
-  background: none; border: none; padding: 0; cursor: pointer;
-  color: inherit;
+.nav-chip-label {
+  padding: 1px 4px 1px 7px; background: none; border: none;
+  color: inherit; font: inherit; cursor: pointer; border-radius: 10px 0 0 10px;
 }
-.nav-chip-remove:hover { opacity: 1; }
+.nav-chip-label:hover { text-decoration: underline; }
+.nav-chip-remove {
+  font-size: 10px; line-height: 1; opacity: 0.6; padding: 1px 6px 1px 2px;
+  background: none; border: none; cursor: pointer; color: inherit;
+  border-radius: 0 10px 10px 0;
+}
+.nav-chip-remove:hover { opacity: 1; color: var(--danger, #c0392b); }
 .nav-chip-add {
   font-size: 11px; width: 80px; padding: 1px 4px; border-radius: 10px;
   border: 1px dashed var(--border); background: transparent;

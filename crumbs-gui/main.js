@@ -776,14 +776,17 @@ function navChips(ids, onRemove) {
   const wrap = document.createElement('div');
   wrap.className = 'nav-chips';
   for (const id of ids) {
-    const chip = document.createElement('button');
-    chip.type = 'button';
+    // Use a div wrapper so we can have two sibling <button> elements without
+    // nesting interactive content inside a <button> (invalid per HTML spec).
+    const chip = document.createElement('div');
     chip.className = 'nav-chip';
-    chip.title = `Go to ${id}`;
 
-    const label = document.createElement('span');
+    const label = document.createElement('button');
+    label.type = 'button';
     label.className = 'nav-chip-label';
     label.textContent = id;
+    label.title = `Go to ${id}`;
+    label.addEventListener('click', () => navigateToItem(id));
     chip.appendChild(label);
 
     if (onRemove) {
@@ -792,11 +795,10 @@ function navChips(ids, onRemove) {
       x.className = 'nav-chip-remove';
       x.textContent = '×';
       x.title = `Remove link to ${id}`;
-      x.addEventListener('click', e => { e.stopPropagation(); onRemove(id); });
+      x.addEventListener('click', () => onRemove(id));
       chip.appendChild(x);
     }
 
-    chip.addEventListener('click', () => navigateToItem(id));
     wrap.appendChild(chip);
   }
   return wrap;
@@ -811,8 +813,8 @@ function linkAddInput(onAdd) {
     if (e.key === 'Escape') { inp.value = ''; inp.blur(); e.stopPropagation(); }
     if (e.key === 'Enter') {
       const val = inp.value.trim();
-      inp.value = '';
-      if (val) onAdd(val);
+      // Value cleared only on success (inside onAdd) so the user retains it on error.
+      if (val) onAdd(val, inp);
     }
   });
   return inp;
@@ -951,9 +953,10 @@ function renderProps(item) {
   if ((item.dependencies ?? []).length > 0) {
     depsRow.appendChild(navChips(item.dependencies));
   }
-  const doLink = async (relation, targetId, remove) => {
+  const doLink = async (relation, targetId, remove, inputEl) => {
     try {
       await invoke('link_items', { dir: storeDir, id: item.id, relation, targets: [targetId], remove });
+      if (inputEl) inputEl.value = '';
       await loadItems();
     } catch (e) { showError(`Link failed: ${e}`); }
   };
@@ -963,14 +966,14 @@ function renderProps(item) {
     item.blocks ?? [],
     id => doLink('blocks', id, true),
   ));
-  blocksRow.appendChild(linkAddInput(id => doLink('blocks', id, false)));
+  blocksRow.appendChild(linkAddInput((id, inp) => doLink('blocks', id, false, inp)));
 
   const blockedByRow = propRow('Blocked by', '');
   blockedByRow.appendChild(navChips(
     item.blocked_by ?? [],
     id => doLink('blocked-by', id, true),
   ));
-  blockedByRow.appendChild(linkAddInput(id => doLink('blocked-by', id, false)));
+  blockedByRow.appendChild(linkAddInput((id, inp) => doLink('blocked-by', id, false, inp)));
   if (item.closed_reason) {
     propRow('Reason', escHtml(item.closed_reason));
   }
