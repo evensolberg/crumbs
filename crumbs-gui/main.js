@@ -697,27 +697,43 @@ function propRow(label, valueHtml) {
 }
 
 async function navigateToItem(id) {
-  const existing = rowForId(id);
-  if (existing) { selectRow(id, existing); return; }
-  // Target is hidden by active filters — reset them all and reload.
-  filterStatus   = 'all';
-  filterPriority = 'any';
-  filterType     = 'any';
-  filterTag      = '';
-  filterPhase    = '';
-  searchInput.value    = '';
-  searchResults        = null;
-  showClosedEl.checked = true;
-  filterPriorityEl.value = filterPriority;
-  filterTypeEl.value     = filterType;
-  filterTagEl.value      = filterTag;
-  filterPhaseEl.value    = filterPhase;
-  for (const b of document.querySelectorAll('.filter-btn')) {
-    b.classList.toggle('active', b.dataset.status === 'all');
+  function resetFilters() {
+    filterStatus = 'all'; filterPriority = 'any'; filterType = 'any';
+    filterTag = ''; filterPhase = '';
+    searchInput.value = ''; searchResults = null;
+    filterPriorityEl.value = filterPriority;
+    filterTypeEl.value     = filterType;
+    filterTagEl.value      = filterTag;
+    filterPhaseEl.value    = filterPhase;
+    for (const b of document.querySelectorAll('.filter-btn')) {
+      b.classList.toggle('active', b.dataset.status === 'all');
+    }
   }
+
+  // Fast path: item is already loaded — reset client-side filters only (no backend call).
+  if (allItems.some(i => i.id === id)) {
+    resetFilters();
+    renderTable();
+    saveViewState();
+    selectRow(id);
+    return;
+  }
+
+  // Slow path: item may be closed and hidden. Reload with closed items included.
+  // Only wipe filters once the item is confirmed to exist in this store.
+  showClosedEl.checked = true;
   await loadItems();
-  const tr = rowForId(id);
-  if (tr) { selectRow(id, tr); } else { console.warn(`navigateToItem: '${id}' not found after filter reset`); }
+  if (!allItems.some(i => i.id === id)) {
+    // Item not found even with closed items — likely a typo or wrong store.
+    showClosedEl.checked = false;
+    await loadItems();
+    showError(`'${id}' not found in this store`);
+    return;
+  }
+  resetFilters();
+  renderTable();
+  saveViewState();
+  selectRow(id, rowForId(id));
 }
 
 function navChips(ids) {
