@@ -66,6 +66,35 @@ impl UpdateArgs {
     ///
     /// Used by [`run_bulk`] to guard against a no-op bulk update that would
     /// silently bump `updated` on every matched item.
+    /// Validate the parsed-string fields (`status`, `item_type`, `story_points`)
+    /// without applying any mutations.
+    ///
+    /// Called before dry-run so that `--dry-run` is an accurate preview: if a
+    /// real run would error on an invalid value, dry-run errors too.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `status`, `item_type`, or `story_points` contains an
+    /// invalid value.
+    pub fn validate(&self) -> Result<()> {
+        if let Some(s) = self.status.as_deref() {
+            s.parse::<crate::item::Status>()
+                .map_err(|e: String| anyhow::anyhow!(e))?;
+        }
+        if let Some(t) = self.item_type.as_deref() {
+            t.parse::<crate::item::ItemType>()
+                .map_err(|e: String| anyhow::anyhow!(e))?;
+        }
+        if let Some(sp) = self.story_points {
+            if !crate::item::is_fibonacci(sp) {
+                anyhow::bail!(
+                    "story_points must be a Fibonacci number (1, 2, 3, 5, 8, 13, 21); got {sp}"
+                );
+            }
+        }
+        Ok(())
+    }
+
     #[must_use]
     pub fn has_any_mutation(&self) -> bool {
         self.status.is_some()
@@ -254,6 +283,12 @@ pub fn run_bulk(dir: &Path, args: BulkUpdateArgs) -> Result<()> {
              (e.g. --status, --priority, --tags, --message, --phase, …)"
         );
     }
+
+    // Validate field values before any I/O so dry-run accurately reflects
+    // whether the real run would succeed (e.g. unknown --status or --type,
+    // non-Fibonacci --points would error in apply_update but not in dry-run
+    // without this check).
+    args.update.validate()?;
 
     let items = store::load_all(dir)?;
     let matched = crate::commands::filter::apply(items, &args.filter)?;

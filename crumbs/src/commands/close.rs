@@ -25,6 +25,9 @@ pub fn run(dir: &Path, id: &str, reason: Option<String>) -> Result<()> {
             item.status = Status::Closed;
             item.closed_reason = reason;
             item.updated = Local::now().date_naive();
+            // Clear before rewrite_frontmatter to avoid cloning a potentially
+            // large description string inside that function.
+            item.description.clear();
 
             store::rewrite_frontmatter(&path, &item)?;
 
@@ -100,6 +103,9 @@ pub fn run_bulk(
         item.status = Status::Closed;
         item.closed_reason.clone_from(&reason_str);
         item.updated = Local::now().date_naive();
+        // Clear before rewrite_frontmatter to avoid cloning a potentially
+        // large description string inside that function.
+        item.description.clear();
 
         store::rewrite_frontmatter(&path, &item)?;
         println!("Closed {} — {}", item.id, item.title);
