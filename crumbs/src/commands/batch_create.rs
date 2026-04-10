@@ -5,6 +5,8 @@ use chrono::{Local, NaiveDate};
 use console::Style;
 use serde::Deserialize;
 
+use slugify::slugify;
+
 use crate::{
     id,
     item::{Item, ItemType, Status, is_fibonacci},
@@ -70,8 +72,9 @@ pub fn run(dir: &Path, items: Vec<BatchCreateItem>) -> Result<()> {
 
     for item in &items {
         anyhow::ensure!(
-            !item.title.trim().is_empty(),
-            "item title must not be empty or whitespace-only"
+            !item.title.trim().is_empty() && !slugify!(&item.title, max_length = 60).is_empty(),
+            "item title {:?} must contain at least one alphanumeric character",
+            item.title
         );
         if let Some(sp) = item.story_points
             && !is_fibonacci(sp)

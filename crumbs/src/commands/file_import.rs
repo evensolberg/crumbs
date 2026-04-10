@@ -2,6 +2,7 @@ use std::path::Path;
 
 use anyhow::Result;
 use console::Style;
+use slugify::slugify;
 
 use crate::{item::Item, store};
 
@@ -221,9 +222,10 @@ pub fn run(dir: &Path, path: &Path, format: Option<&str>) -> Result<()> {
     let mut seen_in_file: std::collections::HashSet<String> = std::collections::HashSet::new();
     for item in &items {
         anyhow::ensure!(
-            !item.title.trim().is_empty(),
-            "item {:?} has an empty or whitespace-only title",
-            item.id
+            !item.title.trim().is_empty() && !slugify!(&item.title, max_length = 60).is_empty(),
+            "item {:?} title {:?} must contain at least one alphanumeric character",
+            item.id,
+            item.title
         );
         // Enforce the expected ID format to prevent path traversal.
         // Valid form: one or more lowercase alphanumeric chars, a hyphen,
