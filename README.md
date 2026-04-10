@@ -167,6 +167,18 @@ crumbs append bc-x7q 'Quick note'                           # shorthand for upda
 crumbs a bc-x7q 'Quick note'                                # alias
 ```
 
+**Bulk update** — omit the ID and supply one or more `--filter-*` flags to update every matching item in one shot:
+
+```sh
+crumbs update --filter-tag sprint/3 --priority 1                  # raise priority for a whole sprint
+crumbs update --filter-status open --filter-phase phase-1 --phase phase-2  # re-phase items
+crumbs update --filter-tag done --status in_progress              # bulk status change
+crumbs update --filter-priority 4 --filter-tag backlog --dry-run  # preview first
+crumbs update --filter-tag sprint/3 --priority 0 --yes            # skip confirmation
+```
+
+Available filter flags (AND-combined): `--filter-status`, `--filter-tag` (comma-separated), `--filter-priority`, `--filter-type`, `--filter-phase`, `--filter-all` (include closed; requires another filter flag). `--dry-run` / `-n` previews changes; `--yes` / `-y` skips the confirmation prompt when 2+ items match.
+
 `--tags` and `--depends` **replace** the existing list. `--append 'text'` adds to the body (with a `[YYYY-MM-DD]` prefix) instead of replacing it; `--message 'text'` replaces the body. `crumbs append` (alias `a`) is a dedicated shorthand for the append operation.
 
 Body text (in `--message`, `--append`, and timer comments) supports **`:shortcode:`** emoji syntax — e.g. `:tada:` → 🎉, `:bug:` → 🐛, `:white_check_mark:` → ✅. Shortcodes are expanded to real Unicode at write time, so the stored `.md` file always contains the actual emoji character. Unknown shortcodes are left unchanged. In the GUI, the 😀 button next to **Preview** opens a tabbed emoji picker as an alternative to typing shortcodes by hand. For a full list of supported names see the [GitHub emoji cheat sheet](https://github.com/ikatyang/emoji-cheat-sheet).
@@ -264,6 +276,17 @@ crumbs clean                                   # purge all closed items
 ```
 
 If an item has an active timer when closed, the timer is stopped automatically before the status is set — no need to run `crumbs stop` first. The close reason prompt is skipped when stdin is not a terminal (scripts, CI, piped input).
+
+**Bulk close** — omit the ID and supply one or more filter flags to close every matching item at once:
+
+```sh
+crumbs close --tag done                              # close all items tagged "done"
+crumbs close --tag sprint/3 --reason "sprint done"  # with a shared close reason
+crumbs close --phase phase-1 --dry-run              # preview before acting
+crumbs close --tag done --yes                       # skip confirmation
+```
+
+Available filter flags (AND-combined): `--status`, `--tag` (comma-separated), `--priority`, `--type`, `--phase`, `--all` / `-a` (include already-closed in scope; requires another filter flag). Already-closed items in the matched set are silently skipped — bulk close is idempotent. `--dry-run` / `-n` previews; `--yes` / `-y` skips the prompt.
 
 ### Export
 

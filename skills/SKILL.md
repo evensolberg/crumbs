@@ -77,6 +77,34 @@ crumbs update cr-x7q --phase 2026-Q2
 crumbs update cr-x7q --clear-phase
 ```
 
+### Bulk update (filter mode)
+
+Omit the ID and supply one or more `--filter-*` flags to update every matching item in one shot:
+
+```sh
+crumbs update --filter-tag sprint/3 --priority 1           # raise priority for a whole sprint
+crumbs update --filter-status open --filter-phase phase-1 --phase phase-2  # re-phase items
+crumbs update --filter-tag done --status in_progress        # change status in bulk
+crumbs update --filter-priority 4 --filter-tag backlog --dry-run  # preview first
+crumbs update --filter-tag sprint/3 --priority 0 --yes      # skip confirmation
+```
+
+Filter flags (all optional, AND-combined):
+
+| Flag | Description |
+|------|-------------|
+| `--filter-status <STATUS>` | match by status |
+| `--filter-tag <TAGS>` | comma-separated tags, AND semantics |
+| `--filter-priority <N>` | match by priority |
+| `--filter-type <TYPE>` | match by item type |
+| `--filter-phase <PHASE>` | match by phase |
+| `--filter-all` | include closed items in scope (requires another filter flag) |
+
+- At least one substantive `--filter-*` flag is required (empty/whitespace values are ignored)
+- `--filter-all` alone does **not** trigger bulk mode — pair it with another filter
+- When updating 2+ items interactively, a confirmation prompt is shown; skip with `--yes`
+- `--dry-run` / `-n` prints what would change without writing anything
+
 ### Append (shorthand)
 ```sh
 crumbs append cr-x7q 'Quick note'   # shorthand for update --append; alias: a
@@ -178,6 +206,34 @@ crumbs clean                                 # purge all closed items
 ```
 
 Closing an item with an active timer automatically stops the timer first and writes a `[stop]` entry before setting `status: closed`.
+
+### Bulk close (filter mode)
+
+Omit the ID and supply one or more filter flags to close every matching item at once:
+
+```sh
+crumbs close --tag done                             # close all items tagged "done"
+crumbs close --tag sprint/3 --reason "sprint done"  # with a shared close reason
+crumbs close --phase phase-1 --dry-run              # preview before acting
+crumbs close --tag done --yes                       # skip confirmation
+crumbs close --status open --phase phase-1 --all    # include already-closed in scope
+```
+
+Filter flags (all optional, AND-combined):
+
+| Flag | Description |
+|------|-------------|
+| `--status <STATUS>` | match by status |
+| `--tag <TAGS>` | comma-separated tags, AND semantics |
+| `--priority <N>` | match by priority |
+| `--type <TYPE>` | match by item type |
+| `--phase <PHASE>` | match by phase |
+| `--all` / `-a` | include closed items in scope (requires another filter flag) |
+
+- Already-closed items in the matched set are silently skipped (bulk close is idempotent)
+- Active timers are stopped automatically before each item is closed
+- `--dry-run` / `-n` prints what would be closed without writing anything
+- `--yes` / `-y` skips the confirmation prompt
 
 ### Export
 ```sh

@@ -1,14 +1,14 @@
 ---
 id: cr-ghd
 title: 'CLI: bulk operations on filtered items'
-status: open
+status: in_progress
 type: feature
 priority: 2
 tags:
 - cli
 - bulk
 created: 2026-03-07
-updated: 2026-04-08
+updated: 2026-04-10
 dependencies: []
 phase: ''
 ---
