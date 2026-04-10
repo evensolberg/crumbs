@@ -36,14 +36,17 @@ pub fn run(dir: &Path) -> Result<()> {
     let bold = Style::new().bold();
     let dim = Style::new().dim();
 
+    // Width of the largest number so all counts align on the right.
+    let w = total.to_string().len();
+
     println!("{}", bold.apply_to("Status"));
-    println!("  ○ Open:        {open}");
+    println!("  ○ Open:        {open:>w$}");
     println!(
-        "  {} In Progress:  {in_progress}",
+        "  {} In Progress:  {in_progress:>w$}",
         Style::new().yellow().apply_to("●")
     );
-    println!("  {} Closed:       {closed}", dim.apply_to("✓"));
-    println!("  {} Total:        {total}", bold.apply_to("∑"));
+    println!("  {} Closed:       {closed:>w$}", dim.apply_to("✓"));
+    println!("  {} Total:        {total:>w$}", bold.apply_to("∑"));
 
     println!();
     println!("{}", bold.apply_to("By Type"));
@@ -59,7 +62,10 @@ pub fn run(dir: &Path) -> Result<()> {
             .filter(|(_, i)| i.item_type == type_name)
             .count();
         if count > 0 {
-            println!("  {:<12} {count}", style.apply_to(format!("{type_name}:")));
+            println!(
+                "  {:<12} {count:>w$}",
+                style.apply_to(format!("{type_name}:"))
+            );
         }
     }
 
@@ -69,7 +75,7 @@ pub fn run(dir: &Path) -> Result<()> {
         let count = items.iter().filter(|(_, i)| i.priority == p).count();
         if count > 0 {
             let p_style = crate::color::priority(p);
-            println!("  {:<12} {count}", p_style.apply_to(format!("P{p}:")));
+            println!("  {:<12} {count:>w$}", p_style.apply_to(format!("P{p}:")));
         }
     }
 
@@ -84,8 +90,8 @@ pub fn run(dir: &Path) -> Result<()> {
     if estimated > 0 {
         println!();
         println!("{}", bold.apply_to("Story Points"));
-        println!("  Estimated: {estimated}/{total} items");
-        println!("  Total:     {total_sp}");
+        println!("  Estimated: {estimated:>w$}/{total} items");
+        println!("  Total:     {total_sp:>w$}");
     }
 
     Ok(())
