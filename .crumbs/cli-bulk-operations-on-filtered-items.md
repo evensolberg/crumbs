@@ -1,7 +1,7 @@
 ---
 id: cr-ghd
 title: 'CLI: bulk operations on filtered items'
-status: in_progress
+status: closed
 type: feature
 priority: 2
 tags:
@@ -9,6 +9,7 @@ tags:
 - bulk
 created: 2026-03-07
 updated: 2026-04-10
+closed_reason: 'Implemented in PR #32 — bulk update and close via filter flags with dry-run, confirmation prompt, and full Copilot review pass'
 dependencies: []
 phase: ''
 ---
