@@ -336,6 +336,14 @@ fn split_csv(s: &str) -> Vec<String> {
     s.split(',').map(|p| p.trim().to_string()).collect()
 }
 
+fn parse_item_type(s: Option<&str>) -> Result<Option<ItemType>> {
+    s.map(|t| {
+        t.parse::<ItemType>()
+            .map_err(|e: String| anyhow::anyhow!(e))
+    })
+    .transpose()
+}
+
 /// Dispatch commands whose CLI args require non-trivial parsing before calling into the library.
 ///
 /// # Invariant
@@ -470,13 +478,14 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
                     commands::update::run(dir, &id, update_args)?;
                 }
                 (None, true) => {
-                    let filter_item_type = filter_type
-                        .as_deref()
-                        .map(|t| {
-                            t.parse::<ItemType>()
-                                .map_err(|e: String| anyhow::anyhow!(e))
-                        })
-                        .transpose()?;
+                    let filter = FilterArgs {
+                        status: filter_status,
+                        tag: filter_tag,
+                        priority: filter_priority,
+                        r#type: parse_item_type(filter_type.as_deref())?,
+                        phase: filter_phase,
+                        all: filter_all,
+                    };
 
                     // Confirmation prompt when updating multiple items interactively.
                     // This pre-loads items to count matches for the prompt, which means
@@ -485,17 +494,7 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
                     // important than saving one directory scan in this single-user tool.
                     if !dry_run && !yes && std::io::stdin().is_terminal() {
                         let items = store::load_all(dir)?;
-                        let matched = commands::filter::apply(
-                            items,
-                            &FilterArgs {
-                                status: filter_status.clone(),
-                                tag: filter_tag.clone(),
-                                priority: filter_priority,
-                                r#type: filter_item_type.clone(),
-                                phase: filter_phase.clone(),
-                                all: filter_all,
-                            },
-                        )?;
+                        let matched = commands::filter::apply(items, &filter)?;
                         if matched.len() > 1
                             && !dialoguer::Confirm::new()
                                 .with_prompt(format!("Update {} item(s)?", matched.len()))
@@ -510,14 +509,7 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
                     commands::update::run_bulk(
                         dir,
                         commands::update::BulkUpdateArgs {
-                            filter: FilterArgs {
-                                status: filter_status,
-                                tag: filter_tag,
-                                priority: filter_priority,
-                                r#type: filter_item_type,
-                                phase: filter_phase,
-                                all: filter_all,
-                            },
+                            filter,
                             update: update_args,
                             dry_run,
                         },
@@ -658,19 +650,11 @@ fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
                     commands::close::run(dir, &id, reason)?;
                 }
                 (None, true) => {
-                    let filter_item_type = item_type
-                        .as_deref()
-                        .map(|t| {
-                            t.parse::<ItemType>()
-                                .map_err(|e: String| anyhow::anyhow!(e))
-                        })
-                        .transpose()?;
-
                     let filter = FilterArgs {
                         status,
                         tag,
                         priority,
-                        r#type: filter_item_type,
+                        r#type: parse_item_type(item_type.as_deref())?,
                         phase,
                         all,
                     };

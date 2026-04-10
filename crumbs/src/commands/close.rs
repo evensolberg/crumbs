@@ -15,7 +15,7 @@ pub fn run(dir: &Path, id: &str, reason: Option<String>) -> Result<()> {
             // cr-613: stop any running timer before closing
             if active_start_ts(&item.description).is_some() {
                 super::stop::run(dir, id, None)?;
-                // reload just this file after stop rewrote it
+                // stop::run rewrote the file; item is now stale — reload from disk
                 item = store::read_item(&path)?;
             }
 
@@ -24,16 +24,8 @@ pub fn run(dir: &Path, id: &str, reason: Option<String>) -> Result<()> {
             item.status = Status::Closed;
             item.closed_reason = reason;
             item.updated = Local::now().date_naive();
-            item.description.clear(); // description lives in the body, not frontmatter
 
-            let frontmatter = serde_yaml_ng::to_string(&item)?;
-            let raw = std::fs::read_to_string(&path)?;
-            let body = raw
-                .strip_prefix("---\n")
-                .and_then(|s| s.split_once("\n---\n").map(|(_, body)| body))
-                .unwrap_or("");
-            let new_content = format!("---\n{frontmatter}---\n{body}");
-            store::atomic_write(&path, &new_content)?;
+            store::rewrite_frontmatter(&path, &item)?;
 
             store::reindex(dir)?;
             println!("Closed {} — {}", item.id, item.title);
@@ -85,30 +77,19 @@ pub fn run_bulk(
     let reason_str = reason.unwrap_or_default();
 
     for (path, mut item) in matched {
-        let id = item.id.clone();
-        let title = item.title.clone();
-
-        // Stop any active timer before closing (preserves time-log accuracy).
+        // stop::run rewrites the file on disk, making the in-memory item stale;
+        // reload after to ensure subsequent writes are based on current content.
         if active_start_ts(&item.description).is_some() {
-            super::stop::run(dir, &id, None)?;
-            // Reload after stop rewrote the file.
+            super::stop::run(dir, &item.id, None)?;
             item = store::read_item(&path)?;
         }
 
         item.status = Status::Closed;
         item.closed_reason.clone_from(&reason_str);
         item.updated = Local::now().date_naive();
-        item.description.clear();
 
-        let frontmatter = serde_yaml_ng::to_string(&item)?;
-        let raw = std::fs::read_to_string(&path)?;
-        let body = raw
-            .strip_prefix("---\n")
-            .and_then(|s| s.split_once("\n---\n").map(|(_, body)| body))
-            .unwrap_or("");
-        let new_content = format!("---\n{frontmatter}---\n{body}");
-        store::atomic_write(&path, &new_content)?;
-        println!("Closed {id} — {title}");
+        store::rewrite_frontmatter(&path, &item)?;
+        println!("Closed {} — {}", item.id, item.title);
     }
 
     store::reindex(dir)?;
