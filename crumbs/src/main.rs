@@ -503,7 +503,8 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
                 }
                 (None, true, _) => {
                     // Validate mutations before doing any I/O or interactive prompts.
-                    if !dry_run && !update_args.has_any_mutation() {
+                    // Applies even for dry-run: previewing a no-op update is misleading.
+                    if !update_args.has_any_mutation() {
                         anyhow::bail!(
                             "no update fields specified — provide at least one field to change\n\
                              (e.g. --status, --priority, --tags, --message, --phase, …)"
@@ -547,9 +548,15 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
                         },
                     )?;
                 }
-                // No id, no substantive filter, and either no flags at all or only
-                // --filter-all (which alone doesn't enable bulk mode)
-                (None, false, _) => {
+                // --filter-all alone: recognise the flag but explain it needs a peer
+                (None, false, true) => {
+                    anyhow::bail!(
+                        "--filter-all requires at least one other filter flag to be meaningful\n\
+                         example: crumbs update --filter-tag sprint/3 --filter-all --priority 1"
+                    );
+                }
+                // No filter flags at all and no id
+                (None, false, false) => {
                     anyhow::bail!(
                         "specify an item ID or at least one --filter-* flag\n\
                          example: crumbs update cr-abc --priority 1\n\
@@ -734,7 +741,15 @@ fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
 
                     commands::close::run_bulk(dir, filter, reason, dry_run)?;
                 }
-                (None, false, _) => {
+                // --all alone: recognise the flag but explain it needs a peer
+                (None, false, true) => {
+                    anyhow::bail!(
+                        "--all requires at least one other filter flag to be meaningful\n\
+                         example: crumbs close --tag done --all"
+                    );
+                }
+                // No filter flags at all and no id
+                (None, false, false) => {
                     anyhow::bail!(
                         "specify an item ID or at least one filter flag\n\
                          example: crumbs close cr-abc\n\

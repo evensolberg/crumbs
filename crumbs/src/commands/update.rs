@@ -248,7 +248,7 @@ pub struct BulkUpdateArgs {
 /// Returns an error if the filter is invalid or any store write fails.
 #[allow(clippy::needless_pass_by_value)] // intentional: callers construct and pass args by value
 pub fn run_bulk(dir: &Path, args: BulkUpdateArgs) -> Result<()> {
-    if !args.dry_run && !args.update.has_any_mutation() {
+    if !args.update.has_any_mutation() {
         anyhow::bail!(
             "no update fields specified — provide at least one field to change\n\
              (e.g. --status, --priority, --tags, --message, --phase, …)"
