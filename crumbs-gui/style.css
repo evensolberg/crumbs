@@ -556,7 +556,8 @@ button:disabled {
 .prop-value select:focus,
 .prop-value input:focus { border-color: var(--accent); }
 
-.nav-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; align-items: center; }
+.link-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; }
+.nav-chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .nav-chip {
   display: inline-flex; align-items: center; gap: 0;
   font-size: 11px; border-radius: 10px;

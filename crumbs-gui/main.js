@@ -971,8 +971,11 @@ function renderProps(item) {
     ['Blocked by', item.blocked_by ?? [], 'blocked-by'],
   ]) {
     const row = propRow(label, '');
-    row.appendChild(navChips(ids, id => doLink(rel, id, true)));
-    row.appendChild(linkAddInput((id, inp) => doLink(rel, id, false, inp)));
+    const linksWrap = document.createElement('div');
+    linksWrap.className = 'link-row';
+    linksWrap.appendChild(navChips(ids, id => doLink(rel, id, true)));
+    linksWrap.appendChild(linkAddInput((id, inp) => doLink(rel, id, false, inp)));
+    row.appendChild(linksWrap);
   }
   if (item.closed_reason) {
     propRow('Reason', escHtml(item.closed_reason));
