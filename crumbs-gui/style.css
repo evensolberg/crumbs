@@ -7,6 +7,7 @@
   --status-blocked: #d63651;
   --status-deferred: #888;
   --status-closed: #999;
+  --danger: #c0392b;
 
   --priority-0: #d63651;
   --priority-1: #e6a817;
@@ -574,13 +575,14 @@ button:disabled {
   background: none; border: none; cursor: pointer; color: inherit;
   border-radius: 0 10px 10px 0;
 }
-.nav-chip-remove:hover { opacity: 1; color: var(--danger, #c0392b); }
-.nav-chip-add {
+.nav-chip-remove:hover { opacity: 1; color: var(--danger); }
+/* Higher specificity than .prop-value input[type="text"] to override width/border/radius */
+.prop-value .nav-chip-add {
   font-size: 11px; width: 80px; padding: 1px 4px; border-radius: 10px;
   border: 1px dashed var(--border); background: transparent;
   color: var(--text); font-family: inherit; outline: none;
 }
-.nav-chip-add:focus { border-color: var(--accent); }
+.prop-value .nav-chip-add:focus { border-color: var(--accent); }
 
 .detail-actions {
   padding: 8px 10px;
