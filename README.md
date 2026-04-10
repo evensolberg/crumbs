@@ -182,16 +182,68 @@ crumbs defer bc-x7q --until 2026-04-01       # defer with a wake-up date
 crumbs defer bc-x7q --reopen                 # reopen a deferred item
 ```
 
-### Move and import between stores
+### Move and pull between stores
 
 ```sh
 crumbs move bc-x7q --to /path/to/other/.crumbs
 crumbs move bc-x7q --to global
-crumbs import glob-x7q --from global
-crumbs import glob-x7q --from /path/to/.crumbs
+crumbs pull glob-x7q --from global
+crumbs pull glob-x7q --from /path/to/.crumbs
 ```
 
-Moved and imported items get a new ID using the destination store's prefix.
+Moved and pulled items get a new ID using the destination store's prefix.
+
+### Batch create from file or stdin
+
+Create multiple items in one operation from a JSON or YAML array:
+
+```sh
+crumbs batch-create --from items.json       # JSON array, format inferred from extension
+crumbs batch-create --from items.yaml       # YAML array (.yaml or .yml)
+crumbs batch-create --from data.txt --format json   # explicit format override
+```
+
+**Stdin** — use `-` as the path and supply `--format`. On macOS/Linux end input with **Ctrl-D**:
+
+```sh
+# Pipe from another command
+generate-tasks | crumbs batch-create --from - --format json
+
+# Heredoc
+crumbs batch-create --from - --format yaml << 'EOF'
+- title: Fix the login bug
+  type: bug
+  priority: 1
+- title: Update the README
+EOF
+```
+
+Only `title` is required in each spec. All other fields default to the same values as `crumbs create` with no flags:
+
+| Field | Default |
+| ----- | ------- |
+| `type` | `task` |
+| `priority` | `2` (normal) |
+| `tags` | `[]` |
+| `message` | _(empty)_ |
+| `dependencies` | `[]` |
+| `due` | _(none)_ |
+| `story_points` | _(none)_ |
+| `phase` | _(empty)_ |
+
+All IDs are generated fresh and are unique across the batch and the store. The index is rebuilt once at the end.
+
+### Import from file (inverse of export)
+
+Import item records from a JSON or CSV file. JSON preserves all fields including the markdown body; CSV round-trips only the CSV columns (no body text — use JSON for full-fidelity imports). This is the inverse of `crumbs export`:
+
+```sh
+crumbs import --file export.json            # format inferred from .json extension
+crumbs import --file export.csv             # format inferred from .csv extension
+crumbs import --file data.bin --format json # explicit format override
+```
+
+The command errors immediately if any item's ID already exists in the store, or if the file contains duplicate IDs. TOON import is not supported — use `--format json` for portable round-trips.
 
 ### Link items
 
@@ -309,4 +361,4 @@ Body text in Markdown.
 
 ## File naming
 
-Files are named after a slug of the title (max 60 chars). On collision the item ID suffix is appended, e.g. `my-task-x7q.md`.
+Files are named after a slug of the title (max 60 chars). On collision the full item ID is appended, e.g. `my-task-cr-x7q.md`.

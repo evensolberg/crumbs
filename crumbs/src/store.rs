@@ -49,11 +49,14 @@ pub fn item_path(dir: &Path, item: &Item) -> PathBuf {
     dir.join(format!("{slug}.md"))
 }
 
-/// Build the fallback path (slug + ID suffix) used when the base slug collides.
+/// Build the fallback path (slug + full ID) used when the base slug collides.
+///
+/// Using the full ID (prefix + suffix) rather than just the suffix ensures
+/// uniqueness even when items from different prefixes share the same 3-char
+/// suffix and the same title slug.
 fn fallback_path(dir: &Path, item: &Item) -> PathBuf {
-    let slug = slugify!(&item.title, max_length = 50);
-    let id_suffix = item.id.split_once('-').map_or(item.id.as_str(), |x| x.1);
-    dir.join(format!("{slug}-{id_suffix}.md"))
+    let slug = slugify!(&item.title, max_length = 60);
+    dir.join(format!("{slug}-{}.md", item.id))
 }
 
 /// # Errors

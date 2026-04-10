@@ -93,13 +93,52 @@ crumbs defer cr-x7q --until 2026-04-01       # defer with a wake-up date; resurf
 crumbs defer cr-x7q --reopen                 # reopen a deferred item
 ```
 
-### Move and import between stores
+### Move and pull between stores
 ```sh
-crumbs move cr-x7q --to /path/to/other/.crumbs   # move to another store (new ID)
+crumbs move cr-x7q --to /path/to/other/.crumbs   # move to another store (new ID assigned)
 crumbs move cr-x7q --to global                    # move to the global store
-crumbs import glob-x7q --from global              # import from global into current store
-crumbs import glob-x7q --from /path/to/.crumbs   # import from a specific store
+crumbs pull glob-x7q --from global                # pull from global into current store
+crumbs pull glob-x7q --from /path/to/.crumbs      # pull from a specific store
 ```
+
+`move` and `pull` always assign a new ID in the destination store.
+
+### Batch create from file or stdin
+```sh
+crumbs batch-create --from items.json             # JSON array of item specs
+crumbs batch-create --from items.yaml             # YAML array (.yaml or .yml)
+crumbs batch-create --from data.txt --format json # override inferred format
+generate-tasks | crumbs batch-create --from - --format json   # stdin pipe
+crumbs batch-create --from - --format yaml << 'EOF'           # heredoc
+- title: Fix login bug
+  type: bug
+  priority: 1
+- title: Update docs
+EOF
+```
+
+Input is a JSON or YAML **array of item specs**. Only `title` is required; all other fields are optional and default to the same values as `crumbs create` with no flags. Format is inferred from the file extension (`.json` → json, `.yaml`/`.yml` → yaml); `--format` overrides or is required when the extension is unrecognised. For stdin (`-`), `--format` is always required. On macOS/Linux, end stdin input with **Ctrl-D**. All IDs are generated fresh and are unique across the batch and the store. `reindex` runs once at the end.
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| `title` | yes | |
+| `type` | no | default: `task` |
+| `priority` | no | default: `2` (normal) |
+| `tags` | no | array of strings |
+| `message` | no | body text |
+| `dependencies` | no | array of IDs |
+| `due` | no | `YYYY-MM-DD` |
+| `story_points` | no | Fibonacci integer |
+| `phase` | no | free-form label |
+
+### Import from file (inverse of export)
+```sh
+crumbs import --file export.json                  # format inferred from .json extension
+crumbs import --file export.csv                   # format inferred from .csv extension
+crumbs import --file data.bin --format json       # explicit format override
+```
+
+Imports item records from a JSON or CSV file. JSON preserves all fields including the markdown body; CSV round-trips only the CSV columns (no body text — use JSON for full-fidelity imports). This is the inverse of `crumbs export`. Format is inferred from `.json` or `.csv`; `--format` is required for any other extension. Errors immediately if any item's ID already exists in the store, or if the file contains duplicate IDs. TOON import is not supported (use JSON for round-trips). `reindex` runs once at the end.
 
 ### Link (blocking relationships)
 ```sh
@@ -200,7 +239,8 @@ Timer entries live in the markdown body alongside other notes:
 - `:shortcode:` in body text (message, append, timer comments) is expanded to Unicode at write time — e.g. `:tada:` → 🎉, `:bug:` → 🐛, `:+1:` → 👍; unknown shortcodes pass through unchanged
 - `crumbs defer --until <date>` sets the due date; `crumbs next` skips deferred items with a future until date and skips items whose `blocked_by` items are still open
 - `crumbs start` / `crumbs stop` append timer entries to the body; `crumbs show` sums elapsed time as "Total tracked"
-- File names are title slugs; collisions get the ID suffix appended
+- File names are title slugs; collisions get the full ID (prefix + suffix) appended, e.g. `my-task-cr-x7q.md`
 - `.crumbs/` can be committed to git for full history
-- `move`/`import` reassign a new ID using the destination store's prefix
+- `move`/`pull` reassign a new ID using the destination store's prefix; `import --file` preserves the original ID
 - Use `"global"` as the path for `--to` / `--from` to refer to the global store
+- `batch-create` generates fresh IDs for all items; existing IDs in the store are never reused within the batch
