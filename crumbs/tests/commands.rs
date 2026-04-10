@@ -2568,8 +2568,11 @@ fn file_import_toon_extension_errors_with_helpful_message() {
     // TOON import is not supported due to serde_toon round-trip limitations.
     let result =
         crumbs::commands::file_import::infer_format(std::path::Path::new("data.toon"), None);
-    assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("use --format"));
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("TOON import is not supported"),
+        "unexpected error: {err}"
+    );
 }
 
 #[test]

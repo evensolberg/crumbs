@@ -5,6 +5,26 @@ use console::Style;
 
 use crate::{item::Item, store};
 
+/// Return `true` if `id` matches the expected `{prefix}-{3-char alphanumeric}` format.
+///
+/// This guards against path traversal: imported IDs are used to derive file names
+/// inside the store directory, so we reject anything containing `/`, `\`, `..`, or
+/// characters outside `[a-z0-9-]`.
+fn is_valid_id(id: &str) -> bool {
+    let id_lower = id.to_lowercase();
+    let mut parts = id_lower.splitn(2, '-');
+    let Some(prefix) = parts.next() else {
+        return false;
+    };
+    let Some(suffix) = parts.next() else {
+        return false;
+    };
+    !prefix.is_empty()
+        && prefix.chars().all(|c| c.is_ascii_alphanumeric())
+        && suffix.len() == 3
+        && suffix.chars().all(|c| c.is_ascii_alphanumeric())
+}
+
 /// Infer the import format from the file extension, falling back to `explicit`
 /// when provided.
 ///
@@ -26,6 +46,9 @@ pub fn infer_format<'a>(path: &Path, explicit: Option<&'a str>) -> Result<&'a st
     match path.extension().and_then(|e| e.to_str()) {
         Some("json") => Ok("json"),
         Some("csv") => Ok("csv"),
+        Some("toon") => anyhow::bail!(
+            "TOON import is not supported; export as JSON instead (crumbs export --format json)"
+        ),
         Some(ext) => {
             anyhow::bail!("cannot infer import format from .{ext}; use --format json or csv")
         }
@@ -139,7 +162,6 @@ fn parse_csv(bytes: &[u8]) -> Result<Vec<Item>> {
         let updated =
             parse_date(col("updated"))?.unwrap_or_else(|| chrono::Local::now().date_naive());
         let due = parse_date(col("due"))?;
-        let _ = parse_date;
         let item = Item {
             id,
             title,
@@ -186,9 +208,18 @@ pub fn run(dir: &Path, path: &Path, format: Option<&str>) -> Result<()> {
         return Ok(());
     }
 
-    // Check for duplicate IDs within the import file itself.
+    // Validate and deduplicate IDs before touching disk.
     let mut seen_in_file: std::collections::HashSet<String> = std::collections::HashSet::new();
     for item in &items {
+        // Enforce the expected ID format to prevent path traversal.
+        // Valid form: one or more lowercase alphanumeric chars, a hyphen,
+        // then exactly 3 lowercase alphanumeric chars (e.g. "cr-x7q").
+        if !is_valid_id(&item.id) {
+            anyhow::bail!(
+                "invalid ID {:?}: must match <prefix>-<3 alphanumeric chars> (e.g. cr-x7q)",
+                item.id
+            );
+        }
         let key = item.id.to_lowercase();
         if !seen_in_file.insert(key) {
             anyhow::bail!("ID {} appears more than once in the import file", item.id);
