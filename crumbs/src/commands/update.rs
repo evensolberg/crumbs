@@ -62,10 +62,6 @@ pub struct UpdateArgs {
 }
 
 impl UpdateArgs {
-    /// Returns `true` if at least one field mutation is requested.
-    ///
-    /// Used by [`run_bulk`] to guard against a no-op bulk update that would
-    /// silently bump `updated` on every matched item.
     /// Validate the parsed-string fields (`status`, `item_type`, `story_points`)
     /// without applying any mutations.
     ///
@@ -95,6 +91,10 @@ impl UpdateArgs {
         Ok(())
     }
 
+    /// Returns `true` if at least one field mutation is requested.
+    ///
+    /// Used by [`run_bulk`] to guard against a no-op bulk update that would
+    /// silently bump `updated` on every matched item without changing anything.
     #[must_use]
     pub fn has_any_mutation(&self) -> bool {
         self.status.is_some()

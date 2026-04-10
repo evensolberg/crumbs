@@ -77,7 +77,11 @@ pub fn run_bulk(
             println!("Would close {} — {}", item.id, item.title);
             count += 1;
         }
-        println!("{count} item(s) would be closed.");
+        if count == 0 {
+            println!("No items to close (all matched items were already closed).");
+        } else {
+            println!("{count} item(s) would be closed.");
+        }
         return Ok(());
     }
 
