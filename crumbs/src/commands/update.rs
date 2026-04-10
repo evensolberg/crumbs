@@ -61,6 +61,30 @@ pub struct UpdateArgs {
     pub resolution: Option<String>,
 }
 
+impl UpdateArgs {
+    /// Returns `true` if at least one field mutation is requested.
+    ///
+    /// Used by [`run_bulk`] to guard against a no-op bulk update that would
+    /// silently bump `updated` on every matched item.
+    #[must_use]
+    pub fn has_any_mutation(&self) -> bool {
+        self.status.is_some()
+            || self.priority.is_some()
+            || self.tags.is_some()
+            || self.item_type.is_some()
+            || self.dependencies.is_some()
+            || self.due.is_some()
+            || self.clear_due
+            || self.message.is_some()
+            || self.story_points.is_some()
+            || self.clear_points
+            || self.title.is_some()
+            || self.phase.is_some()
+            || self.clear_phase
+            || self.resolution.is_some()
+    }
+}
+
 /// Update an item. Prints `"Updated <id>"` on success.
 ///
 /// # Errors
@@ -222,6 +246,13 @@ pub struct BulkUpdateArgs {
 /// Returns an error if the filter is invalid or any store write fails.
 #[allow(clippy::needless_pass_by_value)] // intentional: callers construct and pass args by value
 pub fn run_bulk(dir: &Path, args: BulkUpdateArgs) -> Result<()> {
+    if !args.dry_run && !args.update.has_any_mutation() {
+        anyhow::bail!(
+            "no update fields specified — provide at least one field to change\n\
+             (e.g. --status, --priority, --tags, --message, --phase, …)"
+        );
+    }
+
     let items = store::load_all(dir)?;
     let matched = crate::commands::filter::apply(items, &args.filter)?;
 

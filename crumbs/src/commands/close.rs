@@ -12,10 +12,11 @@ pub fn run(dir: &Path, id: &str, reason: Option<String>) -> Result<()> {
     match store::find_by_id(dir, id)? {
         None => bail!("no item found with id: {id}"),
         Some((path, mut item)) => {
-            // cr-613: stop any running timer before closing
+            // cr-613: stop any running timer before closing.
+            // Use run_no_reindex because close::run calls reindex below anyway.
             if active_start_ts(&item.description).is_some() {
-                super::stop::run(dir, id, None)?;
-                // stop::run rewrote the file; item is now stale — reload from disk
+                super::stop::run_no_reindex(dir, id, None)?;
+                // stop wrote the file; item is now stale — reload from disk
                 item = store::read_item(&path)?;
             }
 
