@@ -7,6 +7,7 @@
   --status-blocked: #d63651;
   --status-deferred: #888;
   --status-closed: #999;
+  --danger: #c0392b;
 
   --priority-0: #d63651;
   --priority-1: #e6a817;
@@ -555,14 +556,37 @@ button:disabled {
 .prop-value select:focus,
 .prop-value input:focus { border-color: var(--accent); }
 
-.nav-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.link-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; }
+.nav-chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .nav-chip {
-  font-size: 11px; padding: 1px 7px; border-radius: 10px;
+  display: inline-flex; align-items: center; gap: 0;
+  font-size: 11px; border-radius: 10px;
   border: 1px solid var(--border); background: var(--surface2);
-  color: var(--accent); cursor: pointer; font-family: inherit;
+  color: var(--accent); font-family: inherit;
 }
 .nav-chip:hover { background: var(--accent); color: var(--bg); }
 .nav-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.nav-chip-label {
+  padding: 1px 4px 1px 7px; background: none; border: none;
+  color: inherit; font: inherit; cursor: pointer; border-radius: 10px 0 0 10px;
+}
+/* Full radius when label is the only child (no remove button). */
+.nav-chip-label:last-child { border-radius: 10px; padding-right: 7px; }
+.nav-chip-label:hover { text-decoration: underline; }
+.nav-chip-remove {
+  font-size: 10px; line-height: 1; opacity: 0.6; padding: 1px 6px 1px 2px;
+  background: none; border: none; cursor: pointer; color: inherit;
+  border-radius: 0 10px 10px 0;
+}
+.nav-chip-remove:hover { opacity: 1; color: var(--danger); }
+/* Higher specificity than .prop-value input[type="text"] to override width/border/radius */
+/* Higher specificity than .prop-value input[type="text"] to ensure pill styles win. */
+.prop-value input.nav-chip-add[type="text"] {
+  font-size: 11px; width: 80px; padding: 1px 4px; border-radius: 10px;
+  border: 1px dashed var(--border); background: transparent;
+  color: var(--text); font-family: inherit; outline: none;
+}
+.prop-value input.nav-chip-add[type="text"]:focus { border-color: var(--accent); }
 
 .detail-actions {
   padding: 8px 10px;

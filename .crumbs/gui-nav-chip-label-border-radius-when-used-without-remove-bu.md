@@ -1,12 +1,13 @@
 ---
 id: cr-zzn
 title: 'GUI: nav-chip-label border-radius when used without remove button'
-status: open
+status: closed
 type: task
 priority: 2
 tags: []
 created: 2026-04-10
 updated: 2026-04-10
+closed_reason: 'Fixed via CSS :last-child selector in PR #34'
 dependencies: []
 phase: ''
 ---

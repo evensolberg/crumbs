@@ -580,12 +580,13 @@ button:disabled {
 }
 .nav-chip-remove:hover { opacity: 1; color: var(--danger); }
 /* Higher specificity than .prop-value input[type="text"] to override width/border/radius */
-.prop-value .nav-chip-add {
+/* Higher specificity than .prop-value input[type="text"] to ensure pill styles win. */
+.prop-value input.nav-chip-add[type="text"] {
   font-size: 11px; width: 80px; padding: 1px 4px; border-radius: 10px;
   border: 1px dashed var(--border); background: transparent;
   color: var(--text); font-family: inherit; outline: none;
 }
-.prop-value .nav-chip-add:focus { border-color: var(--accent); }
+.prop-value input.nav-chip-add[type="text"]:focus { border-color: var(--accent); }
 
 .detail-actions {
   padding: 8px 10px;

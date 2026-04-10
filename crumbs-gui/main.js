@@ -956,6 +956,7 @@ function renderProps(item) {
   }
   let linkInFlight = false;
   const doLink = async (relation, targetId, remove, inputEl) => {
+    if (targetId === item.id) { showError('Cannot link an item to itself.'); return; }
     if (linkInFlight) return;
     linkInFlight = true;
     try {
