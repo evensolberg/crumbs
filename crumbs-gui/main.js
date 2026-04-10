@@ -953,27 +953,26 @@ function renderProps(item) {
   if ((item.dependencies ?? []).length > 0) {
     depsRow.appendChild(navChips(item.dependencies));
   }
+  let linkInFlight = false;
   const doLink = async (relation, targetId, remove, inputEl) => {
+    if (linkInFlight) return;
+    linkInFlight = true;
     try {
       await invoke('link_items', { dir: storeDir, id: item.id, relation, targets: [targetId], remove });
       if (inputEl) inputEl.value = '';
       await loadItems();
     } catch (e) { showError(`Link failed: ${e}`); }
+    finally { linkInFlight = false; }
   };
 
-  const blocksRow = propRow('Blocks', '');
-  blocksRow.appendChild(navChips(
-    item.blocks ?? [],
-    id => doLink('blocks', id, true),
-  ));
-  blocksRow.appendChild(linkAddInput((id, inp) => doLink('blocks', id, false, inp)));
-
-  const blockedByRow = propRow('Blocked by', '');
-  blockedByRow.appendChild(navChips(
-    item.blocked_by ?? [],
-    id => doLink('blocked-by', id, true),
-  ));
-  blockedByRow.appendChild(linkAddInput((id, inp) => doLink('blocked-by', id, false, inp)));
+  for (const [label, ids, rel] of [
+    ['Blocks',     item.blocks     ?? [], 'blocks'],
+    ['Blocked by', item.blocked_by ?? [], 'blocked-by'],
+  ]) {
+    const row = propRow(label, '');
+    row.appendChild(navChips(ids, id => doLink(rel, id, true)));
+    row.appendChild(linkAddInput((id, inp) => doLink(rel, id, false, inp)));
+  }
   if (item.closed_reason) {
     propRow('Reason', escHtml(item.closed_reason));
   }
