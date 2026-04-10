@@ -772,19 +772,50 @@ async function navigateToItem(id) {
   } finally { navInFlight = false; }
 }
 
-function navChips(ids) {
+function navChips(ids, onRemove) {
   const wrap = document.createElement('div');
   wrap.className = 'nav-chips';
   for (const id of ids) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'nav-chip';
-    btn.textContent = id;
-    btn.title = `Go to ${id}`;
-    btn.addEventListener('click', () => navigateToItem(id));
-    wrap.appendChild(btn);
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'nav-chip';
+    chip.title = `Go to ${id}`;
+
+    const label = document.createElement('span');
+    label.className = 'nav-chip-label';
+    label.textContent = id;
+    chip.appendChild(label);
+
+    if (onRemove) {
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.className = 'nav-chip-remove';
+      x.textContent = '×';
+      x.title = `Remove link to ${id}`;
+      x.addEventListener('click', e => { e.stopPropagation(); onRemove(id); });
+      chip.appendChild(x);
+    }
+
+    chip.addEventListener('click', () => navigateToItem(id));
+    wrap.appendChild(chip);
   }
   return wrap;
+}
+
+function linkAddInput(onAdd) {
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.className = 'nav-chip-add';
+  inp.placeholder = 'add id…';
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { inp.value = ''; inp.blur(); e.stopPropagation(); }
+    if (e.key === 'Enter') {
+      const val = inp.value.trim();
+      inp.value = '';
+      if (val) onAdd(val);
+    }
+  });
+  return inp;
 }
 
 function makeSelect(options, current, onChange) {
@@ -920,12 +951,26 @@ function renderProps(item) {
   if ((item.dependencies ?? []).length > 0) {
     depsRow.appendChild(navChips(item.dependencies));
   }
-  if ((item.blocks ?? []).length > 0) {
-    propRow('Blocks', '').appendChild(navChips(item.blocks));
-  }
-  if ((item.blocked_by ?? []).length > 0) {
-    propRow('Blocked by', '').appendChild(navChips(item.blocked_by));
-  }
+  const doLink = async (relation, targetId, remove) => {
+    try {
+      await invoke('link_items', { dir: storeDir, id: item.id, relation, targets: [targetId], remove });
+      await loadItems();
+    } catch (e) { showError(`Link failed: ${e}`); }
+  };
+
+  const blocksRow = propRow('Blocks', '');
+  blocksRow.appendChild(navChips(
+    item.blocks ?? [],
+    id => doLink('blocks', id, true),
+  ));
+  blocksRow.appendChild(linkAddInput(id => doLink('blocks', id, false)));
+
+  const blockedByRow = propRow('Blocked by', '');
+  blockedByRow.appendChild(navChips(
+    item.blocked_by ?? [],
+    id => doLink('blocked-by', id, true),
+  ));
+  blockedByRow.appendChild(linkAddInput(id => doLink('blocked-by', id, false)));
   if (item.closed_reason) {
     propRow('Reason', escHtml(item.closed_reason));
   }
