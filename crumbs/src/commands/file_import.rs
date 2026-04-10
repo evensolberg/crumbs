@@ -77,19 +77,24 @@ fn parse_items(bytes: &[u8], format: &str) -> Result<Vec<Item>> {
 
 fn parse_csv(bytes: &[u8]) -> Result<Vec<Item>> {
     use chrono::NaiveDate;
+    use std::collections::HashMap;
 
     let mut rdr = csv::Reader::from_reader(bytes);
-    let headers = rdr.headers()?.clone();
+    let header_index: HashMap<String, usize> = rdr
+        .headers()?
+        .iter()
+        .enumerate()
+        .map(|(i, h)| (h.to_owned(), i))
+        .collect();
     let mut items = Vec::new();
 
     for result in rdr.records() {
         let rec = result?;
         let col = |name: &str| -> &str {
-            headers
-                .iter()
-                .position(|h| h == name)
-                .and_then(|i| rec.get(i))
-                .unwrap_or("")
+            header_index
+                .get(name)
+                .and_then(|&i| rec.get(i))
+                .unwrap_or_default()
         };
 
         let split_pipe = |s: &str| -> Vec<String> {
@@ -208,9 +213,14 @@ pub fn run(dir: &Path, path: &Path, format: Option<&str>) -> Result<()> {
         return Ok(());
     }
 
-    // Validate and deduplicate IDs before touching disk.
+    // Validate all items before touching disk.
     let mut seen_in_file: std::collections::HashSet<String> = std::collections::HashSet::new();
     for item in &items {
+        anyhow::ensure!(
+            !item.title.trim().is_empty(),
+            "item {:?} has an empty or whitespace-only title",
+            item.id
+        );
         // Enforce the expected ID format to prevent path traversal.
         // Valid form: one or more lowercase alphanumeric chars, a hyphen,
         // then exactly 3 lowercase alphanumeric chars (e.g. "cr-x7q").

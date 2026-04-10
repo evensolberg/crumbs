@@ -69,6 +69,10 @@ pub fn run(dir: &Path, items: Vec<BatchCreateItem>) -> Result<()> {
     }
 
     for item in &items {
+        anyhow::ensure!(
+            !item.title.trim().is_empty(),
+            "item title must not be empty or whitespace-only"
+        );
         if let Some(sp) = item.story_points
             && !is_fibonacci(sp)
         {
