@@ -42,7 +42,7 @@ pub fn apply(items: Vec<(PathBuf, Item)>, args: &FilterArgs) -> Result<Vec<(Path
         None => None,
         Some(s) => Some(
             s.parse()
-                .map_err(|e: String| anyhow::anyhow!("invalid --status value: {e}"))?,
+                .map_err(|e: String| anyhow::anyhow!("invalid status filter value: {e}"))?,
         ),
     };
 

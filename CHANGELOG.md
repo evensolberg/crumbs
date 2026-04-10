@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 
 - Batch-create, file import, rename import→pull (v0.22.0) (#30)
 - Right-justify counts in crumbs stats (v0.22.1) (#31)
+- Bulk update and close via filter flags (`--filter-tag`, `--filter-status`, etc.) with `--dry-run` and confirmation prompt (#32)
 
 ## [0.21.0] - 2026-04-08
 

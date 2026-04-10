@@ -3050,22 +3050,11 @@ fn bulk_close_by_tag() {
     )
     .unwrap();
 
-    let items = store::load_all(&d).unwrap();
-    let status = |id: &str| {
-        items
-            .iter()
-            .find(|(_, i)| i.id == id)
-            .map(|(_, i)| i.status.clone())
-            .unwrap()
-    };
-    // load_all by default excludes closed items — reload with store::find_by_id
     let (_, i1) = store::find_by_id(&d, &id1).unwrap().unwrap();
     let (_, i2) = store::find_by_id(&d, &id2).unwrap().unwrap();
+    let (_, i3) = store::find_by_id(&d, &id3).unwrap().unwrap();
     assert_eq!(i1.status, Status::Closed, "tagged item should be closed");
     assert_eq!(i2.status, Status::Closed, "tagged item should be closed");
-    // id3 should still be open
-    let _ = status; // suppress unused warning; use find_by_id for open item
-    let (_, i3) = store::find_by_id(&d, &id3).unwrap().unwrap();
     assert_eq!(i3.status, Status::Open, "untagged item should remain open");
 }
 
