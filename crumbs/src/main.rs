@@ -443,11 +443,17 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
             // --filter-all alone is not a substantive filter: it only broadens scope
             // and has no effect without at least one other criterion to match against.
             // Requiring at least one other filter flag prevents a confusing no-op.
-            let has_filter = filter_status.is_some()
-                || filter_tag.is_some()
+            let has_filter = filter_status
+                .as_deref()
+                .is_some_and(|s| !s.trim().is_empty())
+                || filter_tag
+                    .as_deref()
+                    .is_some_and(|t| t.split(',').any(|p| !p.trim().is_empty()))
                 || filter_priority.is_some()
-                || filter_type.is_some()
-                || filter_phase.is_some();
+                || filter_type.as_deref().is_some_and(|s| !s.trim().is_empty())
+                || filter_phase
+                    .as_deref()
+                    .is_some_and(|s| !s.trim().is_empty());
 
             // --append wins over --message when both are supplied.
             let (final_message, final_append) = match (message, append) {
@@ -626,11 +632,13 @@ fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
             yes,
         } => {
             // --all alone is not a substantive filter (see update equivalent above).
-            let has_filter = status.is_some()
-                || tag.is_some()
+            let has_filter = status.as_deref().is_some_and(|s| !s.trim().is_empty())
+                || tag
+                    .as_deref()
+                    .is_some_and(|t| t.split(',').any(|p| !p.trim().is_empty()))
                 || priority.is_some()
-                || item_type.is_some()
-                || phase.is_some();
+                || item_type.as_deref().is_some_and(|s| !s.trim().is_empty())
+                || phase.as_deref().is_some_and(|s| !s.trim().is_empty());
 
             match (id, has_filter) {
                 (Some(id), false) => {

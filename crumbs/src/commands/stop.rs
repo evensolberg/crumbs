@@ -21,6 +21,23 @@ pub fn format_elapsed(secs: i64) -> String {
 /// Returns an error if the item is not found, no active timer exists, or the store cannot be
 /// updated.
 pub fn run(dir: &Path, id: &str, comment: Option<&str>) -> Result<()> {
+    run_impl(dir, id, comment, true)
+}
+
+/// Like [`run`] but skips the final `reindex` call.
+///
+/// Use this inside bulk operations that will call `reindex` once themselves
+/// after the loop, to avoid one redundant reindex per item.
+///
+/// # Errors
+///
+/// Returns an error if the item is not found, no active timer exists, or the store cannot be
+/// updated.
+pub(crate) fn run_no_reindex(dir: &Path, id: &str, comment: Option<&str>) -> Result<()> {
+    run_impl(dir, id, comment, false)
+}
+
+fn run_impl(dir: &Path, id: &str, comment: Option<&str>, do_reindex: bool) -> Result<()> {
     let (path, mut item) = store::find_by_id(dir, id)?
         .ok_or_else(|| anyhow::anyhow!("no item found with id: {id}"))?;
 
@@ -68,7 +85,9 @@ pub fn run(dir: &Path, id: &str, comment: Option<&str>) -> Result<()> {
     let frontmatter = serde_yaml_ng::to_string(&item)?;
     let new_content = format!("---\n{frontmatter}---\n{new_body}");
     store::atomic_write(&path, &new_content)?;
-    store::reindex(dir)?;
+    if do_reindex {
+        store::reindex(dir)?;
+    }
 
     println!(
         "Stopped timer for {} — {} (elapsed: {elapsed})",

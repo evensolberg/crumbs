@@ -80,7 +80,9 @@ pub fn run_bulk(
         // stop::run rewrites the file on disk, making the in-memory item stale;
         // reload after to ensure subsequent writes are based on current content.
         if active_start_ts(&item.description).is_some() {
-            super::stop::run(dir, &item.id, None)?;
+            // Use run_no_reindex to avoid one extra reindex per item with an
+            // active timer; run_bulk calls reindex once after the loop.
+            super::stop::run_no_reindex(dir, &item.id, None)?;
             item = store::read_item(&path)?;
         }
 
