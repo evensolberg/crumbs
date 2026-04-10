@@ -86,6 +86,10 @@ const sidebarRemoveBtn = document.getElementById('sidebar-remove-btn');
 const storeListEl      = document.getElementById('store-list');
 const storePathEl      = document.getElementById('store-path');
 const showClosedEl     = document.getElementById('show-closed');
+const filterPriorityEl = document.getElementById('filter-priority');
+const filterTypeEl     = document.getElementById('filter-type');
+const filterTagEl      = document.getElementById('filter-tag');
+const filterPhaseEl    = document.getElementById('filter-phase');
 const themeBtn         = document.getElementById('theme-btn');
 const refreshBtn       = document.getElementById('refresh-btn');
 const errorBanner      = document.getElementById('error-banner');
@@ -356,10 +360,14 @@ function isModalOpen() {
   return !!document.querySelector('.modal:not(.hidden)');
 }
 
+function rowForId(id) {
+  return itemsBody.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+}
+
 function selectRow(id, tr) {
   selectedId = id;
   for (const r of document.querySelectorAll('#items-body tr.selected')) r.classList.remove('selected');
-  if (!tr) tr = document.querySelector(`#items-body tr[data-id="${CSS.escape(id)}"]`);
+  if (!tr) tr = rowForId(id);
   if (tr) {
     tr.classList.add('selected');
     tr.scrollIntoView({ block: 'nearest' });
@@ -688,6 +696,71 @@ function propRow(label, valueHtml) {
   return vEl;
 }
 
+async function navigateToItem(id) {
+  function resetFilters() {
+    filterStatus = 'all'; filterPriority = 'any'; filterType = 'any';
+    filterTag = ''; filterPhase = '';
+    searchInput.value = ''; searchResults = null;
+    filterPriorityEl.value = filterPriority;
+    filterTypeEl.value     = filterType;
+    filterTagEl.value      = filterTag;
+    filterPhaseEl.value    = filterPhase;
+    for (const b of document.querySelectorAll('.filter-btn')) {
+      b.classList.toggle('active', b.dataset.status === 'all');
+    }
+  }
+
+  // Fast path: item is already loaded — reset client-side filters only (no backend call).
+  if (allItems.some(i => i.id === id)) {
+    resetFilters();
+    renderTable();
+    saveViewState();
+    selectRow(id);
+    return;
+  }
+
+  // Slow path: item may be closed and hidden. Reload with closed items included.
+  // Only wipe filters once the item is confirmed to exist in this store.
+  const prevShowClosed = showClosedEl.checked;
+  showClosedEl.checked = true;
+  if (!await loadItems()) {
+    // loadItems already called showError; restore checkbox and bail.
+    showClosedEl.checked = prevShowClosed;
+    return;
+  }
+  if (!allItems.some(i => i.id === id)) {
+    // Item not found even with closed items — likely a typo or wrong store.
+    // Restore the user's prior showClosed state only if we changed it.
+    if (!prevShowClosed) {
+      showClosedEl.checked = false;
+      await loadItems();
+    }
+    showError(`'${id}' not found in this store`);
+    return;
+  }
+  resetFilters();
+  renderTable();
+  saveViewState();
+  const tr = rowForId(id);
+  if (!tr) console.warn(`navigateToItem: '${id}' found in allItems but not in rendered table`);
+  selectRow(id, tr);
+}
+
+function navChips(ids) {
+  const wrap = document.createElement('div');
+  wrap.className = 'nav-chips';
+  for (const id of ids) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'nav-chip';
+    btn.textContent = id;
+    btn.title = `Go to ${id}`;
+    btn.addEventListener('click', () => navigateToItem(id));
+    wrap.appendChild(btn);
+  }
+  return wrap;
+}
+
 function makeSelect(options, current, onChange) {
   const sel = document.createElement('select');
   for (const [val, lbl] of options) {
@@ -816,12 +889,16 @@ function renderProps(item) {
     if (e.key === 'Enter') depsInput.blur();
     if (e.key === 'Escape') { depsInput.value = loadedDeps; depsInput.blur(); e.stopPropagation(); }
   });
-  propRow('Depends on', '').appendChild(depsInput);
+  const depsRow = propRow('Depends on', '');
+  depsRow.appendChild(depsInput);
+  if ((item.dependencies ?? []).length > 0) {
+    depsRow.appendChild(navChips(item.dependencies));
+  }
   if ((item.blocks ?? []).length > 0) {
-    propRow('Blocks', escHtml(item.blocks.join(', ')));
+    propRow('Blocks', '').appendChild(navChips(item.blocks));
   }
   if ((item.blocked_by ?? []).length > 0) {
-    propRow('Blocked by', escHtml(item.blocked_by.join(', ')));
+    propRow('Blocked by', '').appendChild(navChips(item.blocked_by));
   }
   if (item.closed_reason) {
     propRow('Reason', escHtml(item.closed_reason));
@@ -1108,8 +1185,10 @@ async function loadItems() {
     });
     renderTable();
     renderDetail(selectedItem());
+    return true;
   } catch (e) {
     showError(`Failed to load items: ${e}`);
+    return false;
   }
 }
 
@@ -1273,8 +1352,7 @@ function doNext() {
   selectedId = open[0].id;
   renderTable();
   renderDetail(selectedItem());
-  document.querySelector(`#items-body tr[data-id="${CSS.escape(selectedId)}"]`)
-    ?.scrollIntoView({ block: 'nearest' });
+  rowForId(selectedId)?.scrollIntoView({ block: 'nearest' });
 }
 
 // ── Export modal ──────────────────────────────────────────────────────────
@@ -1710,10 +1788,10 @@ function applyViewState(state) {
   for (const b of document.querySelectorAll('.filter-btn')) {
     b.classList.toggle('active', b.dataset.status === filterStatus);
   }
-  document.getElementById('filter-priority').value = filterPriority;
-  document.getElementById('filter-type').value     = filterType;
-  document.getElementById('filter-tag').value      = filterTag;
-  document.getElementById('filter-phase').value    = filterPhase;
+  filterPriorityEl.value = filterPriority;
+  filterTypeEl.value     = filterType;
+  filterTagEl.value      = filterTag;
+  filterPhaseEl.value    = filterPhase;
   showClosedEl.checked = state.showClosed || state.filterStatus === 'closed';
   updateSortHeaders();
 }
@@ -2090,10 +2168,10 @@ for (const btn of document.querySelectorAll('.filter-btn')) {
 }
 
 // Additional filter controls
-document.getElementById('filter-priority').addEventListener('change', e => { filterPriority = e.target.value; renderTable(); saveViewState(); });
-document.getElementById('filter-type').addEventListener('change', e => { filterType = e.target.value; renderTable(); saveViewState(); });
-document.getElementById('filter-tag').addEventListener('input', e => { filterTag = e.target.value.trim(); renderTable(); saveViewStateDebounced(); });
-document.getElementById('filter-phase').addEventListener('input', e => { filterPhase = e.target.value.trim(); renderTable(); saveViewStateDebounced(); });
+filterPriorityEl.addEventListener('change', e => { filterPriority = e.target.value; renderTable(); saveViewState(); });
+filterTypeEl.addEventListener('change', e => { filterType = e.target.value; renderTable(); saveViewState(); });
+filterTagEl.addEventListener('input', e => { filterTag = e.target.value.trim(); renderTable(); saveViewStateDebounced(); });
+filterPhaseEl.addEventListener('input', e => { filterPhase = e.target.value.trim(); renderTable(); saveViewStateDebounced(); });
 
 // Column picker
 const colPickerBtn  = document.getElementById('col-picker-btn');
