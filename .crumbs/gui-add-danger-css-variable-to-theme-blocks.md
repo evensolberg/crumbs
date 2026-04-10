@@ -1,7 +1,7 @@
 ---
 id: cr-gia
 title: 'GUI: add --danger CSS variable to theme blocks'
-status: open
+status: closed
 type: task
 priority: 2
 tags: []

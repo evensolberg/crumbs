@@ -795,6 +795,7 @@ function navChips(ids, onRemove) {
       x.className = 'nav-chip-remove';
       x.textContent = '×';
       x.title = `Remove link to ${id}`;
+      x.setAttribute('aria-label', `Remove link to ${id}`);
       x.addEventListener('click', () => onRemove(id));
       chip.appendChild(x);
     }
