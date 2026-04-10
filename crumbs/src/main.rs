@@ -337,11 +337,15 @@ fn split_csv(s: &str) -> Vec<String> {
 }
 
 fn parse_item_type(s: Option<&str>) -> Result<Option<ItemType>> {
-    s.map(|t| {
-        t.parse::<ItemType>()
-            .map_err(|e: String| anyhow::anyhow!(e))
-    })
-    .transpose()
+    // Trim first; treat empty/whitespace-only as absent (consistent with
+    // how filter.rs handles --filter-status and --filter-phase).
+    match s.map(str::trim) {
+        None | Some("") => Ok(None),
+        Some(t) => t
+            .parse::<ItemType>()
+            .map(Some)
+            .map_err(|e: String| anyhow::anyhow!(e)),
+    }
 }
 
 /// Dispatch commands whose CLI args require non-trivial parsing before calling into the library.
@@ -548,10 +552,12 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
                         },
                     )?;
                 }
-                // --filter-all alone: recognise the flag but explain it needs a peer
+                // No effective filter: either --filter-all was the only flag, or the
+                // other filter flags had empty/whitespace values that were ignored.
                 (None, false, true) => {
                     anyhow::bail!(
-                        "--filter-all requires at least one other filter flag to be meaningful\n\
+                        "no effective filter: --filter-all requires a peer filter flag, \
+                         and empty/whitespace filter values are ignored\n\
                          example: crumbs update --filter-tag sprint/3 --filter-all --priority 1"
                     );
                 }
@@ -741,10 +747,12 @@ fn run_command(dir: &std::path::Path, command: Command) -> Result<()> {
 
                     commands::close::run_bulk(dir, filter, reason, dry_run)?;
                 }
-                // --all alone: recognise the flag but explain it needs a peer
+                // No effective filter: either --all was the only flag, or the other
+                // filter flags had empty/whitespace values that were ignored.
                 (None, false, true) => {
                     anyhow::bail!(
-                        "--all requires at least one other filter flag to be meaningful\n\
+                        "no effective filter: --all requires a peer filter flag, \
+                         and empty/whitespace filter values are ignored\n\
                          example: crumbs close --tag done --all"
                     );
                 }

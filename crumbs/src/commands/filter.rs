@@ -38,8 +38,10 @@ pub struct FilterArgs {
 /// string.
 pub fn apply(items: Vec<(PathBuf, Item)>, args: &FilterArgs) -> Result<Vec<(PathBuf, Item)>> {
     // Validate and parse the status filter once before iterating.
-    let status_parsed: Option<Status> = match args.status.as_deref() {
-        None => None,
+    // Trim first so " open " and "open" are treated identically; a
+    // whitespace-only value collapses to "no filter" (same as tag/phase).
+    let status_parsed: Option<Status> = match args.status.as_deref().map(str::trim) {
+        None | Some("") => None,
         Some(s) => Some(
             s.parse()
                 .map_err(|e: String| anyhow::anyhow!("invalid status filter value: {e}"))?,
