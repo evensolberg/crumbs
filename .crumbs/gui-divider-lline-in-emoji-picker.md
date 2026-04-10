@@ -1,6 +1,6 @@
 ---
 id: cr-phi
-title: 'GUI: Divider lline in emoji picker'
+title: 'GUI: Divider line in emoji picker'
 status: closed
 type: task
 priority: 2
@@ -11,7 +11,7 @@ dependencies: []
 phase: ''
 ---
 
-# GUI: Divider lline in emoji picker
+# GUI: Divider line in emoji picker
 
 We need a way to indicate that the top emoji in the picker represents categories of emoji. Right now it looks like there is a small set of emoji available.
 
