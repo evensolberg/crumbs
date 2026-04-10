@@ -6,7 +6,7 @@ use console::Style;
 
 use crate::{
     commands::row::{PhaseColumn, format_row},
-    item::{Item, ItemType, Status},
+    item::{Item, ItemType},
     store,
 };
 
@@ -130,75 +130,19 @@ pub fn run(dir: &Path, args: ListArgs) -> Result<()> {
         sort,
     } = args;
     let sort = sort.unwrap_or(SortKey::Id);
-    // Validate the status filter up front so a typo surfaces as an error
-    // rather than silently returning "No items found."
-    let status_filter_parsed: Option<Status> = match status_filter.as_deref() {
-        None => None,
-        Some(s) => Some(
-            s.parse()
-                .map_err(|e: String| anyhow::anyhow!("invalid --status value: {e}"))?,
-        ),
-    };
-
-    // Parse comma-separated tag filter once before iteration.
-    // AND semantics: all non-empty parts must each match at least one tag.
-    // Empty parts (e.g. trailing comma) are ignored so "--tag alpha," == "--tag alpha".
-    let tag_parts: Option<Vec<&str>> = tag_filter.as_deref().and_then(|s| {
-        let parts: Vec<&str> = s
-            .split(',')
-            .map(str::trim)
-            .filter(|p| !p.is_empty())
-            .collect();
-        if parts.is_empty() { None } else { Some(parts) }
-    });
-
-    // Trim the phase filter once before the loop (not per item).
-    // An all-whitespace value collapses to "" which would silently match
-    // items with no phase — treat it as "no filter" instead.
-    let phase_filter = phase_filter
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty());
 
     let items = store::load_all(dir)?;
-    let filtered: Vec<_> = items
-        .into_iter()
-        .filter(|(_, item)| {
-            // By default hide closed items unless --all or an explicit status filter is given.
-            // Blocked and deferred items remain visible by default.
-            if !all && status_filter_parsed.is_none() && item.status == Status::Closed {
-                return false;
-            }
-            if status_filter_parsed
-                .as_ref()
-                .is_some_and(|s| s != &item.status)
-            {
-                return false;
-            }
-            if let Some(parts) = &tag_parts
-                && !parts
-                    .iter()
-                    .all(|req| item.tags.iter().any(|t| t.contains(req)))
-            {
-                return false;
-            }
-            if let Some(p) = priority_filter
-                && item.priority != p
-            {
-                return false;
-            }
-            if let Some(ref t) = type_filter
-                && &item.item_type != t
-            {
-                return false;
-            }
-            if let Some(ref p) = phase_filter
-                && item.phase != p.as_str()
-            {
-                return false;
-            }
-            true
-        })
-        .collect();
+    let filtered = crate::commands::filter::apply(
+        items,
+        &crate::commands::filter::FilterArgs {
+            status: status_filter,
+            tag: tag_filter,
+            priority: priority_filter,
+            r#type: type_filter,
+            phase: phase_filter,
+            all,
+        },
+    )?;
 
     if filtered.is_empty() {
         println!("No items found.");
