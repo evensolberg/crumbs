@@ -721,12 +721,16 @@ async function navigateToItem(id) {
 
   // Slow path: item may be closed and hidden. Reload with closed items included.
   // Only wipe filters once the item is confirmed to exist in this store.
+  const prevShowClosed = showClosedEl.checked;
   showClosedEl.checked = true;
   await loadItems();
   if (!allItems.some(i => i.id === id)) {
     // Item not found even with closed items — likely a typo or wrong store.
-    showClosedEl.checked = false;
-    await loadItems();
+    // Restore the user's prior showClosed state only if we changed it.
+    if (!prevShowClosed) {
+      showClosedEl.checked = false;
+      await loadItems();
+    }
     showError(`'${id}' not found in this store`);
     return;
   }
