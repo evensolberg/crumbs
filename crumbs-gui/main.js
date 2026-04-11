@@ -32,7 +32,7 @@ let lastClickedId  = null;        // anchor for shift-range selection
 
 /** The single selected ID, or null when 0 or >1 rows are selected. */
 function primaryId() {
-  return selectedIds.size === 1 ? [...selectedIds][0] : null;
+  return selectedIds.size === 1 ? selectedIds.values().next().value : null;
 }
 
 let outlineVisible = localStorage.getItem('outlineVisible') === 'true';
@@ -1768,8 +1768,8 @@ async function confirmDelete() {
     // Reset modal message for next single-item delete
     const msgEl = deleteModal.querySelector('.modal-msg');
     if (msgEl) msgEl.textContent = DEFAULT_DELETE_MSG;
-    await applyBulk(ids, [id => invoke('delete_item', { dir: storeDir, id })]);
     clearMultiSelect();
+    await applyBulk(ids, [id => invoke('delete_item', { dir: storeDir, id })]);
     return;
   }
 
@@ -1814,8 +1814,8 @@ async function confirmClose() {
   if (pendingBulkCloseIds) {
     const ids = pendingBulkCloseIds;
     pendingBulkCloseIds = null;
-    await applyBulk(ids, [id => invoke('close_item', { dir: storeDir, id, reason })]);
     clearMultiSelect();
+    await applyBulk(ids, [id => invoke('close_item', { dir: storeDir, id, reason })]);
     return;
   }
 
@@ -2962,6 +2962,10 @@ timerBtn.addEventListener('click',    () => { if (primaryId()) openTimerModal();
 closeItemBtn.addEventListener('click', () => { if (primaryId()) openCloseModal(primaryId()); });
 
 deleteBtn.addEventListener('click', () => {
+  if (selectedIds.size > 1) {
+    openBulkDeleteModal();
+    return;
+  }
   if (!primaryId()) return;
   openDeleteModal();
 });
