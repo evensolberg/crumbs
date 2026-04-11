@@ -14,3 +14,5 @@ phase: ''
 # GUI: Multi-select and edit
 
 Need to be able to select (shift-click and cmd-click) multiple crumbs and modify properties.
+
+[start] 2026-04-11 11:40:32  Implementing GUI multi-select and bulk edit
