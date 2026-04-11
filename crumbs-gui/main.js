@@ -47,6 +47,7 @@ let searchResults = null;   // null = normal mode; Item[] = search mode
 let searchTimer = null;
 let dragItemId = null;      // ID of the row currently being dragged
 let navInFlight = false;    // guard against concurrent navigateToItem calls
+let linkInFlight = false;   // guard against concurrent link_items calls across re-renders
 
 // ── Column definitions ─────────────────────────────────────────────────────
 
@@ -954,9 +955,9 @@ function renderProps(item) {
   if ((item.dependencies ?? []).length > 0) {
     depsRow.appendChild(navChips(item.dependencies));
   }
-  let linkInFlight = false;
   const doLink = async (relation, targetId, remove, inputEl) => {
-    if (targetId === item.id) { showError('Cannot link an item to itself.'); return; }
+    const norm = s => String(s ?? '').trim().toLowerCase();
+    if (norm(targetId) === norm(item.id)) { showError('Cannot link an item to itself.'); return; }
     if (linkInFlight) return;
     linkInFlight = true;
     try {
