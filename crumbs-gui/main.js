@@ -929,9 +929,6 @@ function renderProps(item) {
     v => doUpdatePoints(item.id, Number(v)),
   ));
 
-  propRow('Created', escHtml(item.created ?? ''));
-  propRow('Updated', escHtml(item.updated ?? ''));
-
   const completedSecs = totalTrackedSecs(item.description ?? '');
   const startTs = activeTimerStart(item.description ?? '');
   if (startTs || completedSecs > 0) {
@@ -1024,6 +1021,9 @@ function renderProps(item) {
     if (e.key === 'Escape') { resolutionInput.value = loadedResolution; resolutionInput.blur(); e.stopPropagation(); }
   });
   propRow('Resolution', '').appendChild(resolutionInput);
+
+  propRow('Created', escHtml(item.created ?? ''));
+  propRow('Updated', escHtml(item.updated ?? ''));
 }
 
 function setPreviewMode(on) {
