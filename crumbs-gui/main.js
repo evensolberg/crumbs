@@ -46,6 +46,7 @@ let filterPhase    = '';
 let previewMode = false;
 let pendingCloseId = '';
 let pendingBulkCloseIds = null;   // set when closing multiple items at once
+let pendingBulkDeleteIds = null;  // set when deleting multiple items at once
 let autosaveTimer = null;
 let timerInterval = null;
 let loadedBody = '';
@@ -1720,9 +1721,33 @@ function openDeleteModal() {
   deleteConfirmBtn.focus();
 }
 
+function openBulkDeleteModal(ids) {
+  pendingBulkDeleteIds = ids;
+  const msgEl = deleteModal.querySelector('.modal-msg');
+  if (msgEl) msgEl.textContent = `Permanently delete ${ids.length} items? This cannot be undone.`;
+  deleteModal.classList.remove('hidden');
+  deleteConfirmBtn.focus();
+}
+
 async function confirmDelete() {
   deleteModal.classList.add('hidden');
   clearError();
+
+  if (pendingBulkDeleteIds) {
+    const ids = pendingBulkDeleteIds;
+    pendingBulkDeleteIds = null;
+    // Reset modal message for next single-item delete
+    const msgEl = deleteModal.querySelector('.modal-msg');
+    if (msgEl) msgEl.textContent = 'Permanently delete this item? This cannot be undone.';
+    await applyBulk(ids, [id => invoke('delete_item', { dir: storeDir, id })]);
+    selectedIds.clear();
+    lastClickedId = null;
+    updateRowHighlights();
+    updateToolbarButtons();
+    return;
+  }
+
+  // Single-item delete (existing path)
   try {
     await invoke('delete_item', { dir: storeDir, id: primaryId() });
     selectedIds.clear(); lastClickedId = null;
@@ -2931,14 +2956,14 @@ helpModal.addEventListener('click', e => {
 nextBtn.addEventListener('click', doNext);
 
 // Delete modal events
-deleteCancelBtn.addEventListener('click', () => { deleteModal.classList.add('hidden'); });
+deleteCancelBtn.addEventListener('click', () => { pendingBulkDeleteIds = null; deleteModal.classList.add('hidden'); });
 deleteConfirmBtn.addEventListener('click', confirmDelete);
 deleteModal.addEventListener('keydown', e => {
   if (e.key === 'Enter') confirmDelete();
-  if (e.key === 'Escape') { deleteModal.classList.add('hidden'); e.stopPropagation(); }
+  if (e.key === 'Escape') { pendingBulkDeleteIds = null; deleteModal.classList.add('hidden'); e.stopPropagation(); }
 });
 deleteModal.addEventListener('click', e => {
-  if (e.target === deleteModal) deleteModal.classList.add('hidden');
+  if (e.target === deleteModal) { pendingBulkDeleteIds = null; deleteModal.classList.add('hidden'); }
 });
 
 // Close modal events
