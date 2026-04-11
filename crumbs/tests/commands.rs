@@ -11,7 +11,7 @@ use crumbs::{
     commands::list::{ListArgs, SortKey},
     commands::update::{BulkUpdateArgs, UpdateArgs},
     item::{Item, ItemType, Status},
-    store,
+    store, store_config,
 };
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -453,14 +453,16 @@ fn move_transfers_item_to_destination() {
     // Item is gone from source.
     assert!(store::find_by_id(&src_store, &id).unwrap().is_none());
     // Item appears in destination with a new ID that uses the dst prefix.
+    let dst_prefix = store_config::load(&dst_store).prefix;
+    let expected_prefix = format!("{dst_prefix}-");
     let items = store::load_all(&dst_store).unwrap();
     let moved = items
         .iter()
         .find(|(_, i)| i.title == "Move Me")
         .expect("moved item not found in dst store");
     assert!(
-        moved.1.id.starts_with("dst-"),
-        "moved item ID should use dst prefix, got: {}",
+        moved.1.id.starts_with(&expected_prefix),
+        "moved item ID should use dst prefix ({expected_prefix}), got: {}",
         moved.1.id
     );
 }

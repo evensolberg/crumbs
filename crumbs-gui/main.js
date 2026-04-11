@@ -1972,8 +1972,11 @@ function startRowDrag(e, item, tr) {
     // Resolve the drop target BEFORE clearing highlights: if elementFromPoint
     // misses by a pixel on mouseup, fall back to the last highlighted sidebar
     // item so the move is not silently dropped.
+    // The fallback applies the same guards as sidebarTargetAt: must have
+    // [data-path] and must not be the current store.
+    const fallbackTarget = storeListEl.querySelector('.store-item[data-path].drop-target');
     const target = sidebarTargetAt(ev.clientX, ev.clientY)
-      ?? storeListEl.querySelector('.store-item.drop-target');
+      ?? (fallbackTarget && fallbackTarget.dataset.path !== storeDir ? fallbackTarget : null);
     clearDropTargets();
 
     const id = dragItemId;
