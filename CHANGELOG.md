@@ -2,23 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
-
 ## [0.23.1] - 2026-04-11
+
+### Chore
+
+- Bump version to v0.23.1
 
 ### Fix
 
-- GUI: resolve drag-drop target before clearing highlights so a near-miss
-  on mouseup no longer silently skips the move (#35)
+- Resolve drag-drop target before clearing highlights (#35)
 
-## [0.23.0] - 2026-04-10
+## [0.23.0] - 2026-04-11
 
 ### Chore
 
 - Update dependencies
 - Ignore .worktrees/ directory
 - Close cr-ghd (bulk ops implemented in PR #32)
-- Fix collapsible-if clippy warning in update.rs
+- Bump version to v0.23.0
 
 ### Docs
 

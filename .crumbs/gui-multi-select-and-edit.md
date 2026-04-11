@@ -1,12 +1,12 @@
 ---
 id: cr-nk8
 title: 'GUI: Multi-select and edit'
-status: open
+status: in_progress
 type: feature
 priority: 2
 tags: []
 created: 2026-04-06
-updated: 2026-04-07
+updated: 2026-04-11
 dependencies: []
 phase: ''
 ---
