@@ -207,7 +207,7 @@ pub fn load_all(dir: &Path) -> Result<Vec<(PathBuf, Item)>> {
         let snapshot: Vec<(PathBuf, Item)> = items.clone();
         for idx in to_migrate {
             let (path, item) = &mut items[idx];
-            if let Err(e) = migrate_depends(&path.clone(), item, &snapshot) {
+            if let Err(e) = migrate_depends(path, item, &snapshot) {
                 eprintln!(
                     "warning: depends migration failed for {}: {e}",
                     path.display()
