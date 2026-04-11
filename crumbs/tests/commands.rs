@@ -617,7 +617,6 @@ fn delete_closed_noop_when_none_closed() {
 fn depends_field_is_promoted_to_blocked_by_on_load() {
     let dir = tempdir().unwrap();
     let store = dir.path().join(".crumbs");
-    std::fs::create_dir_all(&store).unwrap();
     commands::init::run(&store, Some("cr".to_string())).unwrap();
 
     let blocker_raw = "---\nid: cr-aaa\ntitle: Blocker\nstatus: open\ntype: task\npriority: 3\ntags: []\ncreated: '2026-01-01'\nupdated: '2026-01-01'\nclosed_reason: ''\nblocks: []\nblocked_by: []\nphase: ''\nresolution: ''\n---\n\n# Blocker\n";
@@ -666,7 +665,6 @@ fn depends_field_is_promoted_to_blocked_by_on_load() {
 fn depends_shared_blocker_gets_both_entries() {
     let dir = tempdir().unwrap();
     let store = dir.path().join(".crumbs");
-    std::fs::create_dir_all(&store).unwrap();
     commands::init::run(&store, Some("cr".to_string())).unwrap();
 
     // Blocker item (no dependencies)
@@ -700,14 +698,13 @@ fn depends_shared_blocker_gets_both_entries() {
 fn depends_unknown_id_is_recorded_in_blocked_by() {
     let dir = tempdir().unwrap();
     let store = dir.path().join(".crumbs");
-    std::fs::create_dir_all(&store).unwrap();
     commands::init::run(&store, Some("cr".to_string())).unwrap();
 
     // Item depends on a non-existent ID
     let item_raw = "---\nid: cr-bbb\ntitle: Item\nstatus: open\ntype: task\npriority: 3\ntags: []\ncreated: '2026-01-01'\nupdated: '2026-01-01'\nclosed_reason: ''\ndependencies:\n- cr-zzz\nblocks: []\nblocked_by: []\nphase: ''\nresolution: ''\n---\n\n# Item\n";
     std::fs::write(store.join("bbb-item.md"), item_raw).unwrap();
 
-    // Should not error — unknown ID is silently ignored
+    // Should not error — unknown ID is recorded in blocked_by; only the reverse link is skipped
     let items = crumbs::store::load_all(&store).unwrap();
     let item = items
         .iter()
@@ -723,6 +720,56 @@ fn depends_unknown_id_is_recorded_in_blocked_by() {
     assert!(
         item.dependencies.is_empty(),
         "dependencies should be cleared after migration"
+    );
+}
+
+#[test]
+fn depends_blank_entry_is_skipped_on_migration() {
+    let dir = tempdir().unwrap();
+    let store = dir.path().join(".crumbs");
+    commands::init::run(&store, Some("cr".to_string())).unwrap();
+
+    // Item has a blank string in its dependencies list
+    let item_raw = "---\nid: cr-bbb\ntitle: Item\nstatus: open\ntype: task\npriority: 3\ntags: []\ncreated: '2026-01-01'\nupdated: '2026-01-01'\nclosed_reason: ''\ndependencies:\n- ''\nblocks: []\nblocked_by: []\nphase: ''\nresolution: ''\n---\n\n# Item\n";
+    std::fs::write(store.join("bbb-item.md"), item_raw).unwrap();
+
+    let items = crumbs::store::load_all(&store).unwrap();
+    let item = items
+        .iter()
+        .find(|(_, i)| i.id == "cr-bbb")
+        .map(|(_, i)| i)
+        .unwrap();
+
+    assert!(
+        item.blocked_by.is_empty(),
+        "blank dependency entry should not be pushed into blocked_by"
+    );
+}
+
+#[test]
+fn depends_self_reference_is_skipped_on_migration() {
+    let dir = tempdir().unwrap();
+    let store = dir.path().join(".crumbs");
+    commands::init::run(&store, Some("cr".to_string())).unwrap();
+
+    // Item lists itself as a dependency
+    let item_raw = "---\nid: cr-bbb\ntitle: Item\nstatus: open\ntype: task\npriority: 3\ntags: []\ncreated: '2026-01-01'\nupdated: '2026-01-01'\nclosed_reason: ''\ndependencies:\n- cr-bbb\nblocks: []\nblocked_by: []\nphase: ''\nresolution: ''\n---\n\n# Item\n";
+    std::fs::write(store.join("bbb-item.md"), item_raw).unwrap();
+
+    let items = crumbs::store::load_all(&store).unwrap();
+    let item = items
+        .iter()
+        .find(|(_, i)| i.id == "cr-bbb")
+        .map(|(_, i)| i)
+        .unwrap();
+
+    assert!(
+        item.blocked_by.is_empty(),
+        "self-referencing dependency should not create a self-cycle in blocked_by"
+    );
+    assert!(
+        item.blocks.is_empty(),
+        "self-referencing dependency should not create a self-cycle in blocks"
     );
 }
 
