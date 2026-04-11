@@ -46,6 +46,7 @@ let sortDir = 'asc';
 let searchResults = null;   // null = normal mode; Item[] = search mode
 let searchTimer = null;
 let dragItemId = null;      // ID of the row currently being dragged
+let navInFlight = false;    // guard against concurrent navigateToItem calls
 
 // ── Column definitions ─────────────────────────────────────────────────────
 
@@ -697,6 +698,9 @@ function propRow(label, valueHtml) {
 }
 
 async function navigateToItem(id) {
+  if (navInFlight) return;
+  navInFlight = true;
+  try {
   function resetFilters() {
     // Cancel any pending debounced save so it cannot overwrite the reset state.
     clearTimeout(_saveViewStateTimer);
@@ -752,6 +756,7 @@ async function navigateToItem(id) {
   renderTable();
   saveViewState();
   selectRow(id, rowForId(id));
+  } finally { navInFlight = false; }
 }
 
 function navChips(ids) {
