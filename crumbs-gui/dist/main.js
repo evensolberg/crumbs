@@ -1968,9 +1968,14 @@ function startRowDrag(e, item, tr) {
     document.removeEventListener('mouseup', onUp);
     dragGhost.remove(); dragGhost = null;
     tr.classList.remove('dragging');
+
+    // Resolve the drop target BEFORE clearing highlights: if elementFromPoint
+    // misses by a pixel on mouseup, fall back to the last highlighted sidebar
+    // item so the move is not silently dropped.
+    const target = sidebarTargetAt(ev.clientX, ev.clientY)
+      ?? storeListEl.querySelector('.store-item.drop-target');
     clearDropTargets();
 
-    const target = sidebarTargetAt(ev.clientX, ev.clientY);
     const id = dragItemId;
     dragItemId = null;
     if (!target || !id) return;
