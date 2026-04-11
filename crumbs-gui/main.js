@@ -2945,14 +2945,15 @@ deleteModal.addEventListener('click', e => {
 closeCancelBtn.addEventListener('click', () => {
   closeModal.classList.add('hidden');
   pendingCloseId = '';
+  pendingBulkCloseIds = null;
 });
 closeConfirmBtn.addEventListener('click', confirmClose);
 closeReason.addEventListener('keydown', e => {
   if (e.key === 'Enter') confirmClose();
-  if (e.key === 'Escape') { closeModal.classList.add('hidden'); pendingCloseId = ''; e.stopPropagation(); }
+  if (e.key === 'Escape') { closeModal.classList.add('hidden'); pendingCloseId = ''; pendingBulkCloseIds = null; e.stopPropagation(); }
 });
 closeModal.addEventListener('click', e => {
-  if (e.target === closeModal) { closeModal.classList.add('hidden'); pendingCloseId = ''; }
+  if (e.target === closeModal) { closeModal.classList.add('hidden'); pendingCloseId = ''; pendingBulkCloseIds = null; }
 });
 
 // New item modal events
