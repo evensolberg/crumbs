@@ -27,7 +27,14 @@ const { invoke } = globalThis.__TAURI__.core;
 
 let storeDir = '';
 let allItems = [];
-let selectedId = null;
+let selectedIds    = new Set();   // all currently highlighted IDs
+let lastClickedId  = null;        // anchor for shift-range selection
+
+/** The single selected ID, or null when 0 or >1 rows are selected. */
+function primaryId() {
+  return selectedIds.size === 1 ? selectedIds.values().next().value : null;
+}
+
 let outlineVisible = localStorage.getItem('outlineVisible') === 'true';
 let lineWrapOn = localStorage.getItem('lineWrap') !== 'false'; // default on
 const lineWrapCompartment = new Compartment();
@@ -38,6 +45,8 @@ let filterTag      = '';
 let filterPhase    = '';
 let previewMode = false;
 let pendingCloseId = '';
+let pendingBulkCloseIds = null;   // set when closing multiple items at once
+let pendingBulkDeleteIds = null;  // set when deleting multiple items at once
 let autosaveTimer = null;
 let timerInterval = null;
 let loadedBody = '';
@@ -100,6 +109,7 @@ const itemsTable       = document.getElementById('items-table');
 const itemsBody        = document.getElementById('items-body');
 const detailPane       = document.getElementById('detail-pane');
 const detailLeft       = document.getElementById('detail-left');
+const detailRight      = document.getElementById('detail-right');
 const detailResizer    = document.getElementById('detail-resizer');
 const resizeHandle     = document.getElementById('resize-handle');
 const propGrid         = document.getElementById('prop-grid');
@@ -339,7 +349,8 @@ function dueHtml(due) {
 }
 
 function selectedItem() {
-  return allItems.find(i => i.id === selectedId) ?? null;
+  const id = primaryId();
+  return id ? (allItems.find(i => i.id === id) ?? null) : null;
 }
 
 // Returns true when any interactive control has keyboard focus, so global
@@ -367,7 +378,9 @@ function rowForId(id) {
 }
 
 function selectRow(id, tr) {
-  selectedId = id;
+  selectedIds.clear();
+  if (id != null) selectedIds.add(id);
+  lastClickedId = id ?? null;
   for (const r of document.querySelectorAll('#items-body tr.selected')) r.classList.remove('selected');
   if (!tr) tr = rowForId(id);
   if (tr) {
@@ -375,6 +388,21 @@ function selectRow(id, tr) {
     tr.scrollIntoView({ block: 'nearest' });
   }
   renderDetail(selectedItem());
+}
+
+/** Clear multi-select state and update the UI to reflect no selection. */
+function clearMultiSelect() {
+  selectedIds.clear();
+  lastClickedId = null;
+  updateRowHighlights();
+  updateToolbarButtons();
+}
+
+/** Sync `.selected` class on all table rows to match `selectedIds`. */
+function updateRowHighlights() {
+  for (const r of document.querySelectorAll('#items-body tr[data-id]')) {
+    r.classList.toggle('selected', selectedIds.has(r.dataset.id));
+  }
 }
 
 // ── Toolbar contextual button state ──────────────────────────────────────
@@ -392,7 +420,22 @@ function hasActiveTimer(description) {
 
 function updateToolbarButtons() {
   const item = selectedItem();
-  const hasSelection = item !== null;
+  const hasSelection = selectedIds.size > 0;
+
+  // Multi-select: only bulk-capable buttons (delete) stay enabled
+  if (selectedIds.size > 1) {
+    startBtn.disabled     = true;
+    blockBtn.disabled     = true;
+    deferBtn.disabled     = true;
+    timerBtn.disabled     = true;
+    timerBtn.textContent  = '▶ Timer';
+    timerBtn.title        = 'Start a time-tracking timer';
+    closeItemBtn.disabled = true;
+    deleteBtn.disabled    = false;
+    emojiBtn.disabled     = true;
+    return;
+  }
+
   const isClosed = item?.status === 'closed';
   const timerActive = hasActiveTimer(item?.description);
 
@@ -404,7 +447,7 @@ function updateToolbarButtons() {
   timerBtn.title       = timerActive ? 'Stop the active timer' : 'Start a time-tracking timer';
   closeItemBtn.disabled = !hasSelection || isClosed;
   deleteBtn.disabled   = !hasSelection;
-  emojiBtn.disabled    = !hasSelection;
+  emojiBtn.disabled    = !hasSelection || selectedIds.size > 1;
 }
 
 // ── Vertical resize ───────────────────────────────────────────────────────
@@ -623,7 +666,7 @@ function renderTable() {
 
   for (const item of items) {
     const tr = document.createElement('tr');
-    if (item.id === selectedId) tr.classList.add('selected');
+    if (selectedIds.has(item.id)) tr.classList.add('selected');
     tr.innerHTML = visibleCols.map(key => cellFor(item, key)).join('');
     tr.dataset.id = item.id;
     tr.addEventListener('mousedown', e => startRowDrag(e, item, tr));
@@ -933,29 +976,6 @@ function renderProps(item) {
   });
   propRow('Tags', '').appendChild(tagsInput);
 
-  const depsInput = document.createElement('input');
-  depsInput.type = 'text';
-  depsInput.placeholder = 'id1, id2, …';
-  depsInput.value = (item.dependencies ?? []).join(', ');
-  depsInput.style.cssText = 'width:100%;font:inherit;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:2px 4px;outline:none;box-sizing:border-box;';
-  let loadedDeps = depsInput.value;
-  depsInput.addEventListener('focus', () => { depsInput.style.borderColor = 'var(--accent)'; });
-  depsInput.addEventListener('blur', () => {
-    depsInput.style.borderColor = 'var(--border)';
-    if (depsInput.value !== loadedDeps) {
-      loadedDeps = depsInput.value;
-      doUpdateDependencies(item.id, depsInput.value);
-    }
-  });
-  depsInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter') depsInput.blur();
-    if (e.key === 'Escape') { depsInput.value = loadedDeps; depsInput.blur(); e.stopPropagation(); }
-  });
-  const depsRow = propRow('Depends on', '');
-  depsRow.appendChild(depsInput);
-  if ((item.dependencies ?? []).length > 0) {
-    depsRow.appendChild(navChips(item.dependencies));
-  }
   const doLink = async (relation, targetId, remove, inputEl) => {
     const norm = s => String(s ?? '').trim().toLowerCase();
     if (norm(targetId) === norm(item.id)) { showError('Cannot link an item to itself.'); return; }
@@ -1226,7 +1246,193 @@ outlineResizer.addEventListener('mousedown', e => {
   document.addEventListener('mouseup', onUp);
 });
 
+/**
+ * Run `ops` (array of `(id) => Promise<void>`) for every ID in `ids`.
+ * Errors are collected and displayed after the loop; processing continues
+ * regardless of individual failures. Calls `loadItems()` once at the end.
+ */
+async function applyBulk(ids, ops) {
+  const errors = [];
+  for (const id of ids) {
+    for (const op of ops) {
+      try {
+        await op(id);
+      } catch (e) {
+        errors.push(`${id}: ${e}`);
+      }
+    }
+  }
+  await loadItems();
+  if (errors.length) showError(`Bulk update partially failed:\n${errors.join('\n')}`);
+}
+
+async function handleBulkApply(ids) {
+  const statusEl      = document.getElementById('bulk-status');
+  const priorityEl    = document.getElementById('bulk-priority');
+  const typeEl        = document.getElementById('bulk-type');
+  const dueEl         = document.getElementById('bulk-due');
+  const tagsAddEl     = document.getElementById('bulk-tags-add');
+  const tagsRepEl     = document.getElementById('bulk-tags-replace');
+  const blockerAddEl  = document.getElementById('bulk-blocker-add');
+  const blockerRemEl  = document.getElementById('bulk-blocker-remove');
+
+  // Closing has a special modal flow — hand off and return
+  if (statusEl.value === 'closed') {
+    openBulkCloseModal(ids);
+    return;
+  }
+
+  const ops = [];
+
+  if (statusEl.value) {
+    ops.push(id => invoke('update_status', { dir: storeDir, id, status: statusEl.value }));
+  }
+  if (priorityEl.value) {
+    ops.push(id => invoke('update_priority', { dir: storeDir, id, priority: Number(priorityEl.value) }));
+  }
+  if (typeEl.value) {
+    ops.push(id => invoke('update_type', { dir: storeDir, id, itemType: typeEl.value }));
+  }
+  if (dueEl.value) {
+    ops.push(id => invoke('update_due', { dir: storeDir, id, due: dueEl.value }));
+  }
+  if (tagsAddEl.value.trim()) {
+    const newTags = tagsAddEl.value.split(',').map(t => t.trim()).filter(Boolean);
+    ops.push(async id => {
+      const item = allItems.find(i => i.id === id);
+      const merged = [...new Set([...(item?.tags ?? []), ...newTags])];
+      await invoke('update_tags', { dir: storeDir, id, tags: merged.join(',') });
+    });
+  }
+  if (tagsRepEl.value.trim()) {
+    const replaceTags = tagsRepEl.value.split(',').map(t => t.trim()).filter(Boolean);
+    ops.push(id => invoke('update_tags', { dir: storeDir, id, tags: replaceTags.join(',') }));
+  }
+  if (blockerAddEl.value.trim()) {
+    const blocker = blockerAddEl.value.trim();
+    ops.push(id => invoke('link_items', { dir: storeDir, id, relation: 'blocked-by', targets: [blocker], remove: false }));
+  }
+  if (blockerRemEl.value.trim()) {
+    const blocker = blockerRemEl.value.trim();
+    ops.push(id => invoke('link_items', { dir: storeDir, id, relation: 'blocked-by', targets: [blocker], remove: true }));
+  }
+
+  if (!ops.length) return;
+
+  clearError();
+  await applyBulk(ids, ops);
+  clearMultiSelect();
+  renderDetail(null);
+}
+
+function renderBulkPanel(ids) {
+  const items = ids.map(id => allItems.find(i => i.id === id)).filter(Boolean);
+
+  detailPane.classList.remove('hidden');
+  detailPane.classList.add('bulk-mode');
+  detailRight.classList.add('hidden');
+
+  // Detect mixed values across the selection
+  const uniq = (arr) => [...new Set(arr)];
+  const statuses   = uniq(items.map(i => i.status));
+  const priorities = uniq(items.map(i => String(i.priority)));
+  const types      = uniq(items.map(i => i.type ?? ''));
+
+  const MIXED = '';   // empty string = "— mixed —" placeholder option
+
+  const statusVal   = statuses.length   === 1 ? statuses[0]   : MIXED;
+  const priorityVal = priorities.length === 1 ? priorities[0] : MIXED;
+  const typeVal     = types.length      === 1 ? types[0]      : MIXED;
+
+  const mixedOpt = `<option value="" ${!statusVal ? 'selected' : ''}>— mixed —</option>`;
+
+  propGrid.innerHTML = '';
+  detailActions.innerHTML = `
+    <div class="bulk-panel">
+      <div class="bulk-header">${ids.length} items selected</div>
+
+      <div class="bulk-row">
+        <label class="bulk-label" for="bulk-status">Status</label>
+        <select id="bulk-status" class="bulk-select">
+          ${mixedOpt}
+          <option value="open"        ${statusVal === 'open'        ? 'selected' : ''}>open</option>
+          <option value="in_progress" ${statusVal === 'in_progress' ? 'selected' : ''}>in progress</option>
+          <option value="blocked"     ${statusVal === 'blocked'     ? 'selected' : ''}>blocked</option>
+          <option value="deferred"    ${statusVal === 'deferred'    ? 'selected' : ''}>deferred</option>
+          <option value="closed"      ${statusVal === 'closed'      ? 'selected' : ''}>closed</option>
+        </select>
+      </div>
+
+      <div class="bulk-row">
+        <label class="bulk-label" for="bulk-priority">Priority</label>
+        <select id="bulk-priority" class="bulk-select">
+          <option value="" ${!priorityVal ? 'selected' : ''}>— mixed —</option>
+          <option value="1" ${priorityVal === '1' ? 'selected' : ''}>P1</option>
+          <option value="2" ${priorityVal === '2' ? 'selected' : ''}>P2</option>
+          <option value="3" ${priorityVal === '3' ? 'selected' : ''}>P3</option>
+          <option value="4" ${priorityVal === '4' ? 'selected' : ''}>P4</option>
+        </select>
+      </div>
+
+      <div class="bulk-row">
+        <label class="bulk-label" for="bulk-type">Type</label>
+        <select id="bulk-type" class="bulk-select">
+          <option value="" ${!typeVal ? 'selected' : ''}>— mixed —</option>
+          <option value="feature" ${typeVal === 'feature' ? 'selected' : ''}>feature</option>
+          <option value="bug"     ${typeVal === 'bug'     ? 'selected' : ''}>bug</option>
+          <option value="task"    ${typeVal === 'task'    ? 'selected' : ''}>task</option>
+          <option value="idea"    ${typeVal === 'idea'    ? 'selected' : ''}>idea</option>
+          <option value="epic"    ${typeVal === 'epic'    ? 'selected' : ''}>epic</option>
+        </select>
+      </div>
+
+      <div class="bulk-row">
+        <label class="bulk-label" for="bulk-due">Due</label>
+        <input id="bulk-due" type="date" class="bulk-input">
+      </div>
+
+      <div class="bulk-row">
+        <label class="bulk-label" for="bulk-tags-add">Add tags</label>
+        <input id="bulk-tags-add" type="text" class="bulk-input" placeholder="comma-separated">
+      </div>
+
+      <div class="bulk-row">
+        <label class="bulk-label" for="bulk-tags-replace">Replace tags</label>
+        <input id="bulk-tags-replace" type="text" class="bulk-input" placeholder="comma-separated (overwrites)">
+      </div>
+
+      <div class="bulk-row">
+        <label class="bulk-label" for="bulk-blocker-add">Add blocker</label>
+        <input id="bulk-blocker-add" type="text" class="bulk-input" placeholder="crumb ID">
+      </div>
+
+      <div class="bulk-row">
+        <label class="bulk-label" for="bulk-blocker-remove">Remove blocker</label>
+        <input id="bulk-blocker-remove" type="text" class="bulk-input" placeholder="crumb ID">
+      </div>
+
+      <div class="bulk-actions">
+        <button id="bulk-apply-btn" class="btn btn-action">Apply</button>
+        <button id="bulk-delete-btn" class="btn btn-danger-solid">Delete all</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('bulk-apply-btn').addEventListener('click',  () => handleBulkApply(ids));
+  document.getElementById('bulk-delete-btn').addEventListener('click', () => openBulkDeleteModal(ids));
+}
+
 function renderDetail(item) {
+  // Multi-select: hand off to bulk panel, then return
+  if (selectedIds.size > 1) {
+    renderBulkPanel([...selectedIds]);
+    return;
+  }
+
+  // Restore normal layout if coming back from bulk mode
+  detailPane.classList.remove('bulk-mode');
+  detailRight.classList.remove('hidden');
+
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
   if (!item) {
     detailPane.classList.add('hidden');
@@ -1325,15 +1531,6 @@ async function doUpdateDue(id, due) {
   }
 }
 
-async function doUpdateDependencies(id, dependencies) {
-  clearError();
-  try {
-    await invoke('update_dependencies', { dir: storeDir, id, dependencies });
-    await loadItems();
-  } catch (e) {
-    showError(`Update failed: ${e}`);
-  }
-}
 
 async function doUpdateTags(id, tags) {
   clearError();
@@ -1430,10 +1627,12 @@ function doNext() {
     })
     .sort((a, b) => a.priority - b.priority || a.created.localeCompare(b.created));
   if (!open.length) return;
-  selectedId = open[0].id;
+  selectedIds.clear();
+  selectedIds.add(open[0].id);
+  lastClickedId = open[0].id;
   renderTable();
   renderDetail(selectedItem());
-  rowForId(selectedId)?.scrollIntoView({ block: 'nearest' });
+  rowForId(primaryId())?.scrollIntoView({ block: 'nearest' });
 }
 
 // ── Export modal ──────────────────────────────────────────────────────────
@@ -1505,7 +1704,24 @@ reindexBtn.addEventListener('click', async () => {
 
 // ── Delete modal ──────────────────────────────────────────────────────────
 
+const DEFAULT_DELETE_MSG = 'Permanently delete this item? This cannot be undone.';
+
+function dismissDeleteModal() {
+  pendingBulkDeleteIds = null;
+  const msgEl = deleteModal.querySelector('.modal-msg');
+  if (msgEl) msgEl.textContent = DEFAULT_DELETE_MSG;
+  deleteModal.classList.add('hidden');
+}
+
 function openDeleteModal() {
+  deleteModal.classList.remove('hidden');
+  deleteConfirmBtn.focus();
+}
+
+function openBulkDeleteModal(ids) {
+  pendingBulkDeleteIds = ids;
+  const msgEl = deleteModal.querySelector('.modal-msg');
+  if (msgEl) msgEl.textContent = `Permanently delete ${ids.length} items? This cannot be undone.`;
   deleteModal.classList.remove('hidden');
   deleteConfirmBtn.focus();
 }
@@ -1513,9 +1729,23 @@ function openDeleteModal() {
 async function confirmDelete() {
   deleteModal.classList.add('hidden');
   clearError();
+
+  if (pendingBulkDeleteIds) {
+    const ids = pendingBulkDeleteIds;
+    pendingBulkDeleteIds = null;
+    // Reset modal message for next single-item delete
+    const msgEl = deleteModal.querySelector('.modal-msg');
+    if (msgEl) msgEl.textContent = DEFAULT_DELETE_MSG;
+    clearMultiSelect();
+    await applyBulk(ids, [id => invoke('delete_item', { dir: storeDir, id })]);
+    renderDetail(null);
+    return;
+  }
+
+  // Single-item delete (existing path)
   try {
-    await invoke('delete_item', { dir: storeDir, id: selectedId });
-    selectedId = null;
+    await invoke('delete_item', { dir: storeDir, id: primaryId() });
+    selectedIds.clear(); lastClickedId = null;
     await loadItems();
   } catch (e) {
     showError(`Delete failed: ${e}`);
@@ -1524,6 +1754,12 @@ async function confirmDelete() {
 
 // ── Close modal ───────────────────────────────────────────────────────────
 
+function dismissCloseModal() {
+  closeModal.classList.add('hidden');
+  pendingCloseId = '';
+  pendingBulkCloseIds = null;
+}
+
 function openCloseModal(id) {
   pendingCloseId = id;
   closeReason.value = '';
@@ -1531,13 +1767,33 @@ function openCloseModal(id) {
   closeReason.focus();
 }
 
+function openBulkCloseModal(ids) {
+  pendingBulkCloseIds = ids;
+  pendingCloseId      = null;     // ensure single-close path is not triggered
+  closeReason.value   = '';
+  closeModal.classList.remove('hidden');
+  closeReason.focus();
+}
+
 async function confirmClose() {
   closeModal.classList.add('hidden');
   clearError();
+  const reason = closeReason.value.trim();
+
+  if (pendingBulkCloseIds) {
+    const ids = pendingBulkCloseIds;
+    pendingBulkCloseIds = null;
+    clearMultiSelect();
+    await applyBulk(ids, [id => invoke('close_item', { dir: storeDir, id, reason })]);
+    renderDetail(null);
+    return;
+  }
+
+  // Single-item close (existing path)
   try {
-    await invoke('close_item', { dir: storeDir, id: pendingCloseId, reason: closeReason.value.trim() });
-    if (selectedId === pendingCloseId && !showClosedEl.checked) {
-      selectedId = null;
+    await invoke('close_item', { dir: storeDir, id: pendingCloseId, reason });
+    if (primaryId() === pendingCloseId && !showClosedEl.checked) {
+      selectedIds.clear(); lastClickedId = null;
     }
     await loadItems();
   } catch (e) {
@@ -1553,7 +1809,7 @@ function renderBlockerList(filterText) {
   if (!item) return;
   const currentBlockers = item.blocked_by ?? [];
   const candidates = allItems.filter(i =>
-    i.id !== selectedId &&
+    i.id !== primaryId() &&
     i.status !== 'closed' &&
     (!filterText || i.title.toLowerCase().includes(filterText.toLowerCase()) ||
       i.id.toLowerCase().includes(filterText.toLowerCase()))
@@ -1591,10 +1847,10 @@ async function confirmBlockedBy() {
   clearError();
   try {
     if (toAdd.length > 0) {
-      await invoke('link_items', { dir: storeDir, id: selectedId, relation: 'blocked-by', targets: toAdd, remove: false });
+      await invoke('link_items', { dir: storeDir, id: primaryId(), relation: 'blocked-by', targets: toAdd, remove: false });
     }
     if (toRemove.length > 0) {
-      await invoke('link_items', { dir: storeDir, id: selectedId, relation: 'blocked-by', targets: toRemove, remove: true });
+      await invoke('link_items', { dir: storeDir, id: primaryId(), relation: 'blocked-by', targets: toRemove, remove: true });
     }
     await loadItems();
   } catch (e) {
@@ -1650,10 +1906,10 @@ function openDeferModal() {
 
 async function confirmDefer() {
   deferModal.classList.add('hidden');
-  if (!selectedId) return;
+  if (!primaryId()) return;
   clearError();
   try {
-    await invoke('defer_item', { dir: storeDir, id: selectedId, until: deferUntil.value });
+    await invoke('defer_item', { dir: storeDir, id: primaryId(), until: deferUntil.value });
     await loadItems();
   } catch (e) {
     showError(`Defer failed: ${e}`);
@@ -1673,7 +1929,7 @@ deferModal.addEventListener('click', e => {
 // ── Timer modal ───────────────────────────────────────────────────────────
 
 function openTimerModal() {
-  if (!selectedId) return;
+  if (!primaryId()) return;
   const item = selectedItem();
   const starting = !hasActiveTimer(item?.description);
   timerModalTitle.textContent = starting ? 'Start timer' : 'Stop timer';
@@ -1685,16 +1941,16 @@ function openTimerModal() {
 
 async function confirmTimer() {
   timerModal.classList.add('hidden');
-  if (!selectedId) return;
+  if (!primaryId()) return;
   const item = selectedItem();
   const starting = !hasActiveTimer(item?.description);
   const comment = timerComment.value.trim();
   clearError();
   try {
     if (starting) {
-      await invoke('start_timer', { dir: storeDir, id: selectedId, comment });
+      await invoke('start_timer', { dir: storeDir, id: primaryId(), comment });
     } else {
-      await invoke('stop_timer', { dir: storeDir, id: selectedId, comment });
+      await invoke('stop_timer', { dir: storeDir, id: primaryId(), comment });
     }
     await loadItems();
   } catch (e) {
@@ -1773,7 +2029,7 @@ async function switchStore(crumbsDir) {
   saveViewState();
   storeDir = crumbsDir;
   storePathEl.textContent = storeDir;
-  selectedId = null;
+  selectedIds.clear(); lastClickedId = null;
   searchResults = null;
   searchInput.value = '';
   applyViewState(loadViewState(crumbsDir));
@@ -1986,7 +2242,7 @@ function startRowDrag(e, item, tr) {
     clearError();
     try {
       await invoke('move_item', { srcDir: storeDir, id, dstDir: target.dataset.path });
-      if (selectedId === id) selectedId = null;
+      if (selectedIds.has(id)) { selectedIds.delete(id); if (lastClickedId === id) lastClickedId = null; }
       await loadItems();
     } catch (err) {
       showError(`Move failed: ${err}`);
@@ -2072,6 +2328,15 @@ document.addEventListener('keydown', e => {
     hideContextMenu();
     if (!helpModal.classList.contains('hidden')) {
       helpModal.classList.add('hidden');
+      return;
+    }
+    if (selectedIds.size > 1) {
+      selectedIds.clear();
+      lastClickedId = null;
+      updateRowHighlights();
+      renderDetail(selectedItem());
+      updateToolbarButtons();
+      return;
     }
     return;
   }
@@ -2104,6 +2369,19 @@ document.addEventListener('keydown', e => {
     return;
   }
 
+  // Cmd/Ctrl+A — select all filtered rows
+  if (mod && e.key === 'a' && !isControlFocused() && !isModalOpen()) {
+    e.preventDefault();
+    const rows = [...document.querySelectorAll('#items-body tr[data-id]')];
+    selectedIds.clear();
+    rows.forEach(r => selectedIds.add(r.dataset.id));
+    lastClickedId = rows.length ? rows[rows.length - 1].dataset.id : null;
+    updateRowHighlights();
+    renderDetail(selectedIds.size > 1 ? null : selectedItem());
+    updateToolbarButtons();
+    return;
+  }
+
   // Navigation and selection shortcuts — suppressed when any input/editor focused or modal open
   if (isControlFocused() || isModalOpen()) return;
 
@@ -2112,7 +2390,7 @@ document.addEventListener('keydown', e => {
     const rows = [...document.querySelectorAll('#items-body tr[data-id]')];
     if (!rows.length) return;
     e.preventDefault();
-    const currentIndex = rows.findIndex(r => r.dataset.id === selectedId);
+    const currentIndex = rows.findIndex(r => r.dataset.id === (lastClickedId ?? primaryId()));
     let nextIndex;
     if (e.key === 'ArrowUp') {
       nextIndex = currentIndex <= 0 ? 0 : currentIndex - 1;
@@ -2124,17 +2402,21 @@ document.addEventListener('keydown', e => {
   }
 
   // Enter — focus CM6 editor for selected item
-  if (e.key === 'Enter' && selectedId) {
+  if (e.key === 'Enter' && primaryId()) {
     if (!detailPane.classList.contains('hidden')) {
       view.focus();
     }
     return;
   }
 
-  // Delete/Backspace — open delete modal for selected item
-  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
+  // Delete/Backspace — open delete modal for selected item(s)
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.size > 0) {
     e.preventDefault();
-    openDeleteModal();
+    if (selectedIds.size > 1) {
+      openBulkDeleteModal([...selectedIds]);
+    } else {
+      openDeleteModal();
+    }
     return;
   }
 });
@@ -2301,11 +2583,46 @@ document.addEventListener('click', e => {
   }
 });
 
-// Row click → select item
+// Row click → select item (plain, Cmd/Ctrl+click toggle, Shift+click range)
 itemsBody.addEventListener('click', e => {
   const tr = e.target.closest('tr[data-id]');
   if (!tr) return;
-  selectRow(tr.dataset.id, tr);
+  const id = tr.dataset.id;
+
+  if (e.metaKey || e.ctrlKey) {
+    // Cmd/Ctrl+click: toggle this row in or out of the selection
+    if (selectedIds.has(id)) {
+      selectedIds.delete(id);
+    } else {
+      selectedIds.add(id);
+    }
+    lastClickedId = id;
+    updateRowHighlights();
+    renderDetail(selectedIds.size > 1 ? null : selectedItem());
+    updateToolbarButtons();
+    return;
+  }
+
+  if (e.shiftKey && lastClickedId) {
+    // Shift+click: range-select from lastClickedId to this row (inclusive)
+    const rows = [...document.querySelectorAll('#items-body tr[data-id]')];
+    const anchorIdx = rows.findIndex(r => r.dataset.id === lastClickedId);
+    const clickIdx  = rows.findIndex(r => r.dataset.id === id);
+    if (anchorIdx !== -1 && clickIdx !== -1) {
+      const [from, to] = anchorIdx <= clickIdx
+        ? [anchorIdx, clickIdx]
+        : [clickIdx, anchorIdx];
+      selectedIds.clear();
+      for (let i = from; i <= to; i++) selectedIds.add(rows[i].dataset.id);
+      updateRowHighlights();
+      renderDetail(selectedIds.size > 1 ? null : selectedItem());
+      updateToolbarButtons();
+      return;
+    }
+  }
+
+  // Plain click: single-select
+  selectRow(id, tr);
 });
 
 // Inline rename via double-click on detail pane title
@@ -2334,19 +2651,19 @@ detailTitleLabel.addEventListener('dblclick', () => {
 
 // Body text autosave: debounced on input (2s), immediate on blur or Cmd/Ctrl-S
 function scheduleAutosave() {
-  if (!selectedId) return;
+  if (!primaryId()) return;
   clearTimeout(autosaveTimer);
   autosaveTimer = setTimeout(() => {
     const text = view.state.doc.toString();
-    if (text !== loadedBody) doSaveText(selectedId, text);
+    if (text !== loadedBody) doSaveText(primaryId(), text);
   }, 2000);
 }
 function flushAutosave() {
-  if (!selectedId) return;
+  if (!primaryId()) return;
   clearTimeout(autosaveTimer);
   autosaveTimer = null;
   const text = view.state.doc.toString();
-  if (text !== loadedBody) doSaveText(selectedId, text);
+  if (text !== loadedBody) doSaveText(primaryId(), text);
 }
 // Input, blur, and Cmd+S are handled by the CM6 updateListener, domEventHandlers, and keymap.
 
@@ -2608,14 +2925,17 @@ document.addEventListener('click', e => {
 });
 
 // Toolbar action buttons
-startBtn.addEventListener('click',    () => { if (selectedId) doUpdateStatus(selectedId, 'in_progress'); });
-blockBtn.addEventListener('click',    () => { if (selectedId) openBlockedByModal(); });
-deferBtn.addEventListener('click',    () => { if (selectedId) openDeferModal(); });
-timerBtn.addEventListener('click',    () => { if (selectedId) openTimerModal(); });
-closeItemBtn.addEventListener('click', () => { if (selectedId) openCloseModal(selectedId); });
+startBtn.addEventListener('click',    () => { if (primaryId()) doUpdateStatus(primaryId(), 'in_progress'); });
+blockBtn.addEventListener('click',    () => { if (primaryId()) openBlockedByModal(); });
+deferBtn.addEventListener('click',    () => { if (primaryId()) openDeferModal(); });
+timerBtn.addEventListener('click',    () => { if (primaryId()) openTimerModal(); });
+closeItemBtn.addEventListener('click', () => { if (primaryId()) openCloseModal(primaryId()); });
 
 deleteBtn.addEventListener('click', () => {
-  if (!selectedId) return;
+  if (selectedIds.size > 1) {
+    openBulkDeleteModal([...selectedIds]);
+    return;
+  }
   openDeleteModal();
 });
 
@@ -2623,7 +2943,7 @@ cleanBtn.addEventListener('click', async () => {
   clearError();
   try {
     await invoke('clean_closed', { dir: storeDir });
-    if (selectedItem()?.status === 'closed') selectedId = null;
+    if (selectedItem()?.status === 'closed') { selectedIds.clear(); lastClickedId = null; }
     await loadItems();
   } catch (e) {
     showError(`Clean failed: ${e}`);
@@ -2638,28 +2958,25 @@ helpModal.addEventListener('click', e => {
 nextBtn.addEventListener('click', doNext);
 
 // Delete modal events
-deleteCancelBtn.addEventListener('click', () => { deleteModal.classList.add('hidden'); });
+deleteCancelBtn.addEventListener('click', dismissDeleteModal);
 deleteConfirmBtn.addEventListener('click', confirmDelete);
 deleteModal.addEventListener('keydown', e => {
   if (e.key === 'Enter') confirmDelete();
-  if (e.key === 'Escape') { deleteModal.classList.add('hidden'); e.stopPropagation(); }
+  if (e.key === 'Escape') { dismissDeleteModal(); e.stopPropagation(); }
 });
 deleteModal.addEventListener('click', e => {
-  if (e.target === deleteModal) deleteModal.classList.add('hidden');
+  if (e.target === deleteModal) dismissDeleteModal();
 });
 
 // Close modal events
-closeCancelBtn.addEventListener('click', () => {
-  closeModal.classList.add('hidden');
-  pendingCloseId = '';
-});
+closeCancelBtn.addEventListener('click', dismissCloseModal);
 closeConfirmBtn.addEventListener('click', confirmClose);
 closeReason.addEventListener('keydown', e => {
   if (e.key === 'Enter') confirmClose();
-  if (e.key === 'Escape') { closeModal.classList.add('hidden'); pendingCloseId = ''; e.stopPropagation(); }
+  if (e.key === 'Escape') { dismissCloseModal(); e.stopPropagation(); }
 });
 closeModal.addEventListener('click', e => {
-  if (e.target === closeModal) { closeModal.classList.add('hidden'); pendingCloseId = ''; }
+  if (e.target === closeModal) dismissCloseModal();
 });
 
 // New item modal events

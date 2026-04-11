@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [unreleased]
+
+### Chore
+
+- Update crumb state (cr-nk8 in-progress, add cr-kwh)
+- Close cr-nk8 (GUI multi-select complete)
+- Bump version to v0.24.0
+- Close cr-kwh (depends field removed)
+- Bump version to 0.25.0 (#38)
+
+### Docs
+
+- Add multi-select bulk-edit design spec (cr-nk8)
+- Add implementation plan for GUI multi-select bulk edit (cr-nk8)
+- Add implementation plan for removing depends field (cr-kwh)
+
+### Feat
+
+- GUI multi-select and bulk edit (cr-nk8)
+
+### Fix
+
+- Migrate_depends edge cases — blank IDs, self-cycles, test init (#39)
+
+### Refactor
+
+- Remove depends field, auto-migrate to blocked_by/blocks (cr-kwh) (#37)
+
 ## [0.23.1] - 2026-04-11
 
 ### Chore
