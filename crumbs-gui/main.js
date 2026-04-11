@@ -1244,6 +1244,88 @@ outlineResizer.addEventListener('mousedown', e => {
   document.addEventListener('mouseup', onUp);
 });
 
+/**
+ * Run `ops` (array of `(id) => Promise<void>`) for every ID in `ids`.
+ * Errors are collected and displayed after the loop; processing continues
+ * regardless of individual failures. Calls `loadItems()` once at the end.
+ */
+async function applyBulk(ids, ops) {
+  const errors = [];
+  for (const id of ids) {
+    for (const op of ops) {
+      try {
+        await op(id);
+      } catch (e) {
+        errors.push(`${id}: ${e}`);
+      }
+    }
+  }
+  await loadItems();
+  if (errors.length) showError(`Bulk update partially failed:\n${errors.join('\n')}`);
+}
+
+async function handleBulkApply(ids) {
+  const statusEl      = document.getElementById('bulk-status');
+  const priorityEl    = document.getElementById('bulk-priority');
+  const typeEl        = document.getElementById('bulk-type');
+  const dueEl         = document.getElementById('bulk-due');
+  const tagsAddEl     = document.getElementById('bulk-tags-add');
+  const tagsRepEl     = document.getElementById('bulk-tags-replace');
+  const blockerAddEl  = document.getElementById('bulk-blocker-add');
+  const blockerRemEl  = document.getElementById('bulk-blocker-remove');
+
+  // Closing has a special modal flow — hand off and return
+  if (statusEl.value === 'closed') {
+    openBulkCloseModal(ids);
+    return;
+  }
+
+  const ops = [];
+
+  if (statusEl.value) {
+    ops.push(id => invoke('update_status', { dir: storeDir, id, status: statusEl.value }));
+  }
+  if (priorityEl.value) {
+    ops.push(id => invoke('update_priority', { dir: storeDir, id, priority: Number(priorityEl.value) }));
+  }
+  if (typeEl.value) {
+    ops.push(id => invoke('update_type', { dir: storeDir, id, itemType: typeEl.value }));
+  }
+  if (dueEl.value) {
+    ops.push(id => invoke('update_due', { dir: storeDir, id, due: dueEl.value }));
+  }
+  if (tagsAddEl.value.trim()) {
+    const newTags = tagsAddEl.value.split(',').map(t => t.trim()).filter(Boolean);
+    ops.push(async id => {
+      const item = allItems.find(i => i.id === id);
+      const merged = [...new Set([...(item?.tags ?? []), ...newTags])];
+      await invoke('update_tags', { dir: storeDir, id, tags: merged.join(',') });
+    });
+  }
+  if (tagsRepEl.value.trim()) {
+    const replaceTags = tagsRepEl.value.split(',').map(t => t.trim()).filter(Boolean);
+    ops.push(id => invoke('update_tags', { dir: storeDir, id, tags: replaceTags.join(',') }));
+  }
+  if (blockerAddEl.value.trim()) {
+    const blocker = blockerAddEl.value.trim();
+    ops.push(id => invoke('link_items', { dir: storeDir, id, relation: 'blocked-by', targets: [blocker], remove: false }));
+  }
+  if (blockerRemEl.value.trim()) {
+    const blocker = blockerRemEl.value.trim();
+    ops.push(id => invoke('link_items', { dir: storeDir, id, relation: 'blocked-by', targets: [blocker], remove: true }));
+  }
+
+  if (!ops.length) return;
+
+  clearError();
+  await applyBulk(ids, ops);
+  // Clear the selection after a successful apply
+  selectedIds.clear();
+  lastClickedId = null;
+  updateRowHighlights();
+  updateToolbarButtons();
+}
+
 function renderBulkPanel(ids) {
   const items = ids.map(id => allItems.find(i => i.id === id)).filter(Boolean);
 
