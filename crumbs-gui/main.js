@@ -741,9 +741,7 @@ async function navigateToItem(id) {
   resetFilters();
   renderTable();
   saveViewState();
-  const tr = rowForId(id);
-  if (!tr) console.warn(`navigateToItem: '${id}' found in allItems but not in rendered table`);
-  selectRow(id, tr);
+  selectRow(id, rowForId(id));
 }
 
 function navChips(ids) {
