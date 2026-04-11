@@ -1770,6 +1770,7 @@ async function confirmDelete() {
     if (msgEl) msgEl.textContent = DEFAULT_DELETE_MSG;
     clearMultiSelect();
     await applyBulk(ids, [id => invoke('delete_item', { dir: storeDir, id })]);
+    renderDetail(null);
     return;
   }
 
@@ -1816,6 +1817,7 @@ async function confirmClose() {
     pendingBulkCloseIds = null;
     clearMultiSelect();
     await applyBulk(ids, [id => invoke('close_item', { dir: storeDir, id, reason })]);
+    renderDetail(null);
     return;
   }
 
@@ -2963,10 +2965,9 @@ closeItemBtn.addEventListener('click', () => { if (primaryId()) openCloseModal(p
 
 deleteBtn.addEventListener('click', () => {
   if (selectedIds.size > 1) {
-    openBulkDeleteModal();
+    openBulkDeleteModal([...selectedIds]);
     return;
   }
-  if (!primaryId()) return;
   openDeleteModal();
 });
 
