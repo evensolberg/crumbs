@@ -960,6 +960,7 @@ function renderProps(item) {
     if (norm(targetId) === norm(item.id)) { showError('Cannot link an item to itself.'); return; }
     if (linkInFlight) return;
     linkInFlight = true;
+    clearError();
     try {
       await invoke('link_items', { dir: storeDir, id: item.id, relation, targets: [targetId], remove });
       if (inputEl) inputEl.value = '';
