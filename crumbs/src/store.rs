@@ -174,16 +174,15 @@ fn migrate_depends(path: &Path, item: &mut Item, all: &[(PathBuf, Item)]) -> Res
     Ok(())
 }
 
-/// # Errors
-///
-/// Returns an error if the directory cannot be read.
-pub fn load_all(dir: &Path) -> Result<Vec<(PathBuf, Item)>> {
+/// Read every `.md` file in `dir`, returning parsed items and a count of
+/// files that failed to parse.
+fn read_md_items(dir: &Path) -> Result<(Vec<(PathBuf, Item)>, usize)> {
     let mut items = Vec::new();
     let mut skipped = 0usize;
     for entry in std::fs::read_dir(dir).context("read dir")? {
-        let entry: std::fs::DirEntry = entry?;
+        let entry = entry?;
         let path = entry.path();
-        if path.extension().and_then(|e: &std::ffi::OsStr| e.to_str()) == Some("md") {
+        if path.extension().and_then(|e| e.to_str()) == Some("md") {
             match read_item(&path) {
                 Ok(item) => items.push((path, item)),
                 Err(e) => {
@@ -193,6 +192,14 @@ pub fn load_all(dir: &Path) -> Result<Vec<(PathBuf, Item)>> {
             }
         }
     }
+    Ok((items, skipped))
+}
+
+/// # Errors
+///
+/// Returns an error if the directory cannot be read.
+pub fn load_all(dir: &Path) -> Result<Vec<(PathBuf, Item)>> {
+    let (mut items, skipped) = read_md_items(dir)?;
     if skipped > 0 {
         eprintln!("warning: {skipped} item(s) skipped due to parse errors");
     }
@@ -216,17 +223,7 @@ pub fn load_all(dir: &Path) -> Result<Vec<(PathBuf, Item)>> {
         }
         // Reload all items from disk so that both sides of the migration are
         // reflected in the returned vec (blocker.blocks updated on disk above).
-        items.clear();
-        for entry in std::fs::read_dir(dir).context("read dir (post-migration)")? {
-            let entry = entry?;
-            let path = entry.path();
-            if path.extension().and_then(|e| e.to_str()) == Some("md") {
-                match read_item(&path) {
-                    Ok(item) => items.push((path, item)),
-                    Err(e) => eprintln!("warning: skipping {}: {e}", path.display()),
-                }
-            }
-        }
+        (items, _) = read_md_items(dir)?;
     }
     items.sort_by(|a, b| a.1.id.cmp(&b.1.id));
     Ok(items)
