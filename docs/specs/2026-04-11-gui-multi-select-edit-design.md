@@ -21,7 +21,7 @@ Replace the single `selectedId: string | null` with a `selectedIds: Set<string>`
 ### Gestures
 
 | Gesture | Behaviour |
-|---|---|
+| --- | --- |
 | Click | Clear selection, select that row (existing behaviour) |
 | Cmd/Ctrl+click | Toggle the clicked row in/out of `selectedIds` |
 | Shift+click | Range-select from the last-clicked row to the clicked row (inclusive), using the current filtered row order |
@@ -43,7 +43,7 @@ When `selectedIds.size > 1`, `renderDetail()` renders a bulk-edit panel instead 
 ### Panel Fields
 
 | Field | Control | Behaviour |
-|---|---|---|
+| --- | --- | --- |
 | Header | `"N items selected"` label | Always shown |
 | Status | `<select>` | Options: open / in_progress / blocked / deferred / closed. Shows `— mixed —` when values differ across selection. Choosing "closed" triggers the close modal (see §3). |
 | Priority | `<select>` | P1 / P2 / P3 / P4 + `— mixed —` |
@@ -80,7 +80,7 @@ Fields left at `— mixed —` or blank are skipped entirely.
 ### Tauri commands used (all existing)
 
 | Field | Command |
-|---|---|
+| --- | --- |
 | Status | `update_status` |
 | Priority | `update_priority` |
 | Type | `update_type` |
@@ -109,7 +109,7 @@ These may be revisited in a future iteration.
 ## 6. Files Affected
 
 | File | Change |
-|---|---|
+| --- | --- |
 | `crumbs-gui/main.js` | Selection state, gesture handlers, `renderDetail`, `applyBulk`, keyboard shortcuts |
 | `crumbs-gui/index.html` | No changes expected |
 | `crumbs-gui/style.css` | Minor tweaks if bulk panel needs distinct styling |
