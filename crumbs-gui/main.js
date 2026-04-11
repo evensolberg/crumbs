@@ -2132,6 +2132,19 @@ document.addEventListener('keydown', e => {
     return;
   }
 
+  // Cmd/Ctrl+A — select all filtered rows
+  if (mod && e.key === 'a' && !isControlFocused() && !isModalOpen()) {
+    e.preventDefault();
+    const rows = [...document.querySelectorAll('#items-body tr[data-id]')];
+    selectedIds.clear();
+    rows.forEach(r => selectedIds.add(r.dataset.id));
+    lastClickedId = rows.length ? rows[rows.length - 1].dataset.id : null;
+    updateRowHighlights();
+    renderDetail(selectedIds.size > 1 ? null : selectedItem());
+    updateToolbarButtons();
+    return;
+  }
+
   // Navigation and selection shortcuts — suppressed when any input/editor focused or modal open
   if (isControlFocused() || isModalOpen()) return;
 
@@ -2159,10 +2172,14 @@ document.addEventListener('keydown', e => {
     return;
   }
 
-  // Delete/Backspace — open delete modal for selected item
+  // Delete/Backspace — open delete modal for selected item(s)
   if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.size > 0) {
     e.preventDefault();
-    openDeleteModal();
+    if (selectedIds.size > 1) {
+      openBulkDeleteModal([...selectedIds]);
+    } else {
+      openDeleteModal();
+    }
     return;
   }
 });
