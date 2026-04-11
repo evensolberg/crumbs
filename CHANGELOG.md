@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+## [0.23.1] - 2026-04-11
+
+### Fix
+
+- GUI: resolve drag-drop target before clearing highlights so a near-miss
+  on mouseup no longer silently skips the move (#35)
+
 ## [0.23.0] - 2026-04-10
 
 ### Chore
