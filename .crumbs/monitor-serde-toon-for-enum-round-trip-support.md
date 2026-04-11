@@ -22,4 +22,4 @@ This blocks TOON support in 'crumbs import --file' and the GUI Import button.
 
 Periodically check serde_toon_format crate for updates or a workaround. When fixed: add 'toon' to file_import::infer_format and parse_items, add .toon to the GUI file picker filter, add end-to-end TOON import test, update skill and README.
 
-[2026-04-10] https://docs.rs/serde_toon/latest/serde_toon/ suggests it deserializes too.
+[2026-04-10] Can we write a deserializer for the relevant parts?

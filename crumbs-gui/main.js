@@ -47,6 +47,7 @@ let searchResults = null;   // null = normal mode; Item[] = search mode
 let searchTimer = null;
 let dragItemId = null;      // ID of the row currently being dragged
 let navInFlight = false;    // guard against concurrent navigateToItem calls
+let linkInFlight = false;   // guard against concurrent link_items calls across re-renders
 
 // ── Column definitions ─────────────────────────────────────────────────────
 
@@ -772,19 +773,54 @@ async function navigateToItem(id) {
   } finally { navInFlight = false; }
 }
 
-function navChips(ids) {
+function navChips(ids, onRemove) {
   const wrap = document.createElement('div');
   wrap.className = 'nav-chips';
   for (const id of ids) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'nav-chip';
-    btn.textContent = id;
-    btn.title = `Go to ${id}`;
-    btn.addEventListener('click', () => navigateToItem(id));
-    wrap.appendChild(btn);
+    // Use a div wrapper so we can have two sibling <button> elements without
+    // nesting interactive content inside a <button> (invalid per HTML spec).
+    const chip = document.createElement('div');
+    chip.className = 'nav-chip';
+
+    const label = document.createElement('button');
+    label.type = 'button';
+    label.className = 'nav-chip-label';
+    label.textContent = id;
+    label.title = `Go to ${id}`;
+    label.addEventListener('click', () => navigateToItem(id));
+    chip.appendChild(label);
+
+    if (onRemove) {
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.className = 'nav-chip-remove';
+      x.textContent = '×';
+      x.title = `Remove link to ${id}`;
+      x.setAttribute('aria-label', `Remove link to ${id}`);
+      x.addEventListener('click', () => onRemove(id));
+      chip.appendChild(x);
+    }
+
+    wrap.appendChild(chip);
   }
   return wrap;
+}
+
+function linkAddInput(onAdd, label) {
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.className = 'nav-chip-add';
+  inp.placeholder = 'add id…';
+  if (label) inp.setAttribute('aria-label', `Add ${label} link by ID`);
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { inp.value = ''; inp.blur(); e.stopPropagation(); }
+    if (e.key === 'Enter') {
+      const val = inp.value.trim();
+      // Value cleared only on success (inside onAdd) so the user retains it on error.
+      if (val) onAdd(val, inp);
+    }
+  });
+  return inp;
 }
 
 function makeSelect(options, current, onChange) {
@@ -920,11 +956,30 @@ function renderProps(item) {
   if ((item.dependencies ?? []).length > 0) {
     depsRow.appendChild(navChips(item.dependencies));
   }
-  if ((item.blocks ?? []).length > 0) {
-    propRow('Blocks', '').appendChild(navChips(item.blocks));
-  }
-  if ((item.blocked_by ?? []).length > 0) {
-    propRow('Blocked by', '').appendChild(navChips(item.blocked_by));
+  const doLink = async (relation, targetId, remove, inputEl) => {
+    const norm = s => String(s ?? '').trim().toLowerCase();
+    if (norm(targetId) === norm(item.id)) { showError('Cannot link an item to itself.'); return; }
+    if (linkInFlight) return;
+    linkInFlight = true;
+    clearError();
+    try {
+      await invoke('link_items', { dir: storeDir, id: item.id, relation, targets: [targetId], remove });
+      if (!await loadItems()) return;
+      if (inputEl) inputEl.value = '';
+    } catch (e) { showError(`Link failed: ${e}`); }
+    finally { linkInFlight = false; }
+  };
+
+  for (const [label, ids, rel] of [
+    ['Blocks',     item.blocks     ?? [], 'blocks'],
+    ['Blocked by', item.blocked_by ?? [], 'blocked-by'],
+  ]) {
+    const row = propRow(label, '');
+    const linksWrap = document.createElement('div');
+    linksWrap.className = 'link-row';
+    linksWrap.appendChild(navChips(ids, id => doLink(rel, id, true)));
+    linksWrap.appendChild(linkAddInput((id, inp) => doLink(rel, id, false, inp), label));
+    row.appendChild(linksWrap);
   }
   if (item.closed_reason) {
     propRow('Reason', escHtml(item.closed_reason));
