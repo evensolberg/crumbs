@@ -118,7 +118,6 @@ pub fn items_to_string(items: &[Item], format: &str) -> Result<String> {
                 "created",
                 "updated",
                 "closed_reason",
-                "dependencies",
                 "blocks",
                 "blocked_by",
                 "due",
@@ -137,7 +136,6 @@ pub fn items_to_string(items: &[Item], format: &str) -> Result<String> {
                     &item.created.to_string(),
                     &item.updated.to_string(),
                     &item.closed_reason,
-                    &item.dependencies.join("|"),
                     &item.blocks.join("|"),
                     &item.blocked_by.join("|"),
                     &item.due.map(|d| d.to_string()).unwrap_or_default(),
@@ -194,7 +192,7 @@ mod tests {
             created: NaiveDate::from_ymd_opt(2026, 1, 1).unwrap(),
             updated: NaiveDate::from_ymd_opt(2026, 1, 1).unwrap(),
             closed_reason: String::new(),
-            dependencies: vec!["cr-dep".to_string()],
+            dependencies: vec![],
             blocks: vec!["cr-aaa".to_string(), "cr-bbb".to_string()],
             blocked_by: vec!["cr-zzz".to_string()],
             due: None,
@@ -279,9 +277,15 @@ mod tests {
         let headers = rdr.headers().unwrap().clone();
         let cols: Vec<&str> = headers.iter().collect();
 
-        let dep_idx = cols.iter().position(|c| *c == "dependencies").unwrap();
-        assert_eq!(cols.get(dep_idx + 1), Some(&"blocks"));
-        assert_eq!(cols.get(dep_idx + 2), Some(&"blocked_by"));
+        assert!(
+            !cols.contains(&"dependencies"),
+            "dependencies column should be removed"
+        );
+        assert!(cols.contains(&"blocks"), "blocks column should exist");
+        assert!(
+            cols.contains(&"blocked_by"),
+            "blocked_by column should exist"
+        );
 
         let row = rdr.records().next().unwrap().unwrap();
         let col = |name: &str| cols.iter().position(|c| *c == name).unwrap();

@@ -614,42 +614,116 @@ fn delete_closed_noop_when_none_closed() {
 // ── dependencies ─────────────────────────────────────────────────────────────
 
 #[test]
-fn create_with_dependencies_stores_them() {
+fn depends_field_is_promoted_to_blocked_by_on_load() {
     let dir = tempdir().unwrap();
-    let dep_id = create_task(dir.path(), "Dep Task");
-    commands::create::run(
-        dir.path(),
-        CreateArgs {
-            title: "Dependent Task".to_string(),
-            dependencies: vec![dep_id.clone()],
-            ..Default::default()
-        },
-    )
-    .unwrap();
-    let items = store::load_all(dir.path()).unwrap();
-    let dependent = items
+    let store = dir.path().join(".crumbs");
+    std::fs::create_dir_all(&store).unwrap();
+    commands::init::run(&store, Some("cr".to_string())).unwrap();
+
+    let blocker_raw = "---\nid: cr-aaa\ntitle: Blocker\nstatus: open\ntype: task\npriority: 3\ntags: []\ncreated: '2026-01-01'\nupdated: '2026-01-01'\nclosed_reason: ''\nblocks: []\nblocked_by: []\nphase: ''\nresolution: ''\n---\n\n# Blocker\n";
+    let blocked_raw = "---\nid: cr-bbb\ntitle: Blocked\nstatus: open\ntype: task\npriority: 3\ntags: []\ncreated: '2026-01-01'\nupdated: '2026-01-01'\nclosed_reason: ''\ndependencies:\n- cr-aaa\nblocks: []\nblocked_by: []\nphase: ''\nresolution: ''\n---\n\n# Blocked\n";
+    std::fs::write(store.join("aaa-blocker.md"), blocker_raw).unwrap();
+    std::fs::write(store.join("bbb-blocked.md"), blocked_raw).unwrap();
+
+    let items = crumbs::store::load_all(&store).unwrap();
+    let blocker = items
         .iter()
-        .find(|(_, i)| i.title == "Dependent Task")
+        .find(|(_, i)| i.id == "cr-aaa")
+        .map(|(_, i)| i)
         .unwrap();
-    assert_eq!(dependent.1.dependencies, vec![dep_id]);
+    let blocked = items
+        .iter()
+        .find(|(_, i)| i.id == "cr-bbb")
+        .map(|(_, i)| i)
+        .unwrap();
+
+    assert!(
+        blocked.blocked_by.contains(&"cr-aaa".to_string()),
+        "blocked_by should contain cr-aaa after migration"
+    );
+    assert!(
+        blocked.dependencies.is_empty(),
+        "dependencies should be empty after migration"
+    );
+    assert!(
+        blocker.blocks.contains(&"cr-bbb".to_string()),
+        "blocker.blocks should contain cr-bbb after migration"
+    );
+
+    let blocker_disk = std::fs::read_to_string(store.join("aaa-blocker.md")).unwrap();
+    let blocked_disk = std::fs::read_to_string(store.join("bbb-blocked.md")).unwrap();
+    assert!(
+        !blocked_disk.contains("dependencies:"),
+        "bbb-blocked.md should no longer have a dependencies key"
+    );
+    assert!(
+        blocker_disk.contains("- cr-bbb"),
+        "aaa-blocker.md blocks list should include cr-bbb"
+    );
 }
 
 #[test]
-fn update_replaces_dependencies() {
+fn depends_shared_blocker_gets_both_entries() {
     let dir = tempdir().unwrap();
-    let id = create_task(dir.path(), "Task With Deps");
-    let dep_id = create_task(dir.path(), "Another Task");
-    commands::update::run(
-        dir.path(),
-        &id,
-        UpdateArgs {
-            dependencies: Some(vec![dep_id.clone()]),
-            ..Default::default()
-        },
-    )
-    .unwrap();
-    let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
-    assert_eq!(item.dependencies, vec![dep_id]);
+    let store = dir.path().join(".crumbs");
+    std::fs::create_dir_all(&store).unwrap();
+    commands::init::run(&store, Some("cr".to_string())).unwrap();
+
+    // Blocker item (no dependencies)
+    let blocker_raw = "---\nid: cr-aaa\ntitle: Blocker\nstatus: open\ntype: task\npriority: 3\ntags: []\ncreated: '2026-01-01'\nupdated: '2026-01-01'\nclosed_reason: ''\nblocks: []\nblocked_by: []\nphase: ''\nresolution: ''\n---\n\n# Blocker\n";
+    // Two items that both depend on the blocker
+    let dep1_raw = "---\nid: cr-bbb\ntitle: Dep1\nstatus: open\ntype: task\npriority: 3\ntags: []\ncreated: '2026-01-01'\nupdated: '2026-01-01'\nclosed_reason: ''\ndependencies:\n- cr-aaa\nblocks: []\nblocked_by: []\nphase: ''\nresolution: ''\n---\n\n# Dep1\n";
+    let dep2_raw = "---\nid: cr-ccc\ntitle: Dep2\nstatus: open\ntype: task\npriority: 3\ntags: []\ncreated: '2026-01-01'\nupdated: '2026-01-01'\nclosed_reason: ''\ndependencies:\n- cr-aaa\nblocks: []\nblocked_by: []\nphase: ''\nresolution: ''\n---\n\n# Dep2\n";
+    std::fs::write(store.join("aaa-blocker.md"), blocker_raw).unwrap();
+    std::fs::write(store.join("bbb-dep1.md"), dep1_raw).unwrap();
+    std::fs::write(store.join("ccc-dep2.md"), dep2_raw).unwrap();
+
+    let items = crumbs::store::load_all(&store).unwrap();
+    let blocker = items
+        .iter()
+        .find(|(_, i)| i.id == "cr-aaa")
+        .map(|(_, i)| i)
+        .unwrap();
+
+    // Both cr-bbb and cr-ccc must appear in the blocker's blocks list
+    assert!(
+        blocker.blocks.contains(&"cr-bbb".to_string()),
+        "blocker.blocks should contain cr-bbb"
+    );
+    assert!(
+        blocker.blocks.contains(&"cr-ccc".to_string()),
+        "blocker.blocks should contain cr-ccc"
+    );
+}
+
+#[test]
+fn depends_unknown_id_is_recorded_in_blocked_by() {
+    let dir = tempdir().unwrap();
+    let store = dir.path().join(".crumbs");
+    std::fs::create_dir_all(&store).unwrap();
+    commands::init::run(&store, Some("cr".to_string())).unwrap();
+
+    // Item depends on a non-existent ID
+    let item_raw = "---\nid: cr-bbb\ntitle: Item\nstatus: open\ntype: task\npriority: 3\ntags: []\ncreated: '2026-01-01'\nupdated: '2026-01-01'\nclosed_reason: ''\ndependencies:\n- cr-zzz\nblocks: []\nblocked_by: []\nphase: ''\nresolution: ''\n---\n\n# Item\n";
+    std::fs::write(store.join("bbb-item.md"), item_raw).unwrap();
+
+    // Should not error — unknown ID is silently ignored
+    let items = crumbs::store::load_all(&store).unwrap();
+    let item = items
+        .iter()
+        .find(|(_, i)| i.id == "cr-bbb")
+        .map(|(_, i)| i)
+        .unwrap();
+
+    // blocked_by still gets the unknown ID (we record it even if no reverse link possible)
+    assert!(
+        item.blocked_by.contains(&"cr-zzz".to_string()),
+        "blocked_by should contain the unknown id cr-zzz"
+    );
+    assert!(
+        item.dependencies.is_empty(),
+        "dependencies should be cleared after migration"
+    );
 }
 
 // ── search ───────────────────────────────────────────────────────────────────

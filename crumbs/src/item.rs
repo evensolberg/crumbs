@@ -89,7 +89,9 @@ pub struct Item {
     pub updated: NaiveDate,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub closed_reason: String,
-    #[serde(default)]
+    /// Kept for **deserialisation only** — migrated to `blocked_by`/`blocks`
+    /// on first load; never serialised back to disk.
+    #[serde(default, skip_serializing)]
     pub dependencies: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub blocks: Vec<String>,

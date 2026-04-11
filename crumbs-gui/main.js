@@ -976,29 +976,6 @@ function renderProps(item) {
   });
   propRow('Tags', '').appendChild(tagsInput);
 
-  const depsInput = document.createElement('input');
-  depsInput.type = 'text';
-  depsInput.placeholder = 'id1, id2, …';
-  depsInput.value = (item.dependencies ?? []).join(', ');
-  depsInput.style.cssText = 'width:100%;font:inherit;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:2px 4px;outline:none;box-sizing:border-box;';
-  let loadedDeps = depsInput.value;
-  depsInput.addEventListener('focus', () => { depsInput.style.borderColor = 'var(--accent)'; });
-  depsInput.addEventListener('blur', () => {
-    depsInput.style.borderColor = 'var(--border)';
-    if (depsInput.value !== loadedDeps) {
-      loadedDeps = depsInput.value;
-      doUpdateDependencies(item.id, depsInput.value);
-    }
-  });
-  depsInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter') depsInput.blur();
-    if (e.key === 'Escape') { depsInput.value = loadedDeps; depsInput.blur(); e.stopPropagation(); }
-  });
-  const depsRow = propRow('Depends on', '');
-  depsRow.appendChild(depsInput);
-  if ((item.dependencies ?? []).length > 0) {
-    depsRow.appendChild(navChips(item.dependencies));
-  }
   const doLink = async (relation, targetId, remove, inputEl) => {
     const norm = s => String(s ?? '').trim().toLowerCase();
     if (norm(targetId) === norm(item.id)) { showError('Cannot link an item to itself.'); return; }
@@ -1554,15 +1531,6 @@ async function doUpdateDue(id, due) {
   }
 }
 
-async function doUpdateDependencies(id, dependencies) {
-  clearError();
-  try {
-    await invoke('update_dependencies', { dir: storeDir, id, dependencies });
-    await loadItems();
-  } catch (e) {
-    showError(`Update failed: ${e}`);
-  }
-}
 
 async function doUpdateTags(id, tags) {
   clearError();

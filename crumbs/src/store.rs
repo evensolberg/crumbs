@@ -140,16 +140,58 @@ pub fn parse_item(raw: &str) -> Result<Item> {
     Ok(item)
 }
 
+/// Promote a legacy `depends` list to bidirectional `blocked_by`/`blocks`
+/// links and rewrite both sides to disk.
+///
+/// Called by [`load_all`] for any item that still carries a non-empty
+/// `dependencies` vec. After this function returns the item's
+/// `dependencies` is empty and `blocked_by` is extended; each referenced
+/// item's `blocks` list is extended and its file is rewritten atomically.
+///
+/// Unknown dependency IDs are still recorded in `blocked_by`; if the
+/// referenced item cannot be found, only the reverse `blocks` update is
+/// skipped so that cross-store or deleted references do not block migration.
+///
 /// # Errors
 ///
-/// Returns an error if the directory cannot be read.
-pub fn load_all(dir: &Path) -> Result<Vec<(PathBuf, Item)>> {
+/// Returns an error if reading or rewriting any item file fails.
+fn migrate_depends(path: &Path, item: &mut Item, all: &[(PathBuf, Item)]) -> Result<()> {
+    let ids = std::mem::take(&mut item.dependencies);
+    for dep_id in &ids {
+        let dep_id = dep_id.trim();
+        let matched = all.iter().find(|(_, i)| i.id.eq_ignore_ascii_case(dep_id));
+
+        // Use the canonical ID when the item is found; fall back to raw dep_id.
+        let blocked_by_id = matched
+            .map(|(_, dep_item)| dep_item.id.clone())
+            .unwrap_or_else(|| dep_id.to_string());
+
+        if !item.blocked_by.contains(&blocked_by_id) {
+            item.blocked_by.push(blocked_by_id);
+        }
+        if let Some((dep_path, _)) = matched {
+            // Read fresh from disk — a previous migration call in this same
+            // load_all pass may have already updated this file.
+            let mut dep = read_item(dep_path)?;
+            if !dep.blocks.contains(&item.id) {
+                dep.blocks.push(item.id.clone());
+                rewrite_frontmatter(dep_path, &dep)?;
+            }
+        }
+    }
+    rewrite_frontmatter(path, item)?;
+    Ok(())
+}
+
+/// Read every `.md` file in `dir`, returning parsed items and a count of
+/// files that failed to parse.
+fn read_md_items(dir: &Path) -> Result<(Vec<(PathBuf, Item)>, usize)> {
     let mut items = Vec::new();
     let mut skipped = 0usize;
     for entry in std::fs::read_dir(dir).context("read dir")? {
-        let entry: std::fs::DirEntry = entry?;
+        let entry = entry?;
         let path = entry.path();
-        if path.extension().and_then(|e: &std::ffi::OsStr| e.to_str()) == Some("md") {
+        if path.extension().and_then(|e| e.to_str()) == Some("md") {
             match read_item(&path) {
                 Ok(item) => items.push((path, item)),
                 Err(e) => {
@@ -159,8 +201,38 @@ pub fn load_all(dir: &Path) -> Result<Vec<(PathBuf, Item)>> {
             }
         }
     }
+    Ok((items, skipped))
+}
+
+/// # Errors
+///
+/// Returns an error if the directory cannot be read.
+pub fn load_all(dir: &Path) -> Result<Vec<(PathBuf, Item)>> {
+    let (mut items, skipped) = read_md_items(dir)?;
     if skipped > 0 {
         eprintln!("warning: {skipped} item(s) skipped due to parse errors");
+    }
+    // Lazy one-time migration: promote legacy `dependencies` to blocked_by/blocks.
+    let to_migrate: Vec<usize> = items
+        .iter()
+        .enumerate()
+        .filter(|(_, (_, item))| !item.dependencies.is_empty())
+        .map(|(i, _)| i)
+        .collect();
+    if !to_migrate.is_empty() {
+        let snapshot: Vec<(PathBuf, Item)> = items.clone();
+        for idx in to_migrate {
+            let (path, item) = &mut items[idx];
+            if let Err(e) = migrate_depends(path, item, &snapshot) {
+                eprintln!(
+                    "warning: depends migration failed for {}: {e}",
+                    path.display()
+                );
+            }
+        }
+        // Reload all items from disk so that both sides of the migration are
+        // reflected in the returned vec (blocker.blocks updated on disk above).
+        (items, _) = read_md_items(dir)?;
     }
     items.sort_by(|a, b| a.1.id.cmp(&b.1.id));
     Ok(items)
@@ -184,7 +256,6 @@ pub fn reindex(dir: &Path) -> Result<()> {
         "created",
         "updated",
         "closed_reason",
-        "dependencies",
         "blocks",
         "blocked_by",
         "due",
@@ -203,7 +274,6 @@ pub fn reindex(dir: &Path) -> Result<()> {
             &item.created.to_string(),
             &item.updated.to_string(),
             &item.closed_reason,
-            &item.dependencies.join("|"),
             &item.blocks.join("|"),
             &item.blocked_by.join("|"),
             &item.due.map(|d| d.to_string()).unwrap_or_default(),
@@ -391,19 +461,17 @@ mod tests {
         let mut rdr = csv::Reader::from_path(dir.path().join("index.csv")).unwrap();
         let headers = rdr.headers().unwrap().clone();
         let cols: Vec<&str> = headers.iter().collect();
-        let dep_idx = cols
-            .iter()
-            .position(|c| *c == "dependencies")
-            .unwrap_or_else(|| panic!("missing dependencies column, got: {cols:?}"));
-        assert_eq!(
-            cols.get(dep_idx + 1),
-            Some(&"blocks"),
-            "expected blocks immediately after dependencies, got: {cols:?}"
+        assert!(
+            !cols.contains(&"dependencies"),
+            "dependencies column should be removed, got: {cols:?}"
         );
-        assert_eq!(
-            cols.get(dep_idx + 2),
-            Some(&"blocked_by"),
-            "expected blocked_by immediately after blocks, got: {cols:?}"
+        assert!(
+            cols.contains(&"blocks"),
+            "expected blocks column, got: {cols:?}"
+        );
+        assert!(
+            cols.contains(&"blocked_by"),
+            "expected blocked_by column, got: {cols:?}"
         );
     }
 
