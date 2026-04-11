@@ -387,6 +387,13 @@ function selectRow(id, tr) {
   renderDetail(selectedItem());
 }
 
+/** Sync `.selected` class on all table rows to match `selectedIds`. */
+function updateRowHighlights() {
+  for (const r of document.querySelectorAll('#items-body tr[data-id]')) {
+    r.classList.toggle('selected', selectedIds.has(r.dataset.id));
+  }
+}
+
 // ── Toolbar contextual button state ──────────────────────────────────────
 
 function hasActiveTimer(description) {
@@ -2084,6 +2091,15 @@ document.addEventListener('keydown', e => {
     hideContextMenu();
     if (!helpModal.classList.contains('hidden')) {
       helpModal.classList.add('hidden');
+      return;
+    }
+    if (selectedIds.size > 1) {
+      selectedIds.clear();
+      lastClickedId = null;
+      updateRowHighlights();
+      renderDetail(selectedItem());
+      updateToolbarButtons();
+      return;
     }
     return;
   }
@@ -2313,11 +2329,46 @@ document.addEventListener('click', e => {
   }
 });
 
-// Row click → select item
+// Row click → select item (plain, Cmd/Ctrl+click toggle, Shift+click range)
 itemsBody.addEventListener('click', e => {
   const tr = e.target.closest('tr[data-id]');
   if (!tr) return;
-  selectRow(tr.dataset.id, tr);
+  const id = tr.dataset.id;
+
+  if (e.metaKey || e.ctrlKey) {
+    // Cmd/Ctrl+click: toggle this row in or out of the selection
+    if (selectedIds.has(id)) {
+      selectedIds.delete(id);
+    } else {
+      selectedIds.add(id);
+    }
+    lastClickedId = id;
+    updateRowHighlights();
+    renderDetail(selectedIds.size > 1 ? null : selectedItem());
+    updateToolbarButtons();
+    return;
+  }
+
+  if (e.shiftKey && lastClickedId) {
+    // Shift+click: range-select from lastClickedId to this row (inclusive)
+    const rows = [...document.querySelectorAll('#items-body tr[data-id]')];
+    const anchorIdx = rows.findIndex(r => r.dataset.id === lastClickedId);
+    const clickIdx  = rows.findIndex(r => r.dataset.id === id);
+    if (anchorIdx !== -1 && clickIdx !== -1) {
+      const [from, to] = anchorIdx <= clickIdx
+        ? [anchorIdx, clickIdx]
+        : [clickIdx, anchorIdx];
+      selectedIds.clear();
+      for (let i = from; i <= to; i++) selectedIds.add(rows[i].dataset.id);
+      updateRowHighlights();
+      renderDetail(selectedIds.size > 1 ? null : selectedItem());
+      updateToolbarButtons();
+      return;
+    }
+  }
+
+  // Plain click: single-select
+  selectRow(id, tr);
 });
 
 // Inline rename via double-click on detail pane title
