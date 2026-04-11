@@ -413,6 +413,21 @@ function hasActiveTimer(description) {
 function updateToolbarButtons() {
   const item = selectedItem();
   const hasSelection = selectedIds.size > 0;
+
+  // Multi-select: only bulk-capable buttons (delete) stay enabled
+  if (selectedIds.size > 1) {
+    startBtn.disabled     = true;
+    blockBtn.disabled     = true;
+    deferBtn.disabled     = true;
+    timerBtn.disabled     = true;
+    timerBtn.textContent  = '▶ Timer';
+    timerBtn.title        = 'Start a time-tracking timer';
+    closeItemBtn.disabled = true;
+    deleteBtn.disabled    = false;
+    emojiBtn.disabled     = true;
+    return;
+  }
+
   const isClosed = item?.status === 'closed';
   const timerActive = hasActiveTimer(item?.description);
 
@@ -1326,6 +1341,7 @@ async function handleBulkApply(ids) {
   lastClickedId = null;
   updateRowHighlights();
   updateToolbarButtons();
+  renderDetail(null);
 }
 
 function renderBulkPanel(ids) {
