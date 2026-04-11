@@ -152,6 +152,10 @@ pub fn parse_item(raw: &str) -> Result<Item> {
 /// referenced item cannot be found, only the reverse `blocks` update is
 /// skipped so that cross-store or deleted references do not block migration.
 ///
+/// Blank dependency strings and self-referencing entries (where the dep ID
+/// equals the item's own ID, case-insensitively) are silently skipped and
+/// do not appear in `blocked_by`.
+///
 /// # Errors
 ///
 /// Returns an error if reading or rewriting any item file fails.
@@ -159,6 +163,9 @@ fn migrate_depends(path: &Path, item: &mut Item, all: &[(PathBuf, Item)]) -> Res
     let ids = std::mem::take(&mut item.dependencies);
     for dep_id in &ids {
         let dep_id = dep_id.trim();
+        if dep_id.is_empty() || item.id.eq_ignore_ascii_case(dep_id) {
+            continue;
+        }
         let matched = all.iter().find(|(_, i)| i.id.eq_ignore_ascii_case(dep_id));
 
         // Use the canonical ID when the item is found; fall back to raw dep_id.
