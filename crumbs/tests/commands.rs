@@ -697,7 +697,7 @@ fn depends_shared_blocker_gets_both_entries() {
 }
 
 #[test]
-fn depends_unknown_id_is_silently_ignored() {
+fn depends_unknown_id_is_recorded_in_blocked_by() {
     let dir = tempdir().unwrap();
     let store = dir.path().join(".crumbs");
     std::fs::create_dir_all(&store).unwrap();

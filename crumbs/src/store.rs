@@ -148,8 +148,9 @@ pub fn parse_item(raw: &str) -> Result<Item> {
 /// `dependencies` is empty and `blocked_by` is extended; each referenced
 /// item's `blocks` list is extended and its file is rewritten atomically.
 ///
-/// Unknown dependency IDs are silently ignored so that cross-store or
-/// deleted references do not block migration.
+/// Unknown dependency IDs are still recorded in `blocked_by`; if the
+/// referenced item cannot be found, only the reverse `blocks` update is
+/// skipped so that cross-store or deleted references do not block migration.
 ///
 /// # Errors
 ///
@@ -157,10 +158,18 @@ pub fn parse_item(raw: &str) -> Result<Item> {
 fn migrate_depends(path: &Path, item: &mut Item, all: &[(PathBuf, Item)]) -> Result<()> {
     let ids = std::mem::take(&mut item.dependencies);
     for dep_id in &ids {
-        if !item.blocked_by.contains(dep_id) {
-            item.blocked_by.push(dep_id.clone());
+        let dep_id = dep_id.trim();
+        let matched = all.iter().find(|(_, i)| i.id.eq_ignore_ascii_case(dep_id));
+
+        // Use the canonical ID when the item is found; fall back to raw dep_id.
+        let blocked_by_id = matched
+            .map(|(_, dep_item)| dep_item.id.clone())
+            .unwrap_or_else(|| dep_id.to_string());
+
+        if !item.blocked_by.contains(&blocked_by_id) {
+            item.blocked_by.push(blocked_by_id);
         }
-        if let Some((dep_path, _)) = all.iter().find(|(_, i)| i.id.eq_ignore_ascii_case(dep_id)) {
+        if let Some((dep_path, _)) = matched {
             // Read fresh from disk — a previous migration call in this same
             // load_all pass may have already updated this file.
             let mut dep = read_item(dep_path)?;
