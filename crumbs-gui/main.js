@@ -806,11 +806,12 @@ function navChips(ids, onRemove) {
   return wrap;
 }
 
-function linkAddInput(onAdd) {
+function linkAddInput(onAdd, label) {
   const inp = document.createElement('input');
   inp.type = 'text';
   inp.className = 'nav-chip-add';
   inp.placeholder = 'add id…';
+  if (label) inp.setAttribute('aria-label', `Add ${label} link by ID`);
   inp.addEventListener('keydown', e => {
     if (e.key === 'Escape') { inp.value = ''; inp.blur(); e.stopPropagation(); }
     if (e.key === 'Enter') {
@@ -963,8 +964,8 @@ function renderProps(item) {
     clearError();
     try {
       await invoke('link_items', { dir: storeDir, id: item.id, relation, targets: [targetId], remove });
+      if (!await loadItems()) return;
       if (inputEl) inputEl.value = '';
-      await loadItems();
     } catch (e) { showError(`Link failed: ${e}`); }
     finally { linkInFlight = false; }
   };
@@ -977,7 +978,7 @@ function renderProps(item) {
     const linksWrap = document.createElement('div');
     linksWrap.className = 'link-row';
     linksWrap.appendChild(navChips(ids, id => doLink(rel, id, true)));
-    linksWrap.appendChild(linkAddInput((id, inp) => doLink(rel, id, false, inp)));
+    linksWrap.appendChild(linkAddInput((id, inp) => doLink(rel, id, false, inp), label));
     row.appendChild(linksWrap);
   }
   if (item.closed_reason) {
