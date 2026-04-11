@@ -565,7 +565,8 @@ button:disabled {
   color: var(--accent); font-family: inherit;
 }
 .nav-chip:hover { background: var(--accent); color: var(--bg); }
-.nav-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* .nav-chip is a <div> — use :focus-within so the outline shows when either child button is focused. */
+.nav-chip:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 .nav-chip-label {
   padding: 1px 4px 1px 7px; background: none; border: none;
   color: inherit; font: inherit; cursor: pointer; border-radius: 10px 0 0 10px;
