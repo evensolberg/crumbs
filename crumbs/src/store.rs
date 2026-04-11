@@ -152,6 +152,10 @@ pub fn parse_item(raw: &str) -> Result<Item> {
 /// referenced item cannot be found, only the reverse `blocks` update is
 /// skipped so that cross-store or deleted references do not block migration.
 ///
+/// Blank dependency strings and self-referencing entries (where the dep ID
+/// equals the item's own ID, case-insensitively) are silently skipped and
+/// do not appear in `blocked_by`.
+///
 /// # Errors
 ///
 /// Returns an error if reading or rewriting any item file fails.

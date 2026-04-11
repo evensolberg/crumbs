@@ -724,7 +724,7 @@ fn depends_unknown_id_is_recorded_in_blocked_by() {
 }
 
 #[test]
-fn depends_blank_entry_is_skipped_on_migration() {
+fn depends_blank_entry_is_skipped_on_load() {
     let dir = tempdir().unwrap();
     let store = dir.path().join(".crumbs");
     commands::init::run(&store, Some("cr".to_string())).unwrap();
@@ -744,10 +744,14 @@ fn depends_blank_entry_is_skipped_on_migration() {
         item.blocked_by.is_empty(),
         "blank dependency entry should not be pushed into blocked_by"
     );
+    assert!(
+        item.blocks.is_empty(),
+        "blank dependency entry should not create any blocks link"
+    );
 }
 
 #[test]
-fn depends_self_reference_is_skipped_on_migration() {
+fn depends_self_reference_is_skipped_on_load() {
     let dir = tempdir().unwrap();
     let store = dir.path().join(".crumbs");
     commands::init::run(&store, Some("cr".to_string())).unwrap();
