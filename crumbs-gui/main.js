@@ -107,6 +107,7 @@ const itemsTable       = document.getElementById('items-table');
 const itemsBody        = document.getElementById('items-body');
 const detailPane       = document.getElementById('detail-pane');
 const detailLeft       = document.getElementById('detail-left');
+const detailRight      = document.getElementById('detail-right');
 const detailResizer    = document.getElementById('detail-resizer');
 const resizeHandle     = document.getElementById('resize-handle');
 const propGrid         = document.getElementById('prop-grid');
@@ -1243,7 +1244,114 @@ outlineResizer.addEventListener('mousedown', e => {
   document.addEventListener('mouseup', onUp);
 });
 
+function renderBulkPanel(ids) {
+  const items = ids.map(id => allItems.find(i => i.id === id)).filter(Boolean);
+
+  detailPane.classList.remove('hidden');
+  detailPane.classList.add('bulk-mode');
+  detailRight.classList.add('hidden');
+
+  // Detect mixed values across the selection
+  const uniq = (arr) => [...new Set(arr)];
+  const statuses   = uniq(items.map(i => i.status));
+  const priorities = uniq(items.map(i => String(i.priority)));
+  const types      = uniq(items.map(i => i.type ?? ''));
+
+  const MIXED = '';   // empty string = "— mixed —" placeholder option
+
+  const statusVal   = statuses.length   === 1 ? statuses[0]   : MIXED;
+  const priorityVal = priorities.length === 1 ? priorities[0] : MIXED;
+  const typeVal     = types.length      === 1 ? types[0]      : MIXED;
+
+  const mixedOpt = `<option value="" ${!statusVal ? 'selected' : ''}>— mixed —</option>`;
+
+  propGrid.innerHTML = '';
+  detailActions.innerHTML = `
+    <div class="bulk-panel">
+      <div class="bulk-header">${ids.length} items selected</div>
+
+      <div class="bulk-row">
+        <label class="bulk-label" for="bulk-status">Status</label>
+        <select id="bulk-status" class="bulk-select">
+          ${mixedOpt}
+          <option value="open"        ${statusVal === 'open'        ? 'selected' : ''}>open</option>
+          <option value="in_progress" ${statusVal === 'in_progress' ? 'selected' : ''}>in progress</option>
+          <option value="blocked"     ${statusVal === 'blocked'     ? 'selected' : ''}>blocked</option>
+          <option value="deferred"    ${statusVal === 'deferred'    ? 'selected' : ''}>deferred</option>
+          <option value="closed"      ${statusVal === 'closed'      ? 'selected' : ''}>closed</option>
+        </select>
+      </div>
+
+      <div class="bulk-row">
+        <label class="bulk-label" for="bulk-priority">Priority</label>
+        <select id="bulk-priority" class="bulk-select">
+          <option value="" ${!priorityVal ? 'selected' : ''}>— mixed —</option>
+          <option value="1" ${priorityVal === '1' ? 'selected' : ''}>P1</option>
+          <option value="2" ${priorityVal === '2' ? 'selected' : ''}>P2</option>
+          <option value="3" ${priorityVal === '3' ? 'selected' : ''}>P3</option>
+          <option value="4" ${priorityVal === '4' ? 'selected' : ''}>P4</option>
+        </select>
+      </div>
+
+      <div class="bulk-row">
+        <label class="bulk-label" for="bulk-type">Type</label>
+        <select id="bulk-type" class="bulk-select">
+          <option value="" ${!typeVal ? 'selected' : ''}>— mixed —</option>
+          <option value="feature" ${typeVal === 'feature' ? 'selected' : ''}>feature</option>
+          <option value="bug"     ${typeVal === 'bug'     ? 'selected' : ''}>bug</option>
+          <option value="task"    ${typeVal === 'task'    ? 'selected' : ''}>task</option>
+          <option value="idea"    ${typeVal === 'idea'    ? 'selected' : ''}>idea</option>
+          <option value="epic"    ${typeVal === 'epic'    ? 'selected' : ''}>epic</option>
+        </select>
+      </div>
+
+      <div class="bulk-row">
+        <label class="bulk-label" for="bulk-due">Due</label>
+        <input id="bulk-due" type="date" class="bulk-input">
+      </div>
+
+      <div class="bulk-row">
+        <label class="bulk-label" for="bulk-tags-add">Add tags</label>
+        <input id="bulk-tags-add" type="text" class="bulk-input" placeholder="comma-separated">
+      </div>
+
+      <div class="bulk-row">
+        <label class="bulk-label" for="bulk-tags-replace">Replace tags</label>
+        <input id="bulk-tags-replace" type="text" class="bulk-input" placeholder="comma-separated (overwrites)">
+      </div>
+
+      <div class="bulk-row">
+        <label class="bulk-label" for="bulk-blocker-add">Add blocker</label>
+        <input id="bulk-blocker-add" type="text" class="bulk-input" placeholder="crumb ID">
+      </div>
+
+      <div class="bulk-row">
+        <label class="bulk-label" for="bulk-blocker-remove">Remove blocker</label>
+        <input id="bulk-blocker-remove" type="text" class="bulk-input" placeholder="crumb ID">
+      </div>
+
+      <div class="bulk-actions">
+        <button id="bulk-apply-btn" class="btn btn-action">Apply</button>
+        <button id="bulk-delete-btn" class="btn btn-danger-solid">Delete all</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('bulk-apply-btn').addEventListener('click',  () => handleBulkApply(ids));
+  document.getElementById('bulk-delete-btn').addEventListener('click', () => openBulkDeleteModal(ids));
+}
+
 function renderDetail(item) {
+  // Multi-select: hand off to bulk panel, then return
+  if (selectedIds.size > 1) {
+    renderBulkPanel([...selectedIds]);
+    return;
+  }
+
+  // Restore normal layout if coming back from bulk mode
+  detailPane.classList.remove('bulk-mode');
+  detailRight.classList.remove('hidden');
+
   if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
   if (!item) {
     detailPane.classList.add('hidden');
