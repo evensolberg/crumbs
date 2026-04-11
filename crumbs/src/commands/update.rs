@@ -81,12 +81,12 @@ impl UpdateArgs {
             t.parse::<crate::item::ItemType>()
                 .map_err(|e: String| anyhow::anyhow!(e))?;
         }
-        if let Some(sp) = self.story_points {
-            if !crate::item::is_fibonacci(sp) {
-                anyhow::bail!(
-                    "story_points must be a Fibonacci number (1, 2, 3, 5, 8, 13, 21); got {sp}"
-                );
-            }
+        if let Some(sp) = self.story_points
+            && !crate::item::is_fibonacci(sp)
+        {
+            anyhow::bail!(
+                "story_points must be a Fibonacci number (1, 2, 3, 5, 8, 13, 21); got {sp}"
+            );
         }
         Ok(())
     }

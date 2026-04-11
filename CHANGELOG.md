@@ -4,19 +4,31 @@ All notable changes to this project will be documented in this file.
 
 ## [unreleased]
 
+## [0.23.0] - 2026-04-10
+
 ### Chore
 
 - Update dependencies
+- Ignore .worktrees/ directory
+- Close cr-ghd (bulk ops implemented in PR #32)
+- Fix collapsible-if clippy warning in update.rs
 
 ### Docs
 
 - Update README for crumbs.toml and localStorage state
+- Document bulk update and bulk close in SKILL.md and README
+- Fix inaccurate --status open --phase --all example in SKILL.md
 
 ### Feat
 
 - Batch-create, file import, rename import→pull (v0.22.0) (#30)
 - Right-justify counts in crumbs stats (v0.22.1) (#31)
-- Bulk update and close via filter flags (`--filter-tag`, `--filter-status`, etc.) with `--dry-run` and confirmation prompt (#32)
+- Bulk update and close via filter flags (#32)
+
+### GUI
+
+- Emoji picker divider + dependency nav chips (#33)
+- CRUD links from properties pane (#34)
 
 ## [0.21.0] - 2026-04-08
 
