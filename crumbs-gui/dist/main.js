@@ -716,12 +716,12 @@ async function navigateToItem(id) {
     }
   }
 
-  // Fast path: item is already loaded — reset client-side filters only (no backend call).
+  // Fast path: item is already loaded.
+  // If the row is visible in the table, just select it — no filter reset needed.
+  // If it's filtered out, reset filters so it becomes visible.
   if (allItems.some(i => i.id === id)) {
-    resetFilters();
-    renderTable();
-    saveViewState();
-    selectRow(id);
+    if (!rowForId(id)) { resetFilters(); renderTable(); saveViewState(); }
+    selectRow(id, rowForId(id));
     return;
   }
 
@@ -750,7 +750,11 @@ async function navigateToItem(id) {
   // (filteredItems() uses filterStatus, not showClosedEl, so stale closed items would show).
   if (foundItem.status !== 'closed') {
     showClosedEl.checked = prevShowClosed;
-    if (!prevShowClosed && !await loadItems()) return;
+    if (!prevShowClosed && !await loadItems()) {
+      // Reload failed — restore checkbox to match the currently loaded data (still has closed items).
+      showClosedEl.checked = true;
+      return;
+    }
   }
   resetFilters();
   renderTable();
