@@ -48,7 +48,6 @@ pub struct UpdateArgs {
     pub priority: Option<u8>,
     pub tags: Option<Vec<String>>,
     pub item_type: Option<String>,
-    pub dependencies: Option<Vec<String>>,
     pub due: Option<NaiveDate>,
     pub clear_due: bool,
     pub message: Option<String>,
@@ -101,7 +100,6 @@ impl UpdateArgs {
             || self.priority.is_some()
             || self.tags.is_some()
             || self.item_type.is_some()
-            || self.dependencies.is_some()
             || self.due.is_some()
             || self.clear_due
             || self.message.is_some()
@@ -151,9 +149,6 @@ fn apply_update(item: &mut Item, raw: &str, args: &UpdateArgs) -> Result<String>
         item.item_type = t
             .parse::<ItemType>()
             .map_err(|e: String| anyhow::anyhow!(e))?;
-    }
-    if let Some(d) = &args.dependencies {
-        item.dependencies.clone_from(d);
     }
     if let Some(t) = args.title.as_deref() {
         let t = t.trim().to_string();

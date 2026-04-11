@@ -84,9 +84,6 @@ enum Command {
         tags: Option<String>,
         #[arg(short = 'm', long, allow_hyphen_values = true)]
         message: Option<String>,
-        /// Comma-separated dependency IDs
-        #[arg(long)]
-        depends: Option<String>,
         /// Due date (YYYY-MM-DD)
         #[arg(long)]
         due: Option<NaiveDate>,
@@ -112,9 +109,6 @@ enum Command {
         tags: Option<String>,
         #[arg(short = 't', long = "type")]
         item_type: Option<String>,
-        /// Comma-separated dependency IDs (replaces existing)
-        #[arg(long)]
-        depends: Option<String>,
         /// Due date (YYYY-MM-DD)
         #[arg(long)]
         due: Option<NaiveDate>,
@@ -367,7 +361,6 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
             priority,
             tags,
             message,
-            depends,
             due,
             points,
             phase,
@@ -380,7 +373,6 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
                     priority,
                     tags: tags.map(|t| split_csv(&t)).unwrap_or_default(),
                     description: message.unwrap_or_default(),
-                    dependencies: depends.map(|d| split_csv(&d)).unwrap_or_default(),
                     due,
                     story_points: points,
                     phase: phase.unwrap_or_default(),
@@ -425,7 +417,6 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
             priority,
             tags,
             item_type,
-            depends,
             due,
             clear_due,
             message,
@@ -480,7 +471,6 @@ fn run_structured_commands(dir: &std::path::Path, command: Command) -> Result<()
                 priority,
                 tags: tags.map(|t| split_csv(&t)),
                 item_type,
-                dependencies: depends.map(|d| split_csv(&d)),
                 due,
                 clear_due,
                 message: final_message,

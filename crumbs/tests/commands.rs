@@ -662,29 +662,6 @@ fn depends_field_is_promoted_to_blocked_by_on_load() {
     );
 }
 
-#[test]
-fn update_dependencies_field_is_not_persisted() {
-    // `dependencies` is a deserialise-only migration field; setting it via
-    // UpdateArgs must not cause it to be written back to disk.
-    let dir = tempdir().unwrap();
-    let id = create_task(dir.path(), "Task With Deps");
-    let dep_id = create_task(dir.path(), "Another Task");
-    commands::update::run(
-        dir.path(),
-        &id,
-        UpdateArgs {
-            dependencies: Some(vec![dep_id.clone()]),
-            ..Default::default()
-        },
-    )
-    .unwrap();
-    let (_, item) = store::find_by_id(dir.path(), &id).unwrap().unwrap();
-    assert!(
-        item.dependencies.is_empty(),
-        "dependencies must not be persisted to disk (migration-only field)"
-    );
-}
-
 // ── search ───────────────────────────────────────────────────────────────────
 
 #[test]

@@ -27,8 +27,6 @@ pub struct BatchCreateItem {
     /// Body text (equivalent to --message on the CLI).
     #[serde(default)]
     pub message: String,
-    #[serde(default)]
-    pub dependencies: Vec<String>,
     pub due: Option<NaiveDate>,
     pub story_points: Option<u8>,
     #[serde(default)]
@@ -47,7 +45,6 @@ impl Default for BatchCreateItem {
             priority: 2,
             tags: Vec::new(),
             message: String::new(),
-            dependencies: Vec::new(),
             due: None,
             story_points: None,
             phase: String::new(),
@@ -113,7 +110,7 @@ pub fn run(dir: &Path, items: Vec<BatchCreateItem>) -> Result<()> {
             created: today,
             updated: today,
             closed_reason: String::new(),
-            dependencies: spec.dependencies,
+            dependencies: Vec::new(),
             blocks: Vec::new(),
             blocked_by: Vec::new(),
             due: spec.due,

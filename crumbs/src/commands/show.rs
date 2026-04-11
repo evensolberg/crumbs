@@ -83,9 +83,6 @@ fn show_one(dir: &Path, id: &str) -> Result<()> {
             if !item.resolution.is_empty() {
                 println!("  Resolves: {}", item.resolution);
             }
-            if !item.dependencies.is_empty() {
-                println!("  Deps:     {}", item.dependencies.join(", "));
-            }
             if !item.blocks.is_empty() {
                 println!("  Blocks:   {}", item.blocks.join(", "));
             }
