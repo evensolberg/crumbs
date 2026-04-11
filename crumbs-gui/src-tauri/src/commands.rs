@@ -181,29 +181,6 @@ pub fn update_points(dir: String, id: String, points: u8) -> Result<(), String> 
     }
 }
 
-/// Update an item's dependencies. Empty string clears all dependencies.
-#[tauri::command]
-pub fn update_dependencies(dir: String, id: String, dependencies: String) -> Result<(), String> {
-    let dep_list: Vec<String> = if dependencies.is_empty() {
-        vec![]
-    } else {
-        dependencies
-            .split(',')
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .collect()
-    };
-    update::run(
-        &to_path(&dir),
-        &id,
-        UpdateArgs {
-            dependencies: Some(dep_list),
-            ..Default::default()
-        },
-    )
-    .map_err(|e| e.to_string())
-}
-
 /// Update an item's phase label. Empty or whitespace-only string clears the phase.
 /// Uses `clear_phase: true` (not `phase: Some("")`) so the clear intent
 /// remains correct if validation is added to the `phase` assignment path later.
