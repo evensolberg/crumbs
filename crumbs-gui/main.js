@@ -390,6 +390,14 @@ function selectRow(id, tr) {
   renderDetail(selectedItem());
 }
 
+/** Clear multi-select state and update the UI to reflect no selection. */
+function clearMultiSelect() {
+  selectedIds.clear();
+  lastClickedId = null;
+  updateRowHighlights();
+  updateToolbarButtons();
+}
+
 /** Sync `.selected` class on all table rows to match `selectedIds`. */
 function updateRowHighlights() {
   for (const r of document.querySelectorAll('#items-body tr[data-id]')) {
@@ -1336,11 +1344,7 @@ async function handleBulkApply(ids) {
 
   clearError();
   await applyBulk(ids, ops);
-  // Clear the selection after a successful apply
-  selectedIds.clear();
-  lastClickedId = null;
-  updateRowHighlights();
-  updateToolbarButtons();
+  clearMultiSelect();
   renderDetail(null);
 }
 
@@ -1732,6 +1736,15 @@ reindexBtn.addEventListener('click', async () => {
 
 // ── Delete modal ──────────────────────────────────────────────────────────
 
+const DEFAULT_DELETE_MSG = 'Permanently delete this item? This cannot be undone.';
+
+function dismissDeleteModal() {
+  pendingBulkDeleteIds = null;
+  const msgEl = deleteModal.querySelector('.modal-msg');
+  if (msgEl) msgEl.textContent = DEFAULT_DELETE_MSG;
+  deleteModal.classList.add('hidden');
+}
+
 function openDeleteModal() {
   deleteModal.classList.remove('hidden');
   deleteConfirmBtn.focus();
@@ -1754,12 +1767,9 @@ async function confirmDelete() {
     pendingBulkDeleteIds = null;
     // Reset modal message for next single-item delete
     const msgEl = deleteModal.querySelector('.modal-msg');
-    if (msgEl) msgEl.textContent = 'Permanently delete this item? This cannot be undone.';
+    if (msgEl) msgEl.textContent = DEFAULT_DELETE_MSG;
     await applyBulk(ids, [id => invoke('delete_item', { dir: storeDir, id })]);
-    selectedIds.clear();
-    lastClickedId = null;
-    updateRowHighlights();
-    updateToolbarButtons();
+    clearMultiSelect();
     return;
   }
 
@@ -1774,6 +1784,12 @@ async function confirmDelete() {
 }
 
 // ── Close modal ───────────────────────────────────────────────────────────
+
+function dismissCloseModal() {
+  closeModal.classList.add('hidden');
+  pendingCloseId = '';
+  pendingBulkCloseIds = null;
+}
 
 function openCloseModal(id) {
   pendingCloseId = id;
@@ -1799,10 +1815,7 @@ async function confirmClose() {
     const ids = pendingBulkCloseIds;
     pendingBulkCloseIds = null;
     await applyBulk(ids, [id => invoke('close_item', { dir: storeDir, id, reason })]);
-    selectedIds.clear();
-    lastClickedId = null;
-    updateRowHighlights();
-    updateToolbarButtons();
+    clearMultiSelect();
     return;
   }
 
@@ -2972,29 +2985,25 @@ helpModal.addEventListener('click', e => {
 nextBtn.addEventListener('click', doNext);
 
 // Delete modal events
-deleteCancelBtn.addEventListener('click', () => { pendingBulkDeleteIds = null; const msgEl = deleteModal.querySelector('.modal-msg'); if (msgEl) msgEl.textContent = 'Permanently delete this item? This cannot be undone.'; deleteModal.classList.add('hidden'); });
+deleteCancelBtn.addEventListener('click', dismissDeleteModal);
 deleteConfirmBtn.addEventListener('click', confirmDelete);
 deleteModal.addEventListener('keydown', e => {
   if (e.key === 'Enter') confirmDelete();
-  if (e.key === 'Escape') { pendingBulkDeleteIds = null; const msgEl = deleteModal.querySelector('.modal-msg'); if (msgEl) msgEl.textContent = 'Permanently delete this item? This cannot be undone.'; deleteModal.classList.add('hidden'); e.stopPropagation(); }
+  if (e.key === 'Escape') { dismissDeleteModal(); e.stopPropagation(); }
 });
 deleteModal.addEventListener('click', e => {
-  if (e.target === deleteModal) { pendingBulkDeleteIds = null; const msgEl = deleteModal.querySelector('.modal-msg'); if (msgEl) msgEl.textContent = 'Permanently delete this item? This cannot be undone.'; deleteModal.classList.add('hidden'); }
+  if (e.target === deleteModal) dismissDeleteModal();
 });
 
 // Close modal events
-closeCancelBtn.addEventListener('click', () => {
-  closeModal.classList.add('hidden');
-  pendingCloseId = '';
-  pendingBulkCloseIds = null;
-});
+closeCancelBtn.addEventListener('click', dismissCloseModal);
 closeConfirmBtn.addEventListener('click', confirmClose);
 closeReason.addEventListener('keydown', e => {
   if (e.key === 'Enter') confirmClose();
-  if (e.key === 'Escape') { closeModal.classList.add('hidden'); pendingCloseId = ''; pendingBulkCloseIds = null; e.stopPropagation(); }
+  if (e.key === 'Escape') { dismissCloseModal(); e.stopPropagation(); }
 });
 closeModal.addEventListener('click', e => {
-  if (e.target === closeModal) { closeModal.classList.add('hidden'); pendingCloseId = ''; pendingBulkCloseIds = null; }
+  if (e.target === closeModal) dismissCloseModal();
 });
 
 // New item modal events
