@@ -662,6 +662,70 @@ fn depends_field_is_promoted_to_blocked_by_on_load() {
     );
 }
 
+#[test]
+fn depends_shared_blocker_gets_both_entries() {
+    let dir = tempdir().unwrap();
+    let store = dir.path().join(".crumbs");
+    std::fs::create_dir_all(&store).unwrap();
+    commands::init::run(&store, Some("cr".to_string())).unwrap();
+
+    // Blocker item (no dependencies)
+    let blocker_raw = "---\nid: cr-aaa\ntitle: Blocker\nstatus: open\ntype: task\npriority: 3\ntags: []\ncreated: '2026-01-01'\nupdated: '2026-01-01'\nclosed_reason: ''\nblocks: []\nblocked_by: []\nphase: ''\nresolution: ''\n---\n\n# Blocker\n";
+    // Two items that both depend on the blocker
+    let dep1_raw = "---\nid: cr-bbb\ntitle: Dep1\nstatus: open\ntype: task\npriority: 3\ntags: []\ncreated: '2026-01-01'\nupdated: '2026-01-01'\nclosed_reason: ''\ndependencies:\n- cr-aaa\nblocks: []\nblocked_by: []\nphase: ''\nresolution: ''\n---\n\n# Dep1\n";
+    let dep2_raw = "---\nid: cr-ccc\ntitle: Dep2\nstatus: open\ntype: task\npriority: 3\ntags: []\ncreated: '2026-01-01'\nupdated: '2026-01-01'\nclosed_reason: ''\ndependencies:\n- cr-aaa\nblocks: []\nblocked_by: []\nphase: ''\nresolution: ''\n---\n\n# Dep2\n";
+    std::fs::write(store.join("aaa-blocker.md"), blocker_raw).unwrap();
+    std::fs::write(store.join("bbb-dep1.md"), dep1_raw).unwrap();
+    std::fs::write(store.join("ccc-dep2.md"), dep2_raw).unwrap();
+
+    let items = crumbs::store::load_all(&store).unwrap();
+    let blocker = items
+        .iter()
+        .find(|(_, i)| i.id == "cr-aaa")
+        .map(|(_, i)| i)
+        .unwrap();
+
+    // Both cr-bbb and cr-ccc must appear in the blocker's blocks list
+    assert!(
+        blocker.blocks.contains(&"cr-bbb".to_string()),
+        "blocker.blocks should contain cr-bbb"
+    );
+    assert!(
+        blocker.blocks.contains(&"cr-ccc".to_string()),
+        "blocker.blocks should contain cr-ccc"
+    );
+}
+
+#[test]
+fn depends_unknown_id_is_silently_ignored() {
+    let dir = tempdir().unwrap();
+    let store = dir.path().join(".crumbs");
+    std::fs::create_dir_all(&store).unwrap();
+    commands::init::run(&store, Some("cr".to_string())).unwrap();
+
+    // Item depends on a non-existent ID
+    let item_raw = "---\nid: cr-bbb\ntitle: Item\nstatus: open\ntype: task\npriority: 3\ntags: []\ncreated: '2026-01-01'\nupdated: '2026-01-01'\nclosed_reason: ''\ndependencies:\n- cr-zzz\nblocks: []\nblocked_by: []\nphase: ''\nresolution: ''\n---\n\n# Item\n";
+    std::fs::write(store.join("bbb-item.md"), item_raw).unwrap();
+
+    // Should not error — unknown ID is silently ignored
+    let items = crumbs::store::load_all(&store).unwrap();
+    let item = items
+        .iter()
+        .find(|(_, i)| i.id == "cr-bbb")
+        .map(|(_, i)| i)
+        .unwrap();
+
+    // blocked_by still gets the unknown ID (we record it even if no reverse link possible)
+    assert!(
+        item.blocked_by.contains(&"cr-zzz".to_string()),
+        "blocked_by should contain the unknown id cr-zzz"
+    );
+    assert!(
+        item.dependencies.is_empty(),
+        "dependencies should be cleared after migration"
+    );
+}
+
 // ── search ───────────────────────────────────────────────────────────────────
 
 #[test]

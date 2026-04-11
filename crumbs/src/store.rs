@@ -160,10 +160,10 @@ fn migrate_depends(path: &Path, item: &mut Item, all: &[(PathBuf, Item)]) -> Res
         if !item.blocked_by.contains(dep_id) {
             item.blocked_by.push(dep_id.clone());
         }
-        if let Some((dep_path, dep_item)) =
-            all.iter().find(|(_, i)| i.id.eq_ignore_ascii_case(dep_id))
-        {
-            let mut dep = dep_item.clone();
+        if let Some((dep_path, _)) = all.iter().find(|(_, i)| i.id.eq_ignore_ascii_case(dep_id)) {
+            // Read fresh from disk — a previous migration call in this same
+            // load_all pass may have already updated this file.
+            let mut dep = read_item(dep_path)?;
             if !dep.blocks.contains(&item.id) {
                 dep.blocks.push(item.id.clone());
                 rewrite_frontmatter(dep_path, &dep)?;
