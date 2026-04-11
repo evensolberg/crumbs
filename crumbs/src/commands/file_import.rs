@@ -183,7 +183,7 @@ fn parse_csv(bytes: &[u8]) -> Result<Vec<Item>> {
             created,
             updated,
             closed_reason: col("closed_reason").to_string(),
-            dependencies: split_pipe(col("dependencies")),
+            dependencies: Vec::new(),
             blocks: split_pipe(col("blocks")),
             blocked_by: split_pipe(col("blocked_by")),
             due,

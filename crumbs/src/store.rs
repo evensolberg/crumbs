@@ -250,7 +250,6 @@ pub fn reindex(dir: &Path) -> Result<()> {
         "created",
         "updated",
         "closed_reason",
-        "dependencies",
         "blocks",
         "blocked_by",
         "due",
@@ -269,7 +268,6 @@ pub fn reindex(dir: &Path) -> Result<()> {
             &item.created.to_string(),
             &item.updated.to_string(),
             &item.closed_reason,
-            &item.dependencies.join("|"),
             &item.blocks.join("|"),
             &item.blocked_by.join("|"),
             &item.due.map(|d| d.to_string()).unwrap_or_default(),
@@ -457,19 +455,17 @@ mod tests {
         let mut rdr = csv::Reader::from_path(dir.path().join("index.csv")).unwrap();
         let headers = rdr.headers().unwrap().clone();
         let cols: Vec<&str> = headers.iter().collect();
-        let dep_idx = cols
-            .iter()
-            .position(|c| *c == "dependencies")
-            .unwrap_or_else(|| panic!("missing dependencies column, got: {cols:?}"));
-        assert_eq!(
-            cols.get(dep_idx + 1),
-            Some(&"blocks"),
-            "expected blocks immediately after dependencies, got: {cols:?}"
+        assert!(
+            !cols.contains(&"dependencies"),
+            "dependencies column should be removed, got: {cols:?}"
         );
-        assert_eq!(
-            cols.get(dep_idx + 2),
-            Some(&"blocked_by"),
-            "expected blocked_by immediately after blocks, got: {cols:?}"
+        assert!(
+            cols.contains(&"blocks"),
+            "expected blocks column, got: {cols:?}"
+        );
+        assert!(
+            cols.contains(&"blocked_by"),
+            "expected blocked_by column, got: {cols:?}"
         );
     }
 
