@@ -698,6 +698,8 @@ function propRow(label, valueHtml) {
 
 async function navigateToItem(id) {
   function resetFilters() {
+    // Cancel any pending debounced save so it cannot overwrite the reset state.
+    clearTimeout(_saveViewStateTimer);
     filterStatus = 'all'; filterPriority = 'any'; filterType = 'any';
     filterTag = ''; filterPhase = '';
     searchInput.value = ''; searchResults = null;
@@ -728,16 +730,19 @@ async function navigateToItem(id) {
     showClosedEl.checked = prevShowClosed;
     return;
   }
-  if (!allItems.some(i => i.id === id)) {
+  const foundItem = allItems.find(i => i.id === id);
+  if (!foundItem) {
     // Item not found even with closed items — likely a typo or wrong store.
     // Restore the user's prior showClosed state only if we changed it.
     if (!prevShowClosed) {
       showClosedEl.checked = false;
-      await loadItems();
+      if (!await loadItems()) return;
     }
     showError(`'${id}' not found in this store`);
     return;
   }
+  // Restore showClosed unless the item itself is closed and needs it to stay visible.
+  if (foundItem.status !== 'closed') showClosedEl.checked = prevShowClosed;
   resetFilters();
   renderTable();
   saveViewState();
