@@ -742,7 +742,12 @@ async function navigateToItem(id) {
     return;
   }
   // Restore showClosed unless the item itself is closed and needs it to stay visible.
-  if (foundItem.status !== 'closed') showClosedEl.checked = prevShowClosed;
+  // If we revert to showClosed=false, reload so allItems no longer contains closed items
+  // (filteredItems() uses filterStatus, not showClosedEl, so stale closed items would show).
+  if (foundItem.status !== 'closed') {
+    showClosedEl.checked = prevShowClosed;
+    if (!prevShowClosed && !await loadItems()) return;
+  }
   resetFilters();
   renderTable();
   saveViewState();
