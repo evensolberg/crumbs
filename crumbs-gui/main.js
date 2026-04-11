@@ -45,6 +45,7 @@ let filterTag      = '';
 let filterPhase    = '';
 let previewMode = false;
 let pendingCloseId = '';
+let pendingBulkCloseIds = null;   // set when closing multiple items at once
 let autosaveTimer = null;
 let timerInterval = null;
 let loadedBody = '';
@@ -1740,11 +1741,33 @@ function openCloseModal(id) {
   closeReason.focus();
 }
 
+function openBulkCloseModal(ids) {
+  pendingBulkCloseIds = ids;
+  pendingCloseId      = null;     // ensure single-close path is not triggered
+  closeReason.value   = '';
+  closeModal.classList.remove('hidden');
+  closeReason.focus();
+}
+
 async function confirmClose() {
   closeModal.classList.add('hidden');
   clearError();
+  const reason = closeReason.value.trim();
+
+  if (pendingBulkCloseIds) {
+    const ids = pendingBulkCloseIds;
+    pendingBulkCloseIds = null;
+    await applyBulk(ids, [id => invoke('close_item', { dir: storeDir, id, reason })]);
+    selectedIds.clear();
+    lastClickedId = null;
+    updateRowHighlights();
+    updateToolbarButtons();
+    return;
+  }
+
+  // Single-item close (existing path)
   try {
-    await invoke('close_item', { dir: storeDir, id: pendingCloseId, reason: closeReason.value.trim() });
+    await invoke('close_item', { dir: storeDir, id: pendingCloseId, reason });
     if (primaryId() === pendingCloseId && !showClosedEl.checked) {
       selectedIds.clear(); lastClickedId = null;
     }
