@@ -697,69 +697,78 @@ function propRow(label, valueHtml) {
   return vEl;
 }
 
+// Resets all client-side filters and search to their default state.
+// Cancels any pending debounced save so it cannot overwrite the reset state.
+function resetFilters() {
+  clearTimeout(_saveViewStateTimer);
+  filterStatus = 'all'; filterPriority = 'any'; filterType = 'any';
+  filterTag = ''; filterPhase = '';
+  searchInput.value = ''; searchResults = null;
+  filterPriorityEl.value = filterPriority;
+  filterTypeEl.value     = filterType;
+  filterTagEl.value      = filterTag;
+  filterPhaseEl.value    = filterPhase;
+  for (const b of document.querySelectorAll('.filter-btn')) {
+    b.classList.toggle('active', b.dataset.status === 'all');
+  }
+}
+
 async function navigateToItem(id) {
   if (navInFlight) return;
   navInFlight = true;
   try {
-  function resetFilters() {
-    // Cancel any pending debounced save so it cannot overwrite the reset state.
-    clearTimeout(_saveViewStateTimer);
-    filterStatus = 'all'; filterPriority = 'any'; filterType = 'any';
-    filterTag = ''; filterPhase = '';
-    searchInput.value = ''; searchResults = null;
-    filterPriorityEl.value = filterPriority;
-    filterTypeEl.value     = filterType;
-    filterTagEl.value      = filterTag;
-    filterPhaseEl.value    = filterPhase;
-    for (const b of document.querySelectorAll('.filter-btn')) {
-      b.classList.toggle('active', b.dataset.status === 'all');
-    }
-  }
+    // Canonicalize the ID via the backend: handles bare suffixes ("abc" → "cr-abc")
+    // and case-insensitive lookup so chips with non-canonical IDs still navigate.
+    let canonId = id;
+    try {
+      const resolved = await invoke('get_item', { dir: storeDir, id });
+      canonId = resolved.id;
+    } catch { /* unknown ID — carry on and let the not-found path handle it */ }
 
-  // Fast path: item is already loaded.
-  // If the row is visible in the table, just select it — no filter reset needed.
-  // If it's filtered out, reset filters so it becomes visible.
-  if (allItems.some(i => i.id === id)) {
-    if (!rowForId(id)) { resetFilters(); renderTable(); saveViewState(); }
-    selectRow(id, rowForId(id));
-    return;
-  }
-
-  // Slow path: item may be closed and hidden. Reload with closed items included.
-  // Only wipe filters once the item is confirmed to exist in this store.
-  const prevShowClosed = showClosedEl.checked;
-  showClosedEl.checked = true;
-  if (!await loadItems()) {
-    // loadItems already called showError; restore checkbox and bail.
-    showClosedEl.checked = prevShowClosed;
-    return;
-  }
-  const foundItem = allItems.find(i => i.id === id);
-  if (!foundItem) {
-    // Item not found even with closed items — likely a typo or wrong store.
-    // Restore the user's prior showClosed state only if we changed it.
-    if (!prevShowClosed) {
-      showClosedEl.checked = false;
-      if (!await loadItems()) return;
-    }
-    showError(`'${id}' not found in this store`);
-    return;
-  }
-  // Restore showClosed unless the item itself is closed and needs it to stay visible.
-  // If we revert to showClosed=false, reload so allItems no longer contains closed items
-  // (filteredItems() uses filterStatus, not showClosedEl, so stale closed items would show).
-  if (foundItem.status !== 'closed') {
-    showClosedEl.checked = prevShowClosed;
-    if (!prevShowClosed && !await loadItems()) {
-      // Reload failed — restore checkbox to match the currently loaded data (still has closed items).
-      showClosedEl.checked = true;
+    // Fast path: item is already loaded.
+    // If the row is visible in the table, just select it — no filter reset needed.
+    // If it's filtered out, reset filters so it becomes visible.
+    if (allItems.some(i => i.id === canonId)) {
+      if (!rowForId(canonId)) { resetFilters(); renderTable(); saveViewState(); }
+      selectRow(canonId, rowForId(canonId));
       return;
     }
-  }
-  resetFilters();
-  renderTable();
-  saveViewState();
-  selectRow(id, rowForId(id));
+
+    // Slow path: item may be closed and hidden. Reload with closed items included.
+    // Only wipe filters once the item is confirmed to exist in this store.
+    const prevShowClosed = showClosedEl.checked;
+    showClosedEl.checked = true;
+    if (!await loadItems()) {
+      // loadItems already called showError; restore checkbox and bail.
+      showClosedEl.checked = prevShowClosed;
+      return;
+    }
+    const foundItem = allItems.find(i => i.id === canonId);
+    if (!foundItem) {
+      // Item not found even with closed items — likely a typo or wrong store.
+      // Restore the user's prior showClosed state only if we changed it.
+      if (!prevShowClosed) {
+        showClosedEl.checked = false;
+        if (!await loadItems()) return;
+      }
+      showError(`'${id}' not found in this store`);
+      return;
+    }
+    // Restore showClosed unless the item itself is closed and needs it to stay visible.
+    // If we revert to showClosed=false, reload so allItems no longer contains closed items
+    // (filteredItems() uses filterStatus, not showClosedEl, so stale closed items would show).
+    if (foundItem.status !== 'closed') {
+      showClosedEl.checked = prevShowClosed;
+      if (!prevShowClosed && !await loadItems()) {
+        // Reload failed — keep checkbox aligned with the still-loaded data.
+        showClosedEl.checked = true;
+        return;
+      }
+    }
+    resetFilters();
+    renderTable();
+    saveViewState();
+    selectRow(canonId, rowForId(canonId));
   } finally { navInFlight = false; }
 }
 
