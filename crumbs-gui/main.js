@@ -27,7 +27,14 @@ const { invoke } = globalThis.__TAURI__.core;
 
 let storeDir = '';
 let allItems = [];
-let selectedId = null;
+let selectedIds    = new Set();   // all currently highlighted IDs
+let lastClickedId  = null;        // anchor for shift-range selection
+
+/** The single selected ID, or null when 0 or >1 rows are selected. */
+function primaryId() {
+  return selectedIds.size === 1 ? [...selectedIds][0] : null;
+}
+
 let outlineVisible = localStorage.getItem('outlineVisible') === 'true';
 let lineWrapOn = localStorage.getItem('lineWrap') !== 'false'; // default on
 const lineWrapCompartment = new Compartment();
@@ -339,7 +346,8 @@ function dueHtml(due) {
 }
 
 function selectedItem() {
-  return allItems.find(i => i.id === selectedId) ?? null;
+  const id = primaryId();
+  return id ? (allItems.find(i => i.id === id) ?? null) : null;
 }
 
 // Returns true when any interactive control has keyboard focus, so global
@@ -367,7 +375,9 @@ function rowForId(id) {
 }
 
 function selectRow(id, tr) {
-  selectedId = id;
+  selectedIds.clear();
+  if (id != null) selectedIds.add(id);
+  lastClickedId = id ?? null;
   for (const r of document.querySelectorAll('#items-body tr.selected')) r.classList.remove('selected');
   if (!tr) tr = rowForId(id);
   if (tr) {
@@ -392,7 +402,7 @@ function hasActiveTimer(description) {
 
 function updateToolbarButtons() {
   const item = selectedItem();
-  const hasSelection = item !== null;
+  const hasSelection = selectedIds.size > 0;
   const isClosed = item?.status === 'closed';
   const timerActive = hasActiveTimer(item?.description);
 
@@ -404,7 +414,7 @@ function updateToolbarButtons() {
   timerBtn.title       = timerActive ? 'Stop the active timer' : 'Start a time-tracking timer';
   closeItemBtn.disabled = !hasSelection || isClosed;
   deleteBtn.disabled   = !hasSelection;
-  emojiBtn.disabled    = !hasSelection;
+  emojiBtn.disabled    = !hasSelection || selectedIds.size > 1;
 }
 
 // ── Vertical resize ───────────────────────────────────────────────────────
@@ -623,7 +633,7 @@ function renderTable() {
 
   for (const item of items) {
     const tr = document.createElement('tr');
-    if (item.id === selectedId) tr.classList.add('selected');
+    if (selectedIds.has(item.id)) tr.classList.add('selected');
     tr.innerHTML = visibleCols.map(key => cellFor(item, key)).join('');
     tr.dataset.id = item.id;
     tr.addEventListener('mousedown', e => startRowDrag(e, item, tr));
@@ -1430,10 +1440,12 @@ function doNext() {
     })
     .sort((a, b) => a.priority - b.priority || a.created.localeCompare(b.created));
   if (!open.length) return;
-  selectedId = open[0].id;
+  selectedIds.clear();
+  selectedIds.add(open[0].id);
+  lastClickedId = open[0].id;
   renderTable();
   renderDetail(selectedItem());
-  rowForId(selectedId)?.scrollIntoView({ block: 'nearest' });
+  rowForId(primaryId())?.scrollIntoView({ block: 'nearest' });
 }
 
 // ── Export modal ──────────────────────────────────────────────────────────
@@ -1514,8 +1526,8 @@ async function confirmDelete() {
   deleteModal.classList.add('hidden');
   clearError();
   try {
-    await invoke('delete_item', { dir: storeDir, id: selectedId });
-    selectedId = null;
+    await invoke('delete_item', { dir: storeDir, id: primaryId() });
+    selectedIds.clear(); lastClickedId = null;
     await loadItems();
   } catch (e) {
     showError(`Delete failed: ${e}`);
@@ -1536,8 +1548,8 @@ async function confirmClose() {
   clearError();
   try {
     await invoke('close_item', { dir: storeDir, id: pendingCloseId, reason: closeReason.value.trim() });
-    if (selectedId === pendingCloseId && !showClosedEl.checked) {
-      selectedId = null;
+    if (primaryId() === pendingCloseId && !showClosedEl.checked) {
+      selectedIds.clear(); lastClickedId = null;
     }
     await loadItems();
   } catch (e) {
@@ -1553,7 +1565,7 @@ function renderBlockerList(filterText) {
   if (!item) return;
   const currentBlockers = item.blocked_by ?? [];
   const candidates = allItems.filter(i =>
-    i.id !== selectedId &&
+    i.id !== primaryId() &&
     i.status !== 'closed' &&
     (!filterText || i.title.toLowerCase().includes(filterText.toLowerCase()) ||
       i.id.toLowerCase().includes(filterText.toLowerCase()))
@@ -1591,10 +1603,10 @@ async function confirmBlockedBy() {
   clearError();
   try {
     if (toAdd.length > 0) {
-      await invoke('link_items', { dir: storeDir, id: selectedId, relation: 'blocked-by', targets: toAdd, remove: false });
+      await invoke('link_items', { dir: storeDir, id: primaryId(), relation: 'blocked-by', targets: toAdd, remove: false });
     }
     if (toRemove.length > 0) {
-      await invoke('link_items', { dir: storeDir, id: selectedId, relation: 'blocked-by', targets: toRemove, remove: true });
+      await invoke('link_items', { dir: storeDir, id: primaryId(), relation: 'blocked-by', targets: toRemove, remove: true });
     }
     await loadItems();
   } catch (e) {
@@ -1650,10 +1662,10 @@ function openDeferModal() {
 
 async function confirmDefer() {
   deferModal.classList.add('hidden');
-  if (!selectedId) return;
+  if (!primaryId()) return;
   clearError();
   try {
-    await invoke('defer_item', { dir: storeDir, id: selectedId, until: deferUntil.value });
+    await invoke('defer_item', { dir: storeDir, id: primaryId(), until: deferUntil.value });
     await loadItems();
   } catch (e) {
     showError(`Defer failed: ${e}`);
@@ -1673,7 +1685,7 @@ deferModal.addEventListener('click', e => {
 // ── Timer modal ───────────────────────────────────────────────────────────
 
 function openTimerModal() {
-  if (!selectedId) return;
+  if (!primaryId()) return;
   const item = selectedItem();
   const starting = !hasActiveTimer(item?.description);
   timerModalTitle.textContent = starting ? 'Start timer' : 'Stop timer';
@@ -1685,16 +1697,16 @@ function openTimerModal() {
 
 async function confirmTimer() {
   timerModal.classList.add('hidden');
-  if (!selectedId) return;
+  if (!primaryId()) return;
   const item = selectedItem();
   const starting = !hasActiveTimer(item?.description);
   const comment = timerComment.value.trim();
   clearError();
   try {
     if (starting) {
-      await invoke('start_timer', { dir: storeDir, id: selectedId, comment });
+      await invoke('start_timer', { dir: storeDir, id: primaryId(), comment });
     } else {
-      await invoke('stop_timer', { dir: storeDir, id: selectedId, comment });
+      await invoke('stop_timer', { dir: storeDir, id: primaryId(), comment });
     }
     await loadItems();
   } catch (e) {
@@ -1773,7 +1785,7 @@ async function switchStore(crumbsDir) {
   saveViewState();
   storeDir = crumbsDir;
   storePathEl.textContent = storeDir;
-  selectedId = null;
+  selectedIds.clear(); lastClickedId = null;
   searchResults = null;
   searchInput.value = '';
   applyViewState(loadViewState(crumbsDir));
@@ -1986,7 +1998,7 @@ function startRowDrag(e, item, tr) {
     clearError();
     try {
       await invoke('move_item', { srcDir: storeDir, id, dstDir: target.dataset.path });
-      if (selectedId === id) selectedId = null;
+      if (selectedIds.has(id)) { selectedIds.delete(id); if (lastClickedId === id) lastClickedId = null; }
       await loadItems();
     } catch (err) {
       showError(`Move failed: ${err}`);
@@ -2112,7 +2124,7 @@ document.addEventListener('keydown', e => {
     const rows = [...document.querySelectorAll('#items-body tr[data-id]')];
     if (!rows.length) return;
     e.preventDefault();
-    const currentIndex = rows.findIndex(r => r.dataset.id === selectedId);
+    const currentIndex = rows.findIndex(r => r.dataset.id === (lastClickedId ?? primaryId()));
     let nextIndex;
     if (e.key === 'ArrowUp') {
       nextIndex = currentIndex <= 0 ? 0 : currentIndex - 1;
@@ -2124,7 +2136,7 @@ document.addEventListener('keydown', e => {
   }
 
   // Enter — focus CM6 editor for selected item
-  if (e.key === 'Enter' && selectedId) {
+  if (e.key === 'Enter' && primaryId()) {
     if (!detailPane.classList.contains('hidden')) {
       view.focus();
     }
@@ -2132,7 +2144,7 @@ document.addEventListener('keydown', e => {
   }
 
   // Delete/Backspace — open delete modal for selected item
-  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.size > 0) {
     e.preventDefault();
     openDeleteModal();
     return;
@@ -2334,19 +2346,19 @@ detailTitleLabel.addEventListener('dblclick', () => {
 
 // Body text autosave: debounced on input (2s), immediate on blur or Cmd/Ctrl-S
 function scheduleAutosave() {
-  if (!selectedId) return;
+  if (!primaryId()) return;
   clearTimeout(autosaveTimer);
   autosaveTimer = setTimeout(() => {
     const text = view.state.doc.toString();
-    if (text !== loadedBody) doSaveText(selectedId, text);
+    if (text !== loadedBody) doSaveText(primaryId(), text);
   }, 2000);
 }
 function flushAutosave() {
-  if (!selectedId) return;
+  if (!primaryId()) return;
   clearTimeout(autosaveTimer);
   autosaveTimer = null;
   const text = view.state.doc.toString();
-  if (text !== loadedBody) doSaveText(selectedId, text);
+  if (text !== loadedBody) doSaveText(primaryId(), text);
 }
 // Input, blur, and Cmd+S are handled by the CM6 updateListener, domEventHandlers, and keymap.
 
@@ -2608,14 +2620,14 @@ document.addEventListener('click', e => {
 });
 
 // Toolbar action buttons
-startBtn.addEventListener('click',    () => { if (selectedId) doUpdateStatus(selectedId, 'in_progress'); });
-blockBtn.addEventListener('click',    () => { if (selectedId) openBlockedByModal(); });
-deferBtn.addEventListener('click',    () => { if (selectedId) openDeferModal(); });
-timerBtn.addEventListener('click',    () => { if (selectedId) openTimerModal(); });
-closeItemBtn.addEventListener('click', () => { if (selectedId) openCloseModal(selectedId); });
+startBtn.addEventListener('click',    () => { if (primaryId()) doUpdateStatus(primaryId(), 'in_progress'); });
+blockBtn.addEventListener('click',    () => { if (primaryId()) openBlockedByModal(); });
+deferBtn.addEventListener('click',    () => { if (primaryId()) openDeferModal(); });
+timerBtn.addEventListener('click',    () => { if (primaryId()) openTimerModal(); });
+closeItemBtn.addEventListener('click', () => { if (primaryId()) openCloseModal(primaryId()); });
 
 deleteBtn.addEventListener('click', () => {
-  if (!selectedId) return;
+  if (!primaryId()) return;
   openDeleteModal();
 });
 
@@ -2623,7 +2635,7 @@ cleanBtn.addEventListener('click', async () => {
   clearError();
   try {
     await invoke('clean_closed', { dir: storeDir });
-    if (selectedItem()?.status === 'closed') selectedId = null;
+    if (selectedItem()?.status === 'closed') { selectedIds.clear(); lastClickedId = null; }
     await loadItems();
   } catch (e) {
     showError(`Clean failed: ${e}`);
