@@ -140,6 +140,40 @@ pub fn parse_item(raw: &str) -> Result<Item> {
     Ok(item)
 }
 
+/// Promote a legacy `depends` list to bidirectional `blocked_by`/`blocks`
+/// links and rewrite both sides to disk.
+///
+/// Called by [`load_all`] for any item that still carries a non-empty
+/// `dependencies` vec. After this function returns the item's
+/// `dependencies` is empty and `blocked_by` is extended; each referenced
+/// item's `blocks` list is extended and its file is rewritten atomically.
+///
+/// Unknown dependency IDs are silently ignored so that cross-store or
+/// deleted references do not block migration.
+///
+/// # Errors
+///
+/// Returns an error if reading or rewriting any item file fails.
+fn migrate_depends(path: &Path, item: &mut Item, all: &[(PathBuf, Item)]) -> Result<()> {
+    let ids = std::mem::take(&mut item.dependencies);
+    for dep_id in &ids {
+        if !item.blocked_by.contains(dep_id) {
+            item.blocked_by.push(dep_id.clone());
+        }
+        if let Some((dep_path, dep_item)) =
+            all.iter().find(|(_, i)| i.id.eq_ignore_ascii_case(dep_id))
+        {
+            let mut dep = dep_item.clone();
+            if !dep.blocks.contains(&item.id) {
+                dep.blocks.push(item.id.clone());
+                rewrite_frontmatter(dep_path, &dep)?;
+            }
+        }
+    }
+    rewrite_frontmatter(path, item)?;
+    Ok(())
+}
+
 /// # Errors
 ///
 /// Returns an error if the directory cannot be read.
@@ -161,6 +195,38 @@ pub fn load_all(dir: &Path) -> Result<Vec<(PathBuf, Item)>> {
     }
     if skipped > 0 {
         eprintln!("warning: {skipped} item(s) skipped due to parse errors");
+    }
+    // Lazy one-time migration: promote legacy `dependencies` to blocked_by/blocks.
+    let to_migrate: Vec<usize> = items
+        .iter()
+        .enumerate()
+        .filter(|(_, (_, item))| !item.dependencies.is_empty())
+        .map(|(i, _)| i)
+        .collect();
+    if !to_migrate.is_empty() {
+        let snapshot: Vec<(PathBuf, Item)> = items.clone();
+        for idx in to_migrate {
+            let (path, item) = &mut items[idx];
+            if let Err(e) = migrate_depends(&path.clone(), item, &snapshot) {
+                eprintln!(
+                    "warning: depends migration failed for {}: {e}",
+                    path.display()
+                );
+            }
+        }
+        // Reload all items from disk so that both sides of the migration are
+        // reflected in the returned vec (blocker.blocks updated on disk above).
+        items.clear();
+        for entry in std::fs::read_dir(dir).context("read dir (post-migration)")? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.extension().and_then(|e| e.to_str()) == Some("md") {
+                match read_item(&path) {
+                    Ok(item) => items.push((path, item)),
+                    Err(e) => eprintln!("warning: skipping {}: {e}", path.display()),
+                }
+            }
+        }
     }
     items.sort_by(|a, b| a.1.id.cmp(&b.1.id));
     Ok(items)
