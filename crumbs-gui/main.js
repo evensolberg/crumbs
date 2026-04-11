@@ -2956,14 +2956,14 @@ helpModal.addEventListener('click', e => {
 nextBtn.addEventListener('click', doNext);
 
 // Delete modal events
-deleteCancelBtn.addEventListener('click', () => { pendingBulkDeleteIds = null; deleteModal.classList.add('hidden'); });
+deleteCancelBtn.addEventListener('click', () => { pendingBulkDeleteIds = null; const msgEl = deleteModal.querySelector('.modal-msg'); if (msgEl) msgEl.textContent = 'Permanently delete this item? This cannot be undone.'; deleteModal.classList.add('hidden'); });
 deleteConfirmBtn.addEventListener('click', confirmDelete);
 deleteModal.addEventListener('keydown', e => {
   if (e.key === 'Enter') confirmDelete();
-  if (e.key === 'Escape') { pendingBulkDeleteIds = null; deleteModal.classList.add('hidden'); e.stopPropagation(); }
+  if (e.key === 'Escape') { pendingBulkDeleteIds = null; const msgEl = deleteModal.querySelector('.modal-msg'); if (msgEl) msgEl.textContent = 'Permanently delete this item? This cannot be undone.'; deleteModal.classList.add('hidden'); e.stopPropagation(); }
 });
 deleteModal.addEventListener('click', e => {
-  if (e.target === deleteModal) { pendingBulkDeleteIds = null; deleteModal.classList.add('hidden'); }
+  if (e.target === deleteModal) { pendingBulkDeleteIds = null; const msgEl = deleteModal.querySelector('.modal-msg'); if (msgEl) msgEl.textContent = 'Permanently delete this item? This cannot be undone.'; deleteModal.classList.add('hidden'); }
 });
 
 // Close modal events
