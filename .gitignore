@@ -1,5 +1,6 @@
 /target
 /release-dist
+/crumbs/Cargo.lock
 /crumbs-gui/node_modules
 .crumbs/index.csv
 index.csv
