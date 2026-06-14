@@ -15,7 +15,7 @@
     "@codemirror/state": "^6",
     "@codemirror/view": "^6",
     "@eslint/js": "^10.0.1",
-    "esbuild": "^0.25",
+    "esbuild": "^0.28",
     "eslint": "^10.0.3",
     "globals": "^17.4.0"
   }
