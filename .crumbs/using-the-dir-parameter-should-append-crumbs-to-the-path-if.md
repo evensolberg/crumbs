@@ -12,8 +12,4 @@ phase: ''
 
 # Using the --dir parameter should append /.crumbs to the path if it is absent, otherwise things get created in the target directory and not the .crumbs subdirectory.
 
-[2026-07-07] Reopened (was closed: Fixed: resolve_dir now appends .crumbs unless path already ends with .crumbs or contains store markers)
-
-This bug is still present in the GUI client. See /Volumes/SSD/Souce/StratMan/ for an example.
-
-[start] 2026-07-07 20:31:03  Investigating GUI-side resolve_dir fix
+This bug is still present in the GUI client. The store path resolution in the Tauri backend did not append .crumbs to project root paths passed from the GUI frontend.

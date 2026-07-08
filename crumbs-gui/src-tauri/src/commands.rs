@@ -12,19 +12,21 @@ use crumbs::{
 
 /// Convert a GUI store path string to a `PathBuf` pointing at the actual store directory.
 ///
-/// The frontend always passes one of:
-/// - `"global"` (sentinel) → global data directory
-/// - An absolute `.crumbs` path (e.g. `/project/.crumbs`) → used as-is
-/// - A flat store path (e.g. the global store) that already contains store marker
-///   files directly → used as-is
-/// - A project root path *without* `.crumbs` (can occur with stale `localStorage`
-///   entries from older app versions) → `.crumbs` is appended as a safety net
+/// The frontend passes one of:
+/// - A path ending with `.crumbs` (project store) → used as-is
+/// - A flat store path (e.g. the global store) that already contains marker
+///   files (`index.csv`, `crumbs.toml`, `config.toml`) directly → used as-is
+/// - The global store path returned by `global_dir()`, even when that directory
+///   is empty (not yet initialized) → used as-is via the final `== global_dir()`
+///   guard, so an uninitialized global store is never incorrectly suffixed
+/// - A project root path *without* `.crumbs` (stale `localStorage` entry from
+///   an older app version) → `.crumbs` appended as a safety net
+/// - `"global"` (legacy sentinel, dead code in current frontend) → `global_dir()`
 ///
-/// Detecting flat stores via their marker files (`index.csv`, `crumbs.toml`,
-/// `config.toml`) is more robust than comparing against `global_dir()` because
-/// it avoids path-equality brittleness under symlinks or platform path quirks.
-///
-/// This mirrors `config::resolve_dir` in the CLI crate.
+/// Note: this function uses different detection logic from `config::resolve_dir`
+/// in the CLI crate. The CLI only checks the `.crumbs` suffix; the GUI also
+/// checks for marker files and the global store path to handle the wider set of
+/// paths the frontend may pass.
 fn to_path(dir: &str) -> PathBuf {
     if dir == "global" {
         return global_dir();
@@ -37,11 +39,14 @@ fn to_path(dir: &str) -> PathBuf {
     let p = PathBuf::from(dir);
     // Use as-is when the path already points at a store directory:
     // - project stores always end with `.crumbs`
-    // - flat stores (e.g. the global store) contain marker files directly
+    // - flat stores (e.g. an initialized global store) contain marker files directly
+    // - the global store path is recognized even when it has no marker files yet
+    //   (uninitialized directory), so that `.crumbs` is never incorrectly appended
     if p.ends_with(".crumbs")
         || p.join("index.csv").is_file()
         || p.join("crumbs.toml").is_file()
         || p.join("config.toml").is_file()
+        || p == global_dir()
     {
         p
     } else {
@@ -529,6 +534,16 @@ mod tests {
             to_path(dir.path().to_str().unwrap()),
             dir.path().to_path_buf()
         );
+    }
+
+    #[test]
+    fn to_path_global_dir_path_returned_unchanged_even_when_empty() {
+        // The global store directory may legitimately have no marker files when it
+        // has not yet been initialised. `to_path` must still return it as-is so
+        // that operations land in the correct directory rather than
+        // `<global_dir>/.crumbs`.
+        let g = global_dir();
+        assert_eq!(to_path(g.to_str().unwrap()), g);
     }
 
     // ── has_store ─────────────────────────────────────────────────────────────
