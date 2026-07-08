@@ -2037,7 +2037,9 @@ async function switchStore(crumbsDir) {
     showError(`Failed to resolve store path: ${e}`);
     return;
   }
-  storeDir = resolved;
+  // Normalize to forward slashes so storeBaseName() and localStorage keys
+  // are consistent regardless of platform path separator.
+  storeDir = resolved.replace(/\\/g, '/');
   storePathEl.textContent = storeDir;
   selectedIds.clear(); lastClickedId = null;
   searchResults = null;
@@ -3045,7 +3047,7 @@ rebuildTableHeader();
 initColResizers();
 
 try {
-  storeDir = await invoke('resolve_store', { dir: '' });
+  storeDir = (await invoke('resolve_store', { dir: '' })).replace(/\\/g, '/');
   storePathEl.textContent = storeDir;
   applyViewState(loadViewState(storeDir));
   addRecentStore(storeDir);

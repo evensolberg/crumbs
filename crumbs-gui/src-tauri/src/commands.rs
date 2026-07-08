@@ -15,8 +15,8 @@ use crumbs::{
 /// Resolution order (first match wins):
 /// 1. `"global"` sentinel → `global_dir()`
 /// 2. Empty string → `global_dir()` (debug panic; callers should use `resolve_store`)
-/// 3. `== global_dir()` → used as-is (recognized even when the dir is empty/uninitialized)
-/// 4. Ends with `.crumbs` → used as-is (already a canonical project-store path)
+/// 3. Ends with `.crumbs` → used as-is (already a canonical project-store path)
+/// 4. `== global_dir()` → used as-is (recognized even when the dir is empty/uninitialized)
 /// 5. Contains a `.crumbs/` subdirectory → return `<dir>/.crumbs` (preferred over flat
 ///    marker files; self-heals projects where the old GUI bug wrote files into the root)
 /// 6. Contains marker files (`index.csv`, `crumbs.toml`, `config.toml`) directly →
