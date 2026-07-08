@@ -28,11 +28,8 @@ use crumbs::{
 /// checks for marker files and the global store path to handle the wider set of
 /// paths the frontend may pass.
 fn to_path(dir: &str) -> PathBuf {
-    // Compute once; used for the "global" alias, the empty-string fallback,
-    // and the equality check below (avoids three separate allocations).
-    let gdir = global_dir();
     if dir == "global" {
-        return gdir;
+        return global_dir();
     }
     // Guard against empty strings in both debug and release builds. An empty
     // `dir` would otherwise produce the relative path `.crumbs` (from
@@ -45,14 +42,22 @@ fn to_path(dir: &str) -> PathBuf {
             false,
             "to_path: empty string is invalid; use resolve_store for auto-detection"
         );
-        return gdir;
+        return global_dir();
     }
     // Normalize to strip trailing separators and redundant slashes so that
     // semantically identical paths (e.g. `/foo/bar` vs `/foo/bar/`) compare equal.
     let p: PathBuf = PathBuf::from(dir).components().collect();
     let crumbs_sub = p.join(".crumbs");
-    // Fast path: exact matches that need no filesystem probes.
-    if p == gdir || p.ends_with(".crumbs") {
+    // `.crumbs`-suffixed paths are already canonical — skip all filesystem probes.
+    if p.ends_with(".crumbs") {
+        return p;
+    }
+    // Normalize global_dir() the same way as `p` so the equality check is
+    // reliable even when the OS or env produces a path with a trailing separator.
+    // Deferred past the `.crumbs` fast path to avoid the dirs::data_dir() call
+    // for the common case where the path is already a valid store path.
+    let gdir: PathBuf = global_dir().components().collect();
+    if p == gdir {
         return p;
     }
     // If a canonical `.crumbs/` subdirectory already exists, prefer it even
@@ -61,8 +66,8 @@ fn to_path(dir: &str) -> PathBuf {
     if crumbs_sub.is_dir() {
         return crumbs_sub;
     }
-    // Flat store: marker files live directly in the directory (e.g. global store
-    // or a user-initialized non-project store).
+    // Flat store: marker files live directly in the directory (e.g. a non-project
+    // store initialized outside a `.crumbs/` subdirectory).
     if p.join("index.csv").is_file()
         || p.join("crumbs.toml").is_file()
         || p.join("config.toml").is_file()
