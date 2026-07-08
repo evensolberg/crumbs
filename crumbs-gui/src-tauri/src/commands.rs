@@ -10,11 +10,31 @@ use crumbs::{
     store, store_config,
 };
 
+/// Convert a GUI store path string to a `PathBuf` pointing at the actual store directory.
+///
+/// The frontend always passes one of:
+/// - `"global"` (sentinel) → global data directory
+/// - An absolute `.crumbs` path (e.g. `/project/.crumbs`) → used as-is
+/// - The global store's absolute path (from `resolve_store`) → used as-is
+/// - A project root path *without* `.crumbs` (should not happen after the frontend
+///   `has_store` check, but can occur with stale localStorage entries from older
+///   versions) → `.crumbs` is appended as a safety net
+///
+/// This mirrors `config::resolve_dir` in the CLI crate.
 fn to_path(dir: &str) -> PathBuf {
     if dir == "global" {
-        global_dir()
+        return global_dir();
+    }
+    let p = PathBuf::from(dir);
+    // Paths that already point at a store directory are used as-is:
+    // - project stores always end with `.crumbs`
+    // - the global store equals `global_dir()` (which never ends with `.crumbs`)
+    if p.ends_with(".crumbs") || p == global_dir() {
+        p
     } else {
-        PathBuf::from(dir)
+        // Stale entry or user-supplied project root — append `.crumbs` so that
+        // operations land in the store subdirectory, not the project root.
+        p.join(".crumbs")
     }
 }
 
@@ -274,12 +294,21 @@ pub fn close_item(dir: String, id: String, reason: String) -> Result<(), String>
 
 /// Check whether a directory has an existing .crumbs store.
 /// Returns true if:
-///   - the path itself is a store (contains index.csv or config.toml), OR
+///   - the path itself is a store (contains index.csv, crumbs.toml, or the legacy
+///     config.toml), OR
 ///   - the path contains a .crumbs/ subdirectory (project store)
+///
+/// Note: `crumbs.toml` is the current config file name (renamed from `config.toml`
+/// during the store migration introduced in 0.14). Both names must be checked so
+/// that a freshly-initialised or just-migrated store with no items yet (no
+/// `index.csv`) is still recognised.
 #[tauri::command]
 pub fn has_store(dir: String) -> bool {
     let p = PathBuf::from(&dir);
-    p.join("index.csv").is_file() || p.join("config.toml").is_file() || p.join(".crumbs").is_dir()
+    p.join("index.csv").is_file()
+        || p.join("crumbs.toml").is_file()
+        || p.join("config.toml").is_file()
+        || p.join(".crumbs").is_dir()
 }
 
 /// Initialize a .crumbs store in the given directory with a derived prefix.
