@@ -48,6 +48,7 @@ fn to_path(dir: &str) -> PathBuf {
         return gdir;
     }
     let p = PathBuf::from(dir);
+    let crumbs_sub = p.join(".crumbs");
     // Fast path: exact matches that need no filesystem probes.
     if p == gdir || p.ends_with(".crumbs") {
         return p;
@@ -55,8 +56,8 @@ fn to_path(dir: &str) -> PathBuf {
     // If a canonical `.crumbs/` subdirectory already exists, prefer it even
     // when the parent also has marker files (guards against stale entries written
     // by the pre-fix GUI bug, where files were placed in the project root).
-    if p.join(".crumbs").is_dir() {
-        return p.join(".crumbs");
+    if crumbs_sub.is_dir() {
+        return crumbs_sub;
     }
     // Flat store: marker files live directly in the directory (e.g. global store
     // or a user-initialized non-project store).
@@ -68,7 +69,7 @@ fn to_path(dir: &str) -> PathBuf {
     }
     // Stale entry or user-supplied project root — append `.crumbs` so that
     // operations land in the store subdirectory, not the project root.
-    p.join(".crumbs")
+    crumbs_sub
 }
 
 /// Walk up from `start` looking for a `.crumbs/` directory.
