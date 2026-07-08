@@ -26,6 +26,9 @@ const { invoke } = globalThis.__TAURI__.core;
 // ── State ─────────────────────────────────────────────────────────────────
 
 let storeDir = '';
+/** Normalize a backend path to forward slashes for consistent localStorage keys. */
+function normalizePath(p) { return p.replace(/\\/g, '/'); }
+
 let allItems = [];
 let selectedIds    = new Set();   // all currently highlighted IDs
 let lastClickedId  = null;        // anchor for shift-range selection
@@ -2027,12 +2030,24 @@ async function checkAndOpenDir(rawPath) {
 async function switchStore(crumbsDir) {
   clearTimeout(_saveViewStateTimer);
   saveViewState();
-  storeDir = crumbsDir;
+  // Normalise through the backend so stale localStorage entries (e.g. a
+  // project root missing the .crumbs suffix) are corrected before we
+  // display, persist, or key view state with the path.
+  let resolved;
+  try {
+    resolved = await invoke('resolve_store', { dir: crumbsDir });
+  } catch (e) {
+    showError(`Failed to resolve store path: ${e}`);
+    return;
+  }
+  // Normalize to forward slashes so storeBaseName() and localStorage keys
+  // are consistent regardless of platform path separator.
+  storeDir = normalizePath(resolved);
   storePathEl.textContent = storeDir;
   selectedIds.clear(); lastClickedId = null;
   searchResults = null;
   searchInput.value = '';
-  applyViewState(loadViewState(crumbsDir));
+  applyViewState(loadViewState(storeDir));
   addRecentStore(storeDir);
   renderSidebar();
   await loadItems();
@@ -3035,7 +3050,7 @@ rebuildTableHeader();
 initColResizers();
 
 try {
-  storeDir = await invoke('resolve_store', { dir: '' });
+  storeDir = normalizePath(await invoke('resolve_store', { dir: '' }));
   storePathEl.textContent = storeDir;
   applyViewState(loadViewState(storeDir));
   addRecentStore(storeDir);

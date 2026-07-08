@@ -10,12 +10,81 @@ use crumbs::{
     store, store_config,
 };
 
+/// Returns `true` when `p` directly contains one of the crumbs store marker
+/// files. Used by both [`to_path`] and [`has_store`] to avoid duplicating
+/// the marker-file list.
+fn has_marker_files(p: &std::path::Path) -> bool {
+    p.join("index.csv").is_file()
+        || p.join("crumbs.toml").is_file()
+        || p.join("config.toml").is_file()
+}
+
+/// Convert a GUI store path string to a `PathBuf` pointing at the actual store directory.
+///
+/// Resolution order (first match wins):
+/// 1. `"global"` sentinel → `global_dir()`
+/// 2. Empty string → `global_dir()` (debug panic; callers should use `resolve_store`)
+/// 3. Ends with `.crumbs` → used as-is (already a canonical project-store path)
+/// 4. `== global_dir()` → used as-is (recognized even when the dir is empty/uninitialized)
+/// 5. Contains a `.crumbs/` subdirectory → return `<dir>/.crumbs` (preferred over flat
+///    marker files; self-heals projects where the old GUI bug wrote files into the root)
+/// 6. Contains marker files (`index.csv`, `crumbs.toml`, `config.toml`) directly →
+///    used as-is (flat store, e.g. a non-project store initialized outside `.crumbs/`)
+/// 7. Everything else → `.crumbs` appended (stale `localStorage` entry or bare project root)
+///
+/// Note: this function uses different detection logic from `config::resolve_dir`
+/// in the CLI crate. The CLI only checks the `.crumbs` suffix; the GUI also
+/// checks for marker files and the global store path to handle the wider set of
+/// paths the frontend may pass.
 fn to_path(dir: &str) -> PathBuf {
     if dir == "global" {
-        global_dir()
-    } else {
-        PathBuf::from(dir)
+        return global_dir();
     }
+    // Guard against empty strings in both debug and release builds. An empty
+    // `dir` would otherwise produce the relative path `.crumbs` (from
+    // `PathBuf::from("").join(".crumbs")`), silently writing to the process
+    // working directory. Callers should route auto-detection through
+    // `resolve_store` instead; fall back to the global store here rather
+    // than creating files in an unpredictable location.
+    if dir.is_empty() {
+        debug_assert!(
+            false,
+            "to_path: empty string is invalid; use resolve_store for auto-detection"
+        );
+        return global_dir();
+    }
+    // Normalize to strip trailing separators and redundant slashes so that
+    // semantically identical paths (e.g. `/foo/bar` vs `/foo/bar/`) compare equal.
+    let p: PathBuf = PathBuf::from(dir).components().collect();
+    // `.crumbs`-suffixed paths are already canonical — skip all filesystem probes.
+    if p.ends_with(".crumbs") {
+        return p;
+    }
+    // `crumbs_sub` is only needed after the fast-path check, so compute it here
+    // to avoid a wasted allocation when the path already ends with `.crumbs`.
+    let crumbs_sub = p.join(".crumbs");
+    // Normalize global_dir() the same way as `p` so the equality check is
+    // reliable even when the OS or env produces a path with a trailing separator.
+    // Deferred past the `.crumbs` fast path to avoid the dirs::data_dir() call
+    // for the common case where the path is already a valid store path.
+    let gdir: PathBuf = global_dir().components().collect();
+    if p == gdir {
+        return p;
+    }
+    // If a canonical `.crumbs/` subdirectory already exists, prefer it even
+    // when the parent also has marker files (guards against stale entries written
+    // by the pre-fix GUI bug, where files were placed in the project root).
+    if crumbs_sub.is_dir() {
+        return crumbs_sub;
+    }
+    // Flat store: marker files live directly in the directory (e.g. a non-project
+    // store initialized outside a `.crumbs/` subdirectory).
+    if has_marker_files(&p) {
+        return p;
+    }
+    // Stale entry or user-supplied project root — append `.crumbs` so that
+    // operations land in the store subdirectory, not the project root.
+    crumbs_sub
 }
 
 /// Walk up from `start` looking for a `.crumbs/` directory.
@@ -274,12 +343,18 @@ pub fn close_item(dir: String, id: String, reason: String) -> Result<(), String>
 
 /// Check whether a directory has an existing .crumbs store.
 /// Returns true if:
-///   - the path itself is a store (contains index.csv or config.toml), OR
+///   - the path itself is a store (contains index.csv, crumbs.toml, or the legacy
+///     config.toml), OR
 ///   - the path contains a .crumbs/ subdirectory (project store)
+///
+/// Note: `crumbs.toml` is the current config file name (renamed from `config.toml`
+/// during the store migration introduced in 0.14). Both names must be checked so
+/// that a freshly-initialised or just-migrated store with no items yet (no
+/// `index.csv`) is still recognised.
 #[tauri::command]
 pub fn has_store(dir: String) -> bool {
     let p = PathBuf::from(&dir);
-    p.join("index.csv").is_file() || p.join("config.toml").is_file() || p.join(".crumbs").is_dir()
+    has_marker_files(&p) || p.join(".crumbs").is_dir()
 }
 
 /// Initialize a .crumbs store in the given directory with a derived prefix.
@@ -429,4 +504,149 @@ pub fn stop_timer(dir: String, id: String, comment: String) -> Result<(), String
         Some(comment.as_str())
     };
     stop::run(&to_path(&dir), &id, c).map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    // ── to_path ──────────────────────────────────────────────────────────────
+
+    #[test]
+    fn to_path_global_sentinel_returns_global_dir() {
+        assert_eq!(to_path("global"), global_dir());
+    }
+
+    #[test]
+    fn to_path_crumbs_suffixed_path_returned_unchanged() {
+        let dir = tempdir().unwrap();
+        let crumbs = dir.path().join(".crumbs");
+        // The directory doesn't need to exist for ends_with(.crumbs) to match.
+        assert_eq!(to_path(crumbs.to_str().unwrap()), crumbs);
+    }
+
+    #[test]
+    fn to_path_project_root_without_marker_files_appends_crumbs() {
+        let dir = tempdir().unwrap();
+        // Empty dir — no marker files, no .crumbs suffix → must append.
+        let expected = dir.path().join(".crumbs");
+        assert_eq!(to_path(dir.path().to_str().unwrap()), expected);
+    }
+
+    #[test]
+    fn to_path_dir_with_index_csv_returned_unchanged() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("index.csv"), "").unwrap();
+        assert_eq!(
+            to_path(dir.path().to_str().unwrap()),
+            dir.path().to_path_buf()
+        );
+    }
+
+    #[test]
+    fn to_path_dir_with_crumbs_toml_returned_unchanged() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("crumbs.toml"), "prefix = \"cr\"\n").unwrap();
+        assert_eq!(
+            to_path(dir.path().to_str().unwrap()),
+            dir.path().to_path_buf()
+        );
+    }
+
+    #[test]
+    fn to_path_dir_with_legacy_config_toml_returned_unchanged() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("config.toml"), "prefix = \"cr\"\n").unwrap();
+        assert_eq!(
+            to_path(dir.path().to_str().unwrap()),
+            dir.path().to_path_buf()
+        );
+    }
+
+    /// In debug builds the `debug_assert!` inside `to_path` fires for empty input.
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "to_path: empty string is invalid")]
+    fn to_path_empty_string_panics_in_debug() {
+        let _ = to_path("");
+    }
+
+    /// In release builds `debug_assert!` is stripped, so the runtime guard must
+    /// return `global_dir()` rather than the bare relative path `.crumbs`.
+    ///
+    /// Note: `global_dir()` itself may be relative (`./crumbs`) when
+    /// `dirs::data_dir()` is unavailable (e.g. in minimal CI environments), so
+    /// we assert against the specific wrong value rather than requiring absolute.
+    #[test]
+    #[cfg(not(debug_assertions))]
+    fn to_path_empty_string_falls_back_to_global_dir_in_release() {
+        let result = to_path("");
+        assert_eq!(result, global_dir());
+        assert_ne!(
+            result,
+            std::path::PathBuf::from(".crumbs"),
+            "empty dir must not produce the bare relative path .crumbs"
+        );
+    }
+
+    #[test]
+    fn to_path_global_dir_path_returned_unchanged_even_when_empty() {
+        // The global store directory may legitimately have no marker files when it
+        // has not yet been initialised. `to_path` must still return it as-is so
+        // that operations land in the correct directory rather than
+        // `<global_dir>/.crumbs`.
+        let g = global_dir();
+        assert_eq!(to_path(g.to_str().unwrap()), g);
+    }
+
+    #[test]
+    fn to_path_prefers_crumbs_subdir_over_marker_files_in_parent() {
+        // Simulates the pre-fix bug: marker files were written to the project root
+        // instead of <root>/.crumbs. If a `.crumbs/` subdir now also exists, the
+        // canonical subdirectory should win.
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("crumbs.toml"), "prefix = \"cr\"\n").unwrap();
+        std::fs::create_dir(dir.path().join(".crumbs")).unwrap();
+        assert_eq!(
+            to_path(dir.path().to_str().unwrap()),
+            dir.path().join(".crumbs")
+        );
+    }
+
+    // ── has_store ─────────────────────────────────────────────────────────────
+
+    #[test]
+    fn has_store_detects_index_csv() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("index.csv"), "").unwrap();
+        assert!(has_store(dir.path().to_str().unwrap().to_string()));
+    }
+
+    #[test]
+    fn has_store_detects_crumbs_toml() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("crumbs.toml"), "prefix = \"cr\"\n").unwrap();
+        assert!(has_store(dir.path().to_str().unwrap().to_string()));
+    }
+
+    #[test]
+    fn has_store_detects_legacy_config_toml() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("config.toml"), "prefix = \"cr\"\n").unwrap();
+        assert!(has_store(dir.path().to_str().unwrap().to_string()));
+    }
+
+    #[test]
+    fn has_store_detects_crumbs_subdirectory() {
+        let dir = tempdir().unwrap();
+        std::fs::create_dir(dir.path().join(".crumbs")).unwrap();
+        assert!(has_store(dir.path().to_str().unwrap().to_string()));
+    }
+
+    #[test]
+    fn has_store_returns_false_for_empty_dir() {
+        let dir = tempdir().unwrap();
+        assert!(!has_store(dir.path().to_str().unwrap().to_string()));
+    }
 }
