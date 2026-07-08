@@ -31,11 +31,19 @@ fn to_path(dir: &str) -> PathBuf {
     if dir == "global" {
         return global_dir();
     }
-    // Callers must never pass an empty string; `resolve_store` handles auto-detection.
-    debug_assert!(
-        !dir.is_empty(),
-        "to_path: empty string is invalid; use resolve_store for auto-detection"
-    );
+    // Guard against empty strings in both debug and release builds. An empty
+    // `dir` would otherwise produce the relative path `.crumbs` (from
+    // `PathBuf::from("").join(".crumbs")`), silently writing to the process
+    // working directory. Callers should route auto-detection through
+    // `resolve_store` instead; fall back to the global store here rather
+    // than creating files in an unpredictable location.
+    if dir.is_empty() {
+        debug_assert!(
+            false,
+            "to_path: empty string is invalid; use resolve_store for auto-detection"
+        );
+        return global_dir();
+    }
     let p = PathBuf::from(dir);
     // Use as-is when the path already points at a store directory:
     // - project stores always end with `.crumbs`
@@ -533,6 +541,27 @@ mod tests {
         assert_eq!(
             to_path(dir.path().to_str().unwrap()),
             dir.path().to_path_buf()
+        );
+    }
+
+    /// In debug builds the `debug_assert!` inside `to_path` fires for empty input.
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "to_path: empty string is invalid")]
+    fn to_path_empty_string_panics_in_debug() {
+        let _ = to_path("");
+    }
+
+    /// In release builds `debug_assert!` is stripped, so the runtime guard must
+    /// return `global_dir()` rather than the relative path `.crumbs`.
+    #[test]
+    #[cfg(not(debug_assertions))]
+    fn to_path_empty_string_falls_back_to_global_dir_in_release() {
+        let result = to_path("");
+        assert_eq!(result, global_dir());
+        assert!(
+            result.is_absolute(),
+            "empty dir must not produce a relative path"
         );
     }
 
