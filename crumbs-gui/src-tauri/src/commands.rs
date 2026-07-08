@@ -47,7 +47,9 @@ fn to_path(dir: &str) -> PathBuf {
         );
         return gdir;
     }
-    let p = PathBuf::from(dir);
+    // Normalize to strip trailing separators and redundant slashes so that
+    // semantically identical paths (e.g. `/foo/bar` vs `/foo/bar/`) compare equal.
+    let p: PathBuf = PathBuf::from(dir).components().collect();
     let crumbs_sub = p.join(".crumbs");
     // Fast path: exact matches that need no filesystem probes.
     if p == gdir || p.ends_with(".crumbs") {
