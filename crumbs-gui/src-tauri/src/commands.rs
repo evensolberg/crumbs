@@ -29,6 +29,11 @@ fn to_path(dir: &str) -> PathBuf {
     if dir == "global" {
         return global_dir();
     }
+    // Callers must never pass an empty string; `resolve_store` handles auto-detection.
+    debug_assert!(
+        !dir.is_empty(),
+        "to_path: empty string is invalid; use resolve_store for auto-detection"
+    );
     let p = PathBuf::from(dir);
     // Use as-is when the path already points at a store directory:
     // - project stores always end with `.crumbs`
