@@ -48,24 +48,27 @@ fn to_path(dir: &str) -> PathBuf {
         return gdir;
     }
     let p = PathBuf::from(dir);
-    // Use as-is when the path already points at a store directory:
-    // - the global store path is recognized even when it has no marker files yet
-    //   (uninitialized directory), so that `.crumbs` is never incorrectly appended
-    // - project stores always end with `.crumbs`
-    // - flat stores (e.g. an initialized global store) contain marker files directly
-    // The global-dir check comes first to skip filesystem probes for that common case.
-    if p == gdir
-        || p.ends_with(".crumbs")
-        || p.join("index.csv").is_file()
+    // Fast path: exact matches that need no filesystem probes.
+    if p == gdir || p.ends_with(".crumbs") {
+        return p;
+    }
+    // If a canonical `.crumbs/` subdirectory already exists, prefer it even
+    // when the parent also has marker files (guards against stale entries written
+    // by the pre-fix GUI bug, where files were placed in the project root).
+    if p.join(".crumbs").is_dir() {
+        return p.join(".crumbs");
+    }
+    // Flat store: marker files live directly in the directory (e.g. global store
+    // or a user-initialized non-project store).
+    if p.join("index.csv").is_file()
         || p.join("crumbs.toml").is_file()
         || p.join("config.toml").is_file()
     {
-        p
-    } else {
-        // Stale entry or user-supplied project root — append `.crumbs` so that
-        // operations land in the store subdirectory, not the project root.
-        p.join(".crumbs")
+        return p;
     }
+    // Stale entry or user-supplied project root — append `.crumbs` so that
+    // operations land in the store subdirectory, not the project root.
+    p.join(".crumbs")
 }
 
 /// Walk up from `start` looking for a `.crumbs/` directory.
@@ -582,6 +585,20 @@ mod tests {
         // `<global_dir>/.crumbs`.
         let g = global_dir();
         assert_eq!(to_path(g.to_str().unwrap()), g);
+    }
+
+    #[test]
+    fn to_path_prefers_crumbs_subdir_over_marker_files_in_parent() {
+        // Simulates the pre-fix bug: marker files were written to the project root
+        // instead of <root>/.crumbs. If a `.crumbs/` subdir now also exists, the
+        // canonical subdirectory should win.
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("crumbs.toml"), "prefix = \"cr\"\n").unwrap();
+        std::fs::create_dir(dir.path().join(".crumbs")).unwrap();
+        assert_eq!(
+            to_path(dir.path().to_str().unwrap()),
+            dir.path().join(".crumbs")
+        );
     }
 
     // ── has_store ─────────────────────────────────────────────────────────────
