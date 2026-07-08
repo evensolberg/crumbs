@@ -12,16 +12,16 @@ use crumbs::{
 
 /// Convert a GUI store path string to a `PathBuf` pointing at the actual store directory.
 ///
-/// The frontend passes one of:
-/// - A path ending with `.crumbs` (project store) → used as-is
-/// - A flat store path (e.g. the global store) that already contains marker
-///   files (`index.csv`, `crumbs.toml`, `config.toml`) directly → used as-is
-/// - The global store path returned by `global_dir()`, even when that directory
-///   is empty (not yet initialized) → used as-is via the final `== global_dir()`
-///   guard, so an uninitialized global store is never incorrectly suffixed
-/// - A project root path *without* `.crumbs` (stale `localStorage` entry from
-///   an older app version) → `.crumbs` appended as a safety net
-/// - `"global"` (legacy sentinel, dead code in current frontend) → `global_dir()`
+/// Resolution order (first match wins):
+/// 1. `"global"` sentinel → `global_dir()`
+/// 2. Empty string → `global_dir()` (debug panic; callers should use `resolve_store`)
+/// 3. `== global_dir()` → used as-is (recognized even when the dir is empty/uninitialized)
+/// 4. Ends with `.crumbs` → used as-is (already a canonical project-store path)
+/// 5. Contains a `.crumbs/` subdirectory → return `<dir>/.crumbs` (preferred over flat
+///    marker files; self-heals projects where the old GUI bug wrote files into the root)
+/// 6. Contains marker files (`index.csv`, `crumbs.toml`, `config.toml`) directly →
+///    used as-is (flat store, e.g. a non-project store initialized outside `.crumbs/`)
+/// 7. Everything else → `.crumbs` appended (stale `localStorage` entry or bare project root)
 ///
 /// Note: this function uses different detection logic from `config::resolve_dir`
 /// in the CLI crate. The CLI only checks the `.crumbs` suffix; the GUI also
