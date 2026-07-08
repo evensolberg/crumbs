@@ -10,6 +10,15 @@ use crumbs::{
     store, store_config,
 };
 
+/// Returns `true` when `p` directly contains one of the crumbs store marker
+/// files. Used by both [`to_path`] and [`has_store`] to avoid duplicating
+/// the marker-file list.
+fn has_marker_files(p: &std::path::Path) -> bool {
+    p.join("index.csv").is_file()
+        || p.join("crumbs.toml").is_file()
+        || p.join("config.toml").is_file()
+}
+
 /// Convert a GUI store path string to a `PathBuf` pointing at the actual store directory.
 ///
 /// Resolution order (first match wins):
@@ -47,11 +56,13 @@ fn to_path(dir: &str) -> PathBuf {
     // Normalize to strip trailing separators and redundant slashes so that
     // semantically identical paths (e.g. `/foo/bar` vs `/foo/bar/`) compare equal.
     let p: PathBuf = PathBuf::from(dir).components().collect();
-    let crumbs_sub = p.join(".crumbs");
     // `.crumbs`-suffixed paths are already canonical — skip all filesystem probes.
     if p.ends_with(".crumbs") {
         return p;
     }
+    // `crumbs_sub` is only needed after the fast-path check, so compute it here
+    // to avoid a wasted allocation when the path already ends with `.crumbs`.
+    let crumbs_sub = p.join(".crumbs");
     // Normalize global_dir() the same way as `p` so the equality check is
     // reliable even when the OS or env produces a path with a trailing separator.
     // Deferred past the `.crumbs` fast path to avoid the dirs::data_dir() call
@@ -68,10 +79,7 @@ fn to_path(dir: &str) -> PathBuf {
     }
     // Flat store: marker files live directly in the directory (e.g. a non-project
     // store initialized outside a `.crumbs/` subdirectory).
-    if p.join("index.csv").is_file()
-        || p.join("crumbs.toml").is_file()
-        || p.join("config.toml").is_file()
-    {
+    if has_marker_files(&p) {
         return p;
     }
     // Stale entry or user-supplied project root — append `.crumbs` so that
@@ -346,10 +354,7 @@ pub fn close_item(dir: String, id: String, reason: String) -> Result<(), String>
 #[tauri::command]
 pub fn has_store(dir: String) -> bool {
     let p = PathBuf::from(&dir);
-    p.join("index.csv").is_file()
-        || p.join("crumbs.toml").is_file()
-        || p.join("config.toml").is_file()
-        || p.join(".crumbs").is_dir()
+    has_marker_files(&p) || p.join(".crumbs").is_dir()
 }
 
 /// Initialize a .crumbs store in the given directory with a derived prefix.

@@ -26,6 +26,9 @@ const { invoke } = globalThis.__TAURI__.core;
 // ── State ─────────────────────────────────────────────────────────────────
 
 let storeDir = '';
+/** Normalize a backend path to forward slashes for consistent localStorage keys. */
+function normalizePath(p) { return p.replace(/\\/g, '/'); }
+
 let allItems = [];
 let selectedIds    = new Set();   // all currently highlighted IDs
 let lastClickedId  = null;        // anchor for shift-range selection
@@ -2039,7 +2042,7 @@ async function switchStore(crumbsDir) {
   }
   // Normalize to forward slashes so storeBaseName() and localStorage keys
   // are consistent regardless of platform path separator.
-  storeDir = resolved.replace(/\\/g, '/');
+  storeDir = normalizePath(resolved);
   storePathEl.textContent = storeDir;
   selectedIds.clear(); lastClickedId = null;
   searchResults = null;
@@ -3047,7 +3050,7 @@ rebuildTableHeader();
 initColResizers();
 
 try {
-  storeDir = (await invoke('resolve_store', { dir: '' })).replace(/\\/g, '/');
+  storeDir = normalizePath(await invoke('resolve_store', { dir: '' }));
   storePathEl.textContent = storeDir;
   applyViewState(loadViewState(storeDir));
   addRecentStore(storeDir);
