@@ -28,8 +28,11 @@ use crumbs::{
 /// checks for marker files and the global store path to handle the wider set of
 /// paths the frontend may pass.
 fn to_path(dir: &str) -> PathBuf {
+    // Compute once; used for the "global" alias, the empty-string fallback,
+    // and the equality check below (avoids three separate allocations).
+    let gdir = global_dir();
     if dir == "global" {
-        return global_dir();
+        return gdir;
     }
     // Guard against empty strings in both debug and release builds. An empty
     // `dir` would otherwise produce the relative path `.crumbs` (from
@@ -42,19 +45,20 @@ fn to_path(dir: &str) -> PathBuf {
             false,
             "to_path: empty string is invalid; use resolve_store for auto-detection"
         );
-        return global_dir();
+        return gdir;
     }
     let p = PathBuf::from(dir);
     // Use as-is when the path already points at a store directory:
-    // - project stores always end with `.crumbs`
-    // - flat stores (e.g. an initialized global store) contain marker files directly
     // - the global store path is recognized even when it has no marker files yet
     //   (uninitialized directory), so that `.crumbs` is never incorrectly appended
-    if p.ends_with(".crumbs")
+    // - project stores always end with `.crumbs`
+    // - flat stores (e.g. an initialized global store) contain marker files directly
+    // The global-dir check comes first to skip filesystem probes for that common case.
+    if p == gdir
+        || p.ends_with(".crumbs")
         || p.join("index.csv").is_file()
         || p.join("crumbs.toml").is_file()
         || p.join("config.toml").is_file()
-        || p == global_dir()
     {
         p
     } else {
