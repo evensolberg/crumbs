@@ -2027,12 +2027,15 @@ async function checkAndOpenDir(rawPath) {
 async function switchStore(crumbsDir) {
   clearTimeout(_saveViewStateTimer);
   saveViewState();
-  storeDir = crumbsDir;
+  // Normalise through the backend so stale localStorage entries (e.g. a
+  // project root missing the .crumbs suffix) are corrected before we
+  // display, persist, or key view state with the path.
+  storeDir = await invoke('resolve_store', { dir: crumbsDir });
   storePathEl.textContent = storeDir;
   selectedIds.clear(); lastClickedId = null;
   searchResults = null;
   searchInput.value = '';
-  applyViewState(loadViewState(crumbsDir));
+  applyViewState(loadViewState(storeDir));
   addRecentStore(storeDir);
   renderSidebar();
   await loadItems();

@@ -15,10 +15,14 @@ use crumbs::{
 /// The frontend always passes one of:
 /// - `"global"` (sentinel) → global data directory
 /// - An absolute `.crumbs` path (e.g. `/project/.crumbs`) → used as-is
-/// - The global store's absolute path (from `resolve_store`) → used as-is
-/// - A project root path *without* `.crumbs` (should not happen after the frontend
-///   `has_store` check, but can occur with stale localStorage entries from older
-///   versions) → `.crumbs` is appended as a safety net
+/// - A flat store path (e.g. the global store) that already contains store marker
+///   files directly → used as-is
+/// - A project root path *without* `.crumbs` (can occur with stale `localStorage`
+///   entries from older app versions) → `.crumbs` is appended as a safety net
+///
+/// Detecting flat stores via their marker files (`index.csv`, `crumbs.toml`,
+/// `config.toml`) is more robust than comparing against `global_dir()` because
+/// it avoids path-equality brittleness under symlinks or platform path quirks.
 ///
 /// This mirrors `config::resolve_dir` in the CLI crate.
 fn to_path(dir: &str) -> PathBuf {
@@ -26,10 +30,14 @@ fn to_path(dir: &str) -> PathBuf {
         return global_dir();
     }
     let p = PathBuf::from(dir);
-    // Paths that already point at a store directory are used as-is:
+    // Use as-is when the path already points at a store directory:
     // - project stores always end with `.crumbs`
-    // - the global store equals `global_dir()` (which never ends with `.crumbs`)
-    if p.ends_with(".crumbs") || p == global_dir() {
+    // - flat stores (e.g. the global store) contain marker files directly
+    if p.ends_with(".crumbs")
+        || p.join("index.csv").is_file()
+        || p.join("crumbs.toml").is_file()
+        || p.join("config.toml").is_file()
+    {
         p
     } else {
         // Stale entry or user-supplied project root — append `.crumbs` so that
@@ -458,4 +466,99 @@ pub fn stop_timer(dir: String, id: String, comment: String) -> Result<(), String
         Some(comment.as_str())
     };
     stop::run(&to_path(&dir), &id, c).map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+
+    // ── to_path ──────────────────────────────────────────────────────────────
+
+    #[test]
+    fn to_path_global_sentinel_returns_global_dir() {
+        assert_eq!(to_path("global"), global_dir());
+    }
+
+    #[test]
+    fn to_path_crumbs_suffixed_path_returned_unchanged() {
+        let dir = tempdir().unwrap();
+        let crumbs = dir.path().join(".crumbs");
+        // The directory doesn't need to exist for ends_with(.crumbs) to match.
+        assert_eq!(to_path(crumbs.to_str().unwrap()), crumbs);
+    }
+
+    #[test]
+    fn to_path_project_root_without_marker_files_appends_crumbs() {
+        let dir = tempdir().unwrap();
+        // Empty dir — no marker files, no .crumbs suffix → must append.
+        let expected = dir.path().join(".crumbs");
+        assert_eq!(to_path(dir.path().to_str().unwrap()), expected);
+    }
+
+    #[test]
+    fn to_path_dir_with_index_csv_returned_unchanged() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("index.csv"), "").unwrap();
+        assert_eq!(
+            to_path(dir.path().to_str().unwrap()),
+            dir.path().to_path_buf()
+        );
+    }
+
+    #[test]
+    fn to_path_dir_with_crumbs_toml_returned_unchanged() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("crumbs.toml"), "prefix = \"cr\"\n").unwrap();
+        assert_eq!(
+            to_path(dir.path().to_str().unwrap()),
+            dir.path().to_path_buf()
+        );
+    }
+
+    #[test]
+    fn to_path_dir_with_legacy_config_toml_returned_unchanged() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("config.toml"), "prefix = \"cr\"\n").unwrap();
+        assert_eq!(
+            to_path(dir.path().to_str().unwrap()),
+            dir.path().to_path_buf()
+        );
+    }
+
+    // ── has_store ─────────────────────────────────────────────────────────────
+
+    #[test]
+    fn has_store_detects_index_csv() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("index.csv"), "").unwrap();
+        assert!(has_store(dir.path().to_str().unwrap().to_string()));
+    }
+
+    #[test]
+    fn has_store_detects_crumbs_toml() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("crumbs.toml"), "prefix = \"cr\"\n").unwrap();
+        assert!(has_store(dir.path().to_str().unwrap().to_string()));
+    }
+
+    #[test]
+    fn has_store_detects_legacy_config_toml() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("config.toml"), "prefix = \"cr\"\n").unwrap();
+        assert!(has_store(dir.path().to_str().unwrap().to_string()));
+    }
+
+    #[test]
+    fn has_store_detects_crumbs_subdirectory() {
+        let dir = tempdir().unwrap();
+        std::fs::create_dir(dir.path().join(".crumbs")).unwrap();
+        assert!(has_store(dir.path().to_str().unwrap().to_string()));
+    }
+
+    #[test]
+    fn has_store_returns_false_for_empty_dir() {
+        let dir = tempdir().unwrap();
+        assert!(!has_store(dir.path().to_str().unwrap().to_string()));
+    }
 }
