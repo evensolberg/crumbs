@@ -553,15 +553,20 @@ mod tests {
     }
 
     /// In release builds `debug_assert!` is stripped, so the runtime guard must
-    /// return `global_dir()` rather than the relative path `.crumbs`.
+    /// return `global_dir()` rather than the bare relative path `.crumbs`.
+    ///
+    /// Note: `global_dir()` itself may be relative (`./crumbs`) when
+    /// `dirs::data_dir()` is unavailable (e.g. in minimal CI environments), so
+    /// we assert against the specific wrong value rather than requiring absolute.
     #[test]
     #[cfg(not(debug_assertions))]
     fn to_path_empty_string_falls_back_to_global_dir_in_release() {
         let result = to_path("");
         assert_eq!(result, global_dir());
-        assert!(
-            result.is_absolute(),
-            "empty dir must not produce a relative path"
+        assert_ne!(
+            result,
+            std::path::PathBuf::from(".crumbs"),
+            "empty dir must not produce the bare relative path .crumbs"
         );
     }
 
