@@ -18,10 +18,7 @@ fn find_crumbs_in_ancestors(start: &std::path::Path) -> Option<PathBuf> {
         if candidate.is_dir() {
             return Some(candidate);
         }
-        match current.parent() {
-            Some(parent) => current = parent,
-            None => return None,
-        }
+        current = current.parent()?;
     }
 }
 
