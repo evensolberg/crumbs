@@ -10,7 +10,7 @@ ratatui-core = "0.1"
 ratatui-crossterm = "0.1"
 ratatui-widgets = "0.3"
 ratatui-textarea = { version = "0.9", features = ["crossterm"] }
-emojis = "0.8"
+emojis = "0.9"
 dialoguer = "0.12"
 dirs = "6"
 csv = "1.4.0"
