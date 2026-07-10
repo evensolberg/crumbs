@@ -31,3 +31,6 @@ updates:
       npm-other:
         patterns:
           - "*"
+        exclude-patterns:
+          - "@codemirror/*"
+          - "@tauri-apps/*"
