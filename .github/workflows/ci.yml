@@ -17,5 +17,11 @@ jobs:
       - name: Install cargo-nextest
         uses: taiki-e/install-action@nextest
 
+      - name: Lint (clippy)
+        run: cargo clippy -p crumbs --all-targets -- -D warnings
+
       - name: Run tests
         run: cargo nextest run -p crumbs
+
+      - name: Check GUI backend compiles
+        run: cargo check -p crumbs-gui

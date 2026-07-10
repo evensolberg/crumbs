@@ -4,7 +4,8 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    # Let Mergify handle rebasing so Dependabot doesn't trigger redundant CI runs
+    # Let Mergify handle rebasing so Dependabot does not trigger redundant CI runs.
+    # Note: Mergify still rebases inside the queue before merging.
     rebase-strategy: "disabled"
     groups:
       # Consolidate all Cargo bumps into a single weekly PR
@@ -26,3 +27,7 @@ updates:
       tauri-npm:
         patterns:
           - "@tauri-apps/*"
+      # One PR for everything else in crumbs-gui
+      npm-other:
+        patterns:
+          - "*"

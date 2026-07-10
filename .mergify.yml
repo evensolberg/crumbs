@@ -9,12 +9,10 @@ merge_protections:
     success_conditions:
       - dependabot-update-type != version-update:semver-major
 
-# Automatically queue Dependabot PRs that pass the protection above
-merge_protections_settings:
-  auto_merge_conditions:
-    - author = dependabot[bot]
-
-# Merge queue: only merge after CI is green
+# Merge queue: only merge after CI is green.
+# The pull_request_rules queue action is the sole enqueue path;
+# merge_protections_settings.auto_merge_conditions is omitted to avoid
+# a duplicate queue entry for the same PR.
 queue_rules:
   - name: default
     queue_conditions:
