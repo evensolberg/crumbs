@@ -27,7 +27,11 @@ updates:
       tauri-npm:
         patterns:
           - "@tauri-apps/*"
-      # One PR for everything else in crumbs-gui
+      # One PR for everything else in crumbs-gui.
+      # NOTE: exclude-patterns must mirror every other named group's
+      # patterns above, since Dependabot groups can't reference each
+      # other. Adding a new named group requires adding its pattern
+      # here too, or its packages will double up into both groups.
       npm-other:
         patterns:
           - "*"
