@@ -1,0 +1,35 @@
+# Mergify configuration
+# Docs: https://docs.mergify.com/
+
+# Block auto-merge for major-version bumps — those need a human decision
+merge_protections:
+  - name: No auto-merge on major Dependabot bumps
+    if:
+      - author = dependabot[bot]
+    success_conditions:
+      - dependabot-update-type != version-update:semver-major
+
+# Automatically queue Dependabot PRs that pass the protection above
+merge_protections_settings:
+  auto_merge_conditions:
+    - author = dependabot[bot]
+
+# Merge queue: only merge after CI is green
+queue_rules:
+  - name: default
+    queue_conditions:
+      - check-success = CI / test
+    merge_conditions:
+      - check-success = CI / test
+
+# Approve and enqueue Dependabot patch/minor updates automatically
+pull_request_rules:
+  - name: Auto-approve and queue Dependabot patch/minor updates
+    conditions:
+      - author = dependabot[bot]
+      - dependabot-update-type != version-update:semver-major
+    actions:
+      review:
+        type: APPROVE
+      queue:
+        name: default

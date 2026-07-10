@@ -1,15 +1,28 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
-# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
-
 version: 2
 updates:
-  - package-ecosystem: "cargo" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  - package-ecosystem: "cargo"
+    directory: "/"
     schedule:
       interval: "weekly"
+    # Let Mergify handle rebasing so Dependabot doesn't trigger redundant CI runs
+    rebase-strategy: "disabled"
+    groups:
+      # Consolidate all Cargo bumps into a single weekly PR
+      cargo-all:
+        patterns:
+          - "*"
+
   - package-ecosystem: "npm"
     directory: "/crumbs-gui"
     schedule:
       interval: "weekly"
+    rebase-strategy: "disabled"
+    groups:
+      # One PR for all CodeMirror packages
+      codemirror:
+        patterns:
+          - "@codemirror/*"
+      # One PR for all Tauri npm packages
+      tauri-npm:
+        patterns:
+          - "@tauri-apps/*"
