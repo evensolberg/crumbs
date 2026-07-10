@@ -938,7 +938,14 @@ fn link_blocks_updates_both_items() {
     let dir = tempdir().unwrap();
     let id_a = create_task(dir.path(), "Blocker");
     let id_b = create_task(dir.path(), "Blocked");
-    commands::link::run(dir.path(), &id_a, "blocks", &[id_b.clone()], false).unwrap();
+    commands::link::run(
+        dir.path(),
+        &id_a,
+        "blocks",
+        std::slice::from_ref(&id_b),
+        false,
+    )
+    .unwrap();
     let (_, item_a) = store::find_by_id(dir.path(), &id_a).unwrap().unwrap();
     let (_, item_b) = store::find_by_id(dir.path(), &id_b).unwrap().unwrap();
     assert_eq!(item_a.blocks, vec![id_b.clone()]);
@@ -950,7 +957,14 @@ fn link_blocked_by_is_inverse() {
     let dir = tempdir().unwrap();
     let id_a = create_task(dir.path(), "Task A");
     let id_b = create_task(dir.path(), "Task B");
-    commands::link::run(dir.path(), &id_a, "blocked-by", &[id_b.clone()], false).unwrap();
+    commands::link::run(
+        dir.path(),
+        &id_a,
+        "blocked-by",
+        std::slice::from_ref(&id_b),
+        false,
+    )
+    .unwrap();
     let (_, item_a) = store::find_by_id(dir.path(), &id_a).unwrap().unwrap();
     let (_, item_b) = store::find_by_id(dir.path(), &id_b).unwrap().unwrap();
     assert_eq!(item_a.blocked_by, vec![id_b.clone()]);
@@ -962,8 +976,22 @@ fn link_idempotent() {
     let dir = tempdir().unwrap();
     let id_a = create_task(dir.path(), "Idempotent A");
     let id_b = create_task(dir.path(), "Idempotent B");
-    commands::link::run(dir.path(), &id_a, "blocks", &[id_b.clone()], false).unwrap();
-    commands::link::run(dir.path(), &id_a, "blocks", &[id_b.clone()], false).unwrap();
+    commands::link::run(
+        dir.path(),
+        &id_a,
+        "blocks",
+        std::slice::from_ref(&id_b),
+        false,
+    )
+    .unwrap();
+    commands::link::run(
+        dir.path(),
+        &id_a,
+        "blocks",
+        std::slice::from_ref(&id_b),
+        false,
+    )
+    .unwrap();
     let (_, item_a) = store::find_by_id(dir.path(), &id_a).unwrap().unwrap();
     assert_eq!(item_a.blocks.len(), 1);
 }
@@ -973,8 +1001,22 @@ fn unlink_removes_from_both_sides() {
     let dir = tempdir().unwrap();
     let id_a = create_task(dir.path(), "Unlink A");
     let id_b = create_task(dir.path(), "Unlink B");
-    commands::link::run(dir.path(), &id_a, "blocks", &[id_b.clone()], false).unwrap();
-    commands::link::run(dir.path(), &id_a, "blocks", &[id_b.clone()], true).unwrap();
+    commands::link::run(
+        dir.path(),
+        &id_a,
+        "blocks",
+        std::slice::from_ref(&id_b),
+        false,
+    )
+    .unwrap();
+    commands::link::run(
+        dir.path(),
+        &id_a,
+        "blocks",
+        std::slice::from_ref(&id_b),
+        true,
+    )
+    .unwrap();
     let (_, item_a) = store::find_by_id(dir.path(), &id_a).unwrap().unwrap();
     let (_, item_b) = store::find_by_id(dir.path(), &id_b).unwrap().unwrap();
     assert!(item_a.blocks.is_empty());
@@ -1154,7 +1196,14 @@ fn next_skips_item_whose_blocker_is_open() {
         },
     )
     .unwrap();
-    commands::link::run(&d, &id_blocker, "blocks", &[id_critical.clone()], false).unwrap();
+    commands::link::run(
+        &d,
+        &id_blocker,
+        "blocks",
+        std::slice::from_ref(&id_critical),
+        false,
+    )
+    .unwrap();
 
     let output = Command::cargo_bin("crumbs")
         .unwrap()
@@ -1194,7 +1243,14 @@ fn next_returns_item_once_blocker_is_closed() {
         },
     )
     .unwrap();
-    commands::link::run(&d, &id_blocker, "blocks", &[id_target.clone()], false).unwrap();
+    commands::link::run(
+        &d,
+        &id_blocker,
+        "blocks",
+        std::slice::from_ref(&id_target),
+        false,
+    )
+    .unwrap();
     commands::close::run(&d, &id_blocker, Some("done".to_string())).unwrap();
 
     let output = Command::cargo_bin("crumbs")
