@@ -1,13 +1,12 @@
 # Mergify configuration
 # Docs: https://docs.mergify.com/
-
-# Block auto-merge for major-version bumps — those need a human decision
-merge_protections:
-  - name: No auto-merge on major Dependabot bumps
-    if:
-      - author = dependabot[bot]
-    success_conditions:
-      - dependabot-update-type != version-update:semver-major
+#
+# Major-version Dependabot bumps are never auto-approved or auto-queued
+# (see the pull_request_rules condition below) -- that's sufficient to
+# require a human decision. A separate merge_protections rule was
+# considered but dropped: it would fail its success_conditions for any
+# Mergify-driven merge of a major bump, including a deliberate manual
+# @Mergifyio queue after human review, which is broader than intended.
 
 # Merge queue: only merge after CI is green.
 # The pull_request_rules queue action is the sole enqueue path;
