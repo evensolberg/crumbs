@@ -5,6 +5,8 @@ import { localDateISO } from './date.js';
 
 // Pin a zone west of UTC so a late-evening local time falls on the next UTC
 // day — the case where toISOString() reported tomorrow's date (cr-lvq).
+// Setting TZ after the import works because date.js creates no Date at load
+// time; keep it that way or move this above a dynamic import.
 process.env.TZ = 'America/Denver';
 
 test('late evening reports the local date, not the UTC date', () => {
