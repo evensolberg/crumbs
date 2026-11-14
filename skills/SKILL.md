@@ -28,6 +28,8 @@ crumbs init --prefix myp         # skip prompt
 crumbs init --global             # global store (prefix suggestion: "glob")
 ```
 
+After initializing a local store in a git repo, add `.crumbs/index.csv` to `.gitignore`. The index is regenerated on every write and should not be tracked.
+
 ### Create
 ```sh
 crumbs create 'Fix login bug' --type bug --priority 1 --tags auth
@@ -206,6 +208,8 @@ crumbs clean                                 # purge all closed items
 ```
 
 Closing an item with an active timer automatically stops the timer first and writes a `[stop]` entry before setting `status: closed`.
+
+Always close with `crumbs close`, never by editing the file's `status` field by hand. A hand edit leaves any timer started by `crumbs start` running. Plans and finishing steps should say `crumbs close <id>`, not "change the status field".
 
 ### Bulk close (filter mode)
 
