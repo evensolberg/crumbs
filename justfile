@@ -96,29 +96,29 @@ dist:
     cargo build -p crumbs --release
     cp target/release/crumbs "$out/crumbs"
     echo "Building GUI…"
-    cp crumbs-gui/{index.html,main.js,date.js,style.css} crumbs-gui/dist/
     cd crumbs-gui && cargo tauri build --target aarch64-apple-darwin
     cd ..
-    cp -r target/aarch64-apple-darwin/release/bundle/macos/crumbs.app "$out/"
+    rm -rf "$out/crumbs.app"
+    cp -R target/aarch64-apple-darwin/release/bundle/macos/crumbs.app "$out/"
     cp skills/crumbs.skill "$out/crumbs.skill"
     echo "Done → $out/"
     ls -lh "$out/"
 
 # Launch the GUI in dev mode (hot-reload)
 @gui-dev:
-    cp crumbs-gui/{index.html,main.js,date.js,style.css} crumbs-gui/dist/
     cd crumbs-gui && cargo tauri dev
 
 # Build the GUI for Apple ARM64
 @gui-build:
-    cp crumbs-gui/{index.html,main.js,date.js,style.css} crumbs-gui/dist/
     cd crumbs-gui && cargo tauri build --target aarch64-apple-darwin
 
 # Build and install the GUI into /Applications
 @gui-install:
-    cp crumbs-gui/{index.html,main.js,date.js,style.css} crumbs-gui/dist/
     cd crumbs-gui && cargo tauri build --target aarch64-apple-darwin
-    cp -r target/aarch64-apple-darwin/release/bundle/macos/crumbs.app /Applications/crumbs.app
+    # Replace rather than copy over: `cp -r` into an existing bundle nests the
+    # new app inside the old one and leaves the old version in place.
+    rm -rf /Applications/crumbs.app
+    cp -R target/aarch64-apple-darwin/release/bundle/macos/crumbs.app /Applications/crumbs.app
 
 # Build the documentation
 @doc:
