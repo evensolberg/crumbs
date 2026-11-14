@@ -2,11 +2,11 @@
 id: cr-b6u
 title: 'GUI: Need a way to do NOT in search'
 status: open
-type: task
+type: feature
 priority: 2
 tags: []
 created: 2026-04-11
-updated: 2026-04-11
+updated: 2026-11-13
 phase: ''
 ---
 

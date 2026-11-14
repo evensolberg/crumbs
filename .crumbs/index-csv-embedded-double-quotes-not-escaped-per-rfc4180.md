@@ -1,7 +1,7 @@
 ---
 id: cr-vaj
 title: 'index.csv: embedded double-quotes not escaped per RFC4180'
-status: open
+status: closed
 type: bug
 priority: 3
 tags:
@@ -10,7 +10,8 @@ tags:
 - rfc4180
 - quoting
 created: 2026-07-02
-updated: 2026-07-02
+updated: 2026-11-13
+closed_reason: 'Not a crumbs bug: index.csv is written with the csv crate, which escapes quotes per RFC4180'
 phase: ''
 ---
 

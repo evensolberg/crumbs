@@ -1,12 +1,13 @@
 ---
 id: cr-m5p
 title: crumbs start drops dependendencies[]
-status: open
+status: closed
 type: bug
 priority: 2
 tags: []
 created: 2026-04-24
-updated: 2026-04-24
+updated: 2026-11-13
+closed_reason: 'By design: legacy dependencies field is migrated to blocked_by/blocks on load; only empty lists vanish'
 phase: ''
 ---
 

@@ -1,12 +1,13 @@
 ---
 id: cr-3fu
 title: Reindex issues
-status: open
+status: closed
 type: bug
 priority: 2
 tags: []
 created: 2026-04-20
-updated: 2026-05-08
+updated: 2026-11-13
+closed_reason: 'Not reproducible: reindex of causal_loop (676 items) succeeds'
 phase: ''
 ---
 
