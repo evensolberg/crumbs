@@ -24,7 +24,7 @@ Common `just` aliases: `just check`, `just test` (`t`), `just testp` (`tp`), `ju
 - `crumbs/src/main.rs` — clap CLI; dispatches to commands
 - `crumbs/src/item.rs` — `Item` struct, `Status`/`ItemType` enums, `blocks`/`blocked_by` fields
 - `crumbs/src/store.rs` — read/write `.md` files, CSV index; `find_by_id` is case-insensitive
-- `crumbs/src/store_config.rs` — per-store `config.toml` (prefix)
+- `crumbs/src/store_config.rs` — per-store `crumbs.toml` (prefix)
 - `crumbs/src/commands/` — one file per subcommand: `create`, `update`, `close`, `delete`, `list`, `show`, `search`, `reindex`, `init`, `edit`, `stats`, `next`, `link`, `export`, `block`, `defer`, `move_`, `import`, `clean`, `start`, `stop`
 - `crumbs/tests/commands.rs` — integration tests (79 tests)
 - `crumbs-gui/src-tauri/src/commands.rs` — Tauri command handlers wrapping library functions
