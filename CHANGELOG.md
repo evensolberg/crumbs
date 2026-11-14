@@ -2,26 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.25.4] - 2026-11-13
+## [0.25.5] - 2026-11-14
+
+### Chore
+
+- Close cr-idg and clarify web/ contents in CLAUDE.md
+
+### Docs
+
+- Describe the pre-commit hook and close cr-46u (#95)
+
+### Fix
+
+- Sync GUI dist/ from sources on every Tauri build
+- Make sync-dist entry check symlink-safe and visible
+- Stop treating config.toml as a GUI store marker
+- Only migrate config.toml when it is a crumbs config
+- Warn when config.toml is not a crumbs config
+
+  Note: a folder holding only a legacy `config.toml` (no `index.csv`, no
+  `.crumbs/`) is no longer recognised as a store by the GUI. Project
+  stores under `.crumbs/` still migrate as before. An unmigrated, empty
+  global store opened via Open Dir now gets the init prompt; opening it as
+  "global" or from recents still works.
+
+### Refactor
+
+- Serve the frontend from one web/ folder
+
+## [0.25.4] - 2026-11-14
 
 ### Fix
 
 - GUI uses local date, not UTC, for today (#93)
-- Ship date.js in the committed GUI dist/ (#93); release builds now also
-  include the Created/Updated properties-panel move from #40
 
-### Refactor
-
-- Trim date helper comment and test setup (#93)
-
-## [0.25.3] - 2026-11-13
+## [0.25.3] - 2026-11-14
 
 ### Chore
 
-- Bump rand in the cargo group across 1 directory (#42)
-- Remove spurious crumbs/Cargo.lock (#44)
-- Batch dependency updates (Cargo + npm)
-- Batch dependency updates (Cargo + npm)
 - Update dependencies (#59)
 - Bump @codemirror/search in /crumbs-gui (#60)
 - Bump @codemirror/language in /crumbs-gui (#61)
@@ -35,7 +53,7 @@ All notable changes to this project will be documented in this file.
 - Bump the codemirror group across 1 directory with 5 updates (#82)
 - Bump @humanfs/node from 0.16.7 to 0.16.8 in /crumbs-gui (#81)
 - Bump the npm-other group across 1 directory with 3 updates (#79)
-- Triage open bugs and record follow-ups
+- Refresh Cargo and npm lockfiles (#91)
 
 ### Docs
 
@@ -43,12 +61,20 @@ All notable changes to this project will be documented in this file.
 
 ### Fix
 
+- Accept --type and --status values in any case (v0.25.3) (#92)
+
+## [0.25.2] - 2026-07-08
+
+### Chore
+
+- Bump rand in the cargo group across 1 directory (#42)
+- Remove spurious crumbs/Cargo.lock (#44)
+- Batch dependency updates (Cargo + npm)
+- Batch dependency updates (Cargo + npm)
+
+### Fix
+
 - GUI store resolution fails to append .crumbs to project root paths (v0.25.2) (#57)
-- Accept --type and --status values in any case
-
-### Refactor
-
-- Init store in-process in case-insensitivity test
 
 ## [0.25.1] - 2026-04-11
 
