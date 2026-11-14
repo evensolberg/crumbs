@@ -3,13 +3,14 @@
 // beforeDevCommand so every build path, including tauri-action in the release
 // workflow, ships the current sources. Node rather than `cp` because release
 // builds also run on Windows and Linux.
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import process from 'node:process';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
-// dist/codemirror.bundle.js (built by `npm run build-cm6`) and
-// dist/marked.min.js are committed separately and are not listed here.
+// Every file index.html loads or main.js imports must be listed here, or it
+// will be missing from builds. dist/codemirror.bundle.js (built by
+// `npm run build-cm6`) and dist/marked.min.js are committed separately.
 export const FRONTEND_FILES = ['index.html', 'main.js', 'date.js', 'style.css'];
 
 export function syncDist(srcDir, distDir) {
@@ -19,7 +20,10 @@ export function syncDist(srcDir, distDir) {
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const here = dirname(fileURLToPath(import.meta.url));
-  syncDist(here, join(here, 'dist'));
+// Compare real paths so running through a symlinked path still syncs.
+const here = fileURLToPath(import.meta.url);
+if (process.argv[1] && realpathSync(process.argv[1]) === here) {
+  const dir = dirname(here);
+  syncDist(dir, join(dir, 'dist'));
+  console.log(`sync-dist: copied ${FRONTEND_FILES.length} files into dist/`);
 }
