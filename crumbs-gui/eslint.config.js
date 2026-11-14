@@ -18,11 +18,6 @@ export default [
     },
   },
   {
-    // Unit tests run under `node --test`, not in the WebView.
-    files: ["**/*.test.js"],
-    languageOptions: { globals: globals.node },
-  },
-  {
     ignores: ["dist/**", "node_modules/**"],
   },
 ];

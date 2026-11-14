@@ -1,13 +1,5 @@
-/**
- * Format a date as `YYYY-MM-DD` in the user's local time zone.
- *
- * `Date#toISOString()` reports UTC, so in the evening west of Greenwich it
- * returns tomorrow's date. The CLI uses `chrono::Local`; this keeps the GUI
- * consistent with it.
- *
- * @param {Date} [date] - defaults to now
- * @returns {string}
- */
+// Local-time YYYY-MM-DD. toISOString() is UTC, which is already tomorrow in
+// the evening west of Greenwich; the CLI uses chrono::Local to match.
 export function localDateISO(date = new Date()) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');

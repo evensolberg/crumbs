@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import process from 'node:process';
+import { localDateISO } from './date.js';
 
 // Pin a zone west of UTC so a late-evening local time falls on the next UTC
 // day — the case where toISOString() reported tomorrow's date (cr-lvq).
 process.env.TZ = 'America/Denver';
-
-const { localDateISO } = await import('./date.js');
 
 test('late evening reports the local date, not the UTC date', () => {
   const lateEvening = new Date(2026, 8, 14, 23, 30); // 2026-09-14 23:30 local
