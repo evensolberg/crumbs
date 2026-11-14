@@ -3319,3 +3319,34 @@ fn bulk_close_skips_already_closed_items() {
     assert_eq!(i1.status, Status::Closed);
     assert_eq!(i2.status, Status::Closed);
 }
+
+// ── case-insensitive --type / --status ───────────────────────────────────────
+
+#[test]
+fn cli_type_and_status_flags_ignore_case() {
+    let dir = tempdir().unwrap();
+    let store_dir = dir.path().join(".crumbs");
+    Command::cargo_bin("crumbs")
+        .unwrap()
+        .current_dir(dir.path())
+        .args(["init", "--prefix", "ci"])
+        .assert()
+        .success();
+    let store_arg = store_dir.to_str().unwrap();
+    Command::cargo_bin("crumbs")
+        .unwrap()
+        .args(["--dir", store_arg, "create", "Mixed case", "--type", "Bug"])
+        .assert()
+        .success();
+    let items = store::load_all(&store_dir).unwrap();
+    assert_eq!(items[0].1.item_type, ItemType::Bug);
+
+    Command::cargo_bin("crumbs")
+        .unwrap()
+        .args([
+            "--dir", store_arg, "list", "--type", "BUG", "--status", "Open",
+        ])
+        .assert()
+        .success()
+        .stdout(pstr::contains("Mixed case"));
+}
