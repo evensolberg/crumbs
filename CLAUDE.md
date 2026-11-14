@@ -13,6 +13,7 @@ Flat-folder Markdown task tracker. Hybrid binary+library crate (`crumbs/`) with 
 | Build release | `cargo install --path crumbs` |
 | Build GUI (dev) | `just gui-dev` |
 | Build GUI (release) | `just gui-install` |
+| Run GUI without just | `cd crumbs-gui && cargo tauri dev` (plain `cargo build`/`cargo run` skips the `dist/` sync and bundles a blank window) |
 
 **Prefer `cargo nextest` over `cargo test`. Prefer `cargo check` over building for quick error checks.**
 
