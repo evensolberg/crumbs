@@ -129,6 +129,13 @@ mod tests {
     }
 
     #[test]
+    fn load_malformed_crumbs_toml_returns_default() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("crumbs.toml"), "prefix = ").unwrap();
+        assert_eq!(load(dir.path()).prefix, DEFAULT_PREFIX);
+    }
+
+    #[test]
     fn load_missing_file_returns_default() {
         let dir = tempfile::tempdir().unwrap();
         let cfg = load(dir.path());
