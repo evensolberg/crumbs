@@ -3,8 +3,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build-cm6": "esbuild codemirror-entry.js --bundle --format=esm --minify --outfile=dist/codemirror.bundle.js",
-    "lint": "eslint main.js codemirror-entry.js date.js date.test.js sync-dist.js sync-dist.test.js",
+    "build-cm6": "esbuild codemirror-entry.js --bundle --format=esm --minify --outfile=web/codemirror.bundle.js",
+    "lint": "eslint web/main.js web/date.js codemirror-entry.js date.test.js",
     "test": "node --test"
   },
   "devDependencies": {

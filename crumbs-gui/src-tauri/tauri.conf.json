@@ -3,9 +3,7 @@
   "version": "0.25.4",
   "identifier": "sh.evensolberg.crumbs-gui",
   "build": {
-    "frontendDist": "../dist",
-    "beforeDevCommand": { "script": "node sync-dist.js", "wait": true },
-    "beforeBuildCommand": "node sync-dist.js"
+    "frontendDist": "../web"
   },
   "app": {
     "withGlobalTauri": true,

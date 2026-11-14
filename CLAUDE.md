@@ -13,7 +13,6 @@ Flat-folder Markdown task tracker. Hybrid binary+library crate (`crumbs/`) with 
 | Build release | `cargo install --path crumbs` |
 | Build GUI (dev) | `just gui-dev` |
 | Build GUI (release) | `just gui-install` |
-| Run GUI without just | `cd crumbs-gui && cargo tauri dev` (plain `cargo build`/`cargo run` skips the `dist/` sync and bundles a blank window) |
 
 **Prefer `cargo nextest` over `cargo test`. Prefer `cargo check` over building for quick error checks.**
 
@@ -29,7 +28,7 @@ Common `just` aliases: `just check`, `just test` (`t`), `just testp` (`tp`), `ju
 - `crumbs/src/commands/` — one file per subcommand: `create`, `update`, `close`, `delete`, `list`, `show`, `search`, `reindex`, `init`, `edit`, `stats`, `next`, `link`, `export`, `block`, `defer`, `move_`, `import`, `clean`, `start`, `stop`
 - `crumbs/tests/commands.rs` — integration tests (79 tests)
 - `crumbs-gui/src-tauri/src/commands.rs` — Tauri command handlers wrapping library functions
-- `crumbs-gui/main.js` — vanilla JS frontend (no framework)
+- `crumbs-gui/web/` — vanilla JS frontend (no framework): `index.html`, `main.js`, `style.css`; Tauri bundles this folder as-is (`frontendDist`)
 
 ## Feature parity
 
@@ -73,7 +72,7 @@ If a crumb file must be edited by hand:
 
 ## GUI / Frontend (Tauri + WKWebView)
 
-- **No HTML5 drag-and-drop.** `dragover` events don't fire reliably in Tauri's WKWebView and `dataTransfer.getData()` returns empty on `drop`. Always use `mousedown`/`mousemove`/`mouseup` + `document.elementFromPoint()` for drag interactions. Give ghost elements `pointer-events: none` so `elementFromPoint` sees through them. See `startRowDrag()` in `crumbs-gui/main.js` for the reference implementation.
+- **No HTML5 drag-and-drop.** `dragover` events don't fire reliably in Tauri's WKWebView and `dataTransfer.getData()` returns empty on `drop`. Always use `mousedown`/`mousemove`/`mouseup` + `document.elementFromPoint()` for drag interactions. Give ghost elements `pointer-events: none` so `elementFromPoint` sees through them. See `startRowDrag()` in `crumbs-gui/web/main.js` for the reference implementation.
 - **Check for duplicate declarations before committing JS changes.** WKWebView fails silently (or with a SyntaxError) on duplicate `const`/`let`/`var` declarations across script blocks. After any edit to `main.js`, scan for redeclared names before committing.
 - **CSS variables must be defined before use.** Don't reference a `--var` in component styles unless it is defined in `:root` in `style.css`.
 

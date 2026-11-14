@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import process from 'node:process';
-import { localDateISO } from './date.js';
+import { localDateISO } from './web/date.js';
 
 // Pin a zone west of UTC so a late-evening local time falls on the next UTC
 // day — the case where toISOString() reported tomorrow's date (cr-lvq).
