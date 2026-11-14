@@ -4,21 +4,11 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 const CONFIG_FILE: &str = "crumbs.toml";
-const LEGACY_CONFIG_FILE: &str = "config.toml";
 const DEFAULT_PREFIX: &str = "cr";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StoreConfig {
     pub prefix: String,
-}
-
-/// The exact shape of a pre-0.14 `config.toml`. `deny_unknown_fields` keeps
-/// the migration from adopting (and renaming) some other tool's
-/// `config.toml` that happens to sit in the same directory.
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct LegacyConfig {
-    prefix: String,
 }
 
 impl Default for StoreConfig {
@@ -31,29 +21,10 @@ impl Default for StoreConfig {
 
 #[must_use]
 pub fn load(dir: &Path) -> StoreConfig {
-    let path = dir.join(CONFIG_FILE);
-    if path.exists() {
-        let Ok(raw) = std::fs::read_to_string(&path) else {
-            return StoreConfig::default();
-        };
-        return toml::from_str(&raw).unwrap_or_default();
-    }
-
-    // Migrate legacy config.toml → crumbs.toml on first access, but only when
-    // the file is a crumbs config; anything else is left untouched.
-    let legacy = dir.join(LEGACY_CONFIG_FILE);
-    let Ok(raw) = std::fs::read_to_string(&legacy) else {
+    let Ok(raw) = std::fs::read_to_string(dir.join(CONFIG_FILE)) else {
         return StoreConfig::default();
     };
-    let Ok(LegacyConfig { prefix }) = toml::from_str(&raw) else {
-        eprintln!(
-            "warning: {} is not a crumbs config; left as is, using the default prefix",
-            legacy.display()
-        );
-        return StoreConfig::default();
-    };
-    let _ = std::fs::rename(&legacy, &path);
-    StoreConfig { prefix }
+    toml::from_str(&raw).unwrap_or_default()
 }
 
 /// # Errors
@@ -130,44 +101,19 @@ mod tests {
         assert_eq!(suggest_prefix(&PathBuf::from("glob")), "g");
     }
 
+    /// `config.toml` is no longer read or migrated, even when it looks like a
+    /// pre-0.14 crumbs config: it may belong to another tool.
     #[test]
-    fn load_migrates_legacy_config_toml() {
+    fn load_ignores_config_toml() {
         let dir = tempfile::tempdir().unwrap();
-        // Write a legacy config.toml.
-        std::fs::write(dir.path().join("config.toml"), "prefix = \"lg\"\n").unwrap();
-        let cfg = load(dir.path());
-        assert_eq!(cfg.prefix, "lg");
-        // Legacy file should be gone; new file should exist.
-        assert!(!dir.path().join("config.toml").exists());
-        assert!(dir.path().join("crumbs.toml").exists());
-    }
-
-    /// A project's own `config.toml` (here Hugo's) must never be renamed:
-    /// only a file shaped like a legacy crumbs config is migrated.
-    #[test]
-    fn load_leaves_foreign_config_toml_alone() {
-        let dir = tempfile::tempdir().unwrap();
-        let foreign = "baseURL = \"/\"\ntitle = \"Site\"\n";
-        std::fs::write(dir.path().join("config.toml"), foreign).unwrap();
+        let legacy = "prefix = \"lg\"\n";
+        std::fs::write(dir.path().join("config.toml"), legacy).unwrap();
         let cfg = load(dir.path());
         assert_eq!(cfg.prefix, DEFAULT_PREFIX);
         assert_eq!(
             std::fs::read_to_string(dir.path().join("config.toml")).unwrap(),
-            foreign
+            legacy
         );
-        assert!(!dir.path().join("crumbs.toml").exists());
-    }
-
-    /// A foreign config that happens to have a `prefix` key alongside its own
-    /// settings is not a legacy crumbs config either.
-    #[test]
-    fn load_leaves_foreign_config_toml_with_prefix_key_alone() {
-        let dir = tempfile::tempdir().unwrap();
-        let foreign = "prefix = \"/api\"\nport = 8080\n";
-        std::fs::write(dir.path().join("config.toml"), foreign).unwrap();
-        let cfg = load(dir.path());
-        assert_eq!(cfg.prefix, DEFAULT_PREFIX);
-        assert!(dir.path().join("config.toml").exists());
         assert!(!dir.path().join("crumbs.toml").exists());
     }
 
