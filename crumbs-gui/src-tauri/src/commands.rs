@@ -14,8 +14,7 @@ use crumbs::{
 /// files. Used by both [`to_path`] and [`has_store`] to avoid duplicating
 /// the marker-file list.
 ///
-/// `config.toml` is deliberately not a marker: crumbs no longer uses that
-/// name, and it is common in non-crumbs projects.
+/// `config.toml` is not a marker: it is common in non-crumbs projects.
 fn has_marker_files(p: &std::path::Path) -> bool {
     p.join("index.csv").is_file() || p.join("crumbs.toml").is_file()
 }
@@ -348,8 +347,7 @@ pub fn close_item(dir: String, id: String, reason: String) -> Result<(), String>
 ///   - the path contains a .crumbs/ subdirectory (project store)
 ///
 /// `crumbs.toml` is checked as well as `index.csv` so that a freshly
-/// initialised store with no items yet is still recognised. `config.toml` is
-/// not a marker; see [`has_marker_files`].
+/// initialised store with no items yet is still recognised.
 #[tauri::command]
 pub fn has_store(dir: String) -> bool {
     let p = PathBuf::from(&dir);
