@@ -31,6 +31,10 @@ jobs:
       - name: Run tests
         run: cargo nextest run -p crumbs
 
+      - name: Run GUI unit tests
+        working-directory: crumbs-gui
+        run: node --test
+
       - name: Install Linux dependencies (for crumbs-gui)
         run: |
           sudo apt-get update
