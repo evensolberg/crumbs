@@ -58,7 +58,7 @@ Before implementing a feature or fix, attach the implementation plan to the rele
 - Subject line: `Type: description` — type must be capitalized (`Feat:`, `Fix:`, `Chore:`, `Docs:`, etc.)
 - Body lines ≤ 72 chars (enforced by pre-commit hook)
 - Refresh author before committing: `git mit es`
-- `cargo fmt` runs automatically in the pre-commit hook and re-stages reformatted files
+- The pre-commit hook (local, `.git/hooks/pre-commit`) runs `rustfmt` on the staged `.rs` files and re-stages only those; it never stages anything you did not stage. A partly staged file that needs formatting aborts the commit: run `cargo fmt` and stage the whole file
 
 ## Crumbs File Editing
 
