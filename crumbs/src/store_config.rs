@@ -46,6 +46,10 @@ pub fn load(dir: &Path) -> StoreConfig {
         return StoreConfig::default();
     };
     let Ok(LegacyConfig { prefix }) = toml::from_str(&raw) else {
+        eprintln!(
+            "warning: {} is not a crumbs config; left as is, using the default prefix",
+            legacy.display()
+        );
         return StoreConfig::default();
     };
     let _ = std::fs::rename(&legacy, &path);
