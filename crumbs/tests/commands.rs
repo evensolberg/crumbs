@@ -3326,12 +3326,7 @@ fn bulk_close_skips_already_closed_items() {
 fn cli_type_and_status_flags_ignore_case() {
     let dir = tempdir().unwrap();
     let store_dir = dir.path().join(".crumbs");
-    Command::cargo_bin("crumbs")
-        .unwrap()
-        .current_dir(dir.path())
-        .args(["init", "--prefix", "ci"])
-        .assert()
-        .success();
+    commands::init::run(&store_dir, Some("ci".to_string())).unwrap();
     let store_arg = store_dir.to_str().unwrap();
     Command::cargo_bin("crumbs")
         .unwrap()
