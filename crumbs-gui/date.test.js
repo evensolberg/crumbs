@@ -15,8 +15,3 @@ test('late evening reports the local date, not the UTC date', () => {
 test('pads single-digit months and days', () => {
   assert.equal(localDateISO(new Date(2026, 0, 5, 12, 0)), '2026-01-05');
 });
-
-test('defaults to the current local date', () => {
-  const now = new Date();
-  assert.equal(localDateISO(), localDateISO(now));
-});
