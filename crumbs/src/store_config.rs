@@ -19,6 +19,8 @@ impl Default for StoreConfig {
     }
 }
 
+/// Read the store's `crumbs.toml`. A missing, unreadable or malformed file
+/// gives the default prefix.
 #[must_use]
 pub fn load(dir: &Path) -> StoreConfig {
     let Ok(raw) = std::fs::read_to_string(dir.join(CONFIG_FILE)) else {
