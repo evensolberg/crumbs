@@ -639,7 +639,7 @@ mod tests {
     /// through its `.crumbs/` directory, so dropping `config.toml` as a marker
     /// does not orphan it.
     #[test]
-    fn unmigrated_project_store_still_resolves() {
+    fn has_store_and_to_path_find_unmigrated_project_store() {
         let dir = tempdir().unwrap();
         let store = dir.path().join(".crumbs");
         std::fs::create_dir(&store).unwrap();
