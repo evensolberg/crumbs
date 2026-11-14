@@ -28,7 +28,7 @@ Common `just` aliases: `just check`, `just test` (`t`), `just testp` (`tp`), `ju
 - `crumbs/src/commands/` — one file per subcommand: `create`, `update`, `close`, `delete`, `list`, `show`, `search`, `reindex`, `init`, `edit`, `stats`, `next`, `link`, `export`, `block`, `defer`, `move_`, `import`, `clean`, `start`, `stop`
 - `crumbs/tests/commands.rs` — integration tests (79 tests)
 - `crumbs-gui/src-tauri/src/commands.rs` — Tauri command handlers wrapping library functions
-- `crumbs-gui/web/` — vanilla JS frontend (no framework): `index.html`, `main.js`, `style.css`; Tauri bundles this folder as-is (`frontendDist`)
+- `crumbs-gui/web/` — vanilla JS frontend (no framework). Tauri bundles this folder as-is (`frontendDist`), so every frontend file must live here: `index.html`, `main.js`, `date.js`, `style.css`, plus the vendored `codemirror.bundle.js` (rebuilt via `npm run build-cm6`) and `marked.min.js`
 
 ## Feature parity
 
