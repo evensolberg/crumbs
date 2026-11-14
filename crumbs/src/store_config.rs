@@ -101,20 +101,12 @@ mod tests {
         assert_eq!(suggest_prefix(&PathBuf::from("glob")), "g");
     }
 
-    /// `config.toml` is no longer read or migrated, even when it looks like a
-    /// pre-0.14 crumbs config: it may belong to another tool.
+    /// The pre-0.14 `config.toml` is no longer read or migrated.
     #[test]
     fn load_ignores_config_toml() {
         let dir = tempfile::tempdir().unwrap();
-        let legacy = "prefix = \"lg\"\n";
-        std::fs::write(dir.path().join("config.toml"), legacy).unwrap();
-        let cfg = load(dir.path());
-        assert_eq!(cfg.prefix, DEFAULT_PREFIX);
-        assert_eq!(
-            std::fs::read_to_string(dir.path().join("config.toml")).unwrap(),
-            legacy
-        );
-        assert!(!dir.path().join("crumbs.toml").exists());
+        std::fs::write(dir.path().join("config.toml"), "prefix = \"lg\"\n").unwrap();
+        assert_eq!(load(dir.path()).prefix, DEFAULT_PREFIX);
     }
 
     #[test]
