@@ -1,4 +1,4 @@
-// CodeMirror 6 bundle entry — exports everything used by crumbs-gui/main.js.
+// CodeMirror 6 bundle entry — exports everything used by crumbs-gui/web/main.js.
 // To rebuild: cd crumbs-gui && npm run build-cm6
 
 export {

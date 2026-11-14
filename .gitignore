@@ -5,9 +5,3 @@
 .crumbs/index.csv
 index.csv
 .worktrees/
-
-# Copied from crumbs-gui/ sources by sync-dist.js before every Tauri build
-/crumbs-gui/dist/index.html
-/crumbs-gui/dist/main.js
-/crumbs-gui/dist/date.js
-/crumbs-gui/dist/style.css

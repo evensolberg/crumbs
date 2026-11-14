@@ -18,6 +18,6 @@ export default [
     },
   },
   {
-    ignores: ["dist/**", "node_modules/**"],
+    ignores: ["web/codemirror.bundle.js", "web/marked.min.js", "node_modules/**"],
   },
 ];
