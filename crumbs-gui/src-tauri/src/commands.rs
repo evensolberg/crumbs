@@ -13,10 +13,14 @@ use crumbs::{
 /// Returns `true` when `p` directly contains one of the crumbs store marker
 /// files. Used by both [`to_path`] and [`has_store`] to avoid duplicating
 /// the marker-file list.
+///
+/// The legacy `config.toml` name is deliberately not a marker: it is common in
+/// non-crumbs projects, and treating such a root as a store would let
+/// `store_config::load` rename the project's file to `crumbs.toml`. Unmigrated
+/// stores are still found via the `.crumbs` checks in [`to_path`] and
+/// [`has_store`], and `store_config::load` migrates them on first access.
 fn has_marker_files(p: &std::path::Path) -> bool {
-    p.join("index.csv").is_file()
-        || p.join("crumbs.toml").is_file()
-        || p.join("config.toml").is_file()
+    p.join("index.csv").is_file() || p.join("crumbs.toml").is_file()
 }
 
 /// Convert a GUI store path string to a `PathBuf` pointing at the actual store directory.
@@ -28,7 +32,7 @@ fn has_marker_files(p: &std::path::Path) -> bool {
 /// 4. `== global_dir()` → used as-is (recognized even when the dir is empty/uninitialized)
 /// 5. Contains a `.crumbs/` subdirectory → return `<dir>/.crumbs` (preferred over flat
 ///    marker files; self-heals projects where the old GUI bug wrote files into the root)
-/// 6. Contains marker files (`index.csv`, `crumbs.toml`, `config.toml`) directly →
+/// 6. Contains marker files (`index.csv`, `crumbs.toml`) directly →
 ///    used as-is (flat store, e.g. a non-project store initialized outside `.crumbs/`)
 /// 7. Everything else → `.crumbs` appended (stale `localStorage` entry or bare project root)
 ///
@@ -343,14 +347,12 @@ pub fn close_item(dir: String, id: String, reason: String) -> Result<(), String>
 
 /// Check whether a directory has an existing .crumbs store.
 /// Returns true if:
-///   - the path itself is a store (contains index.csv, crumbs.toml, or the legacy
-///     config.toml), OR
+///   - the path itself is a store (contains index.csv or crumbs.toml), OR
 ///   - the path contains a .crumbs/ subdirectory (project store)
 ///
-/// Note: `crumbs.toml` is the current config file name (renamed from `config.toml`
-/// during the store migration introduced in 0.14). Both names must be checked so
-/// that a freshly-initialised or just-migrated store with no items yet (no
-/// `index.csv`) is still recognised.
+/// `crumbs.toml` is checked as well as `index.csv` so that a freshly
+/// initialised store with no items yet is still recognised. The legacy
+/// `config.toml` is not a marker; see [`has_marker_files`].
 #[tauri::command]
 pub fn has_store(dir: String) -> bool {
     let p = PathBuf::from(&dir);
@@ -554,13 +556,16 @@ mod tests {
         );
     }
 
+    /// A project's own `config.toml` (Hugo, many Rust tools) must not make its
+    /// root look like a flat store: `store_config::load` would then rename that
+    /// file to `crumbs.toml`.
     #[test]
-    fn to_path_dir_with_legacy_config_toml_returned_unchanged() {
+    fn to_path_project_root_with_unrelated_config_toml_appends_crumbs() {
         let dir = tempdir().unwrap();
-        std::fs::write(dir.path().join("config.toml"), "prefix = \"cr\"\n").unwrap();
+        std::fs::write(dir.path().join("config.toml"), "baseURL = \"/\"\n").unwrap();
         assert_eq!(
             to_path(dir.path().to_str().unwrap()),
-            dir.path().to_path_buf()
+            dir.path().join(".crumbs")
         );
     }
 
@@ -630,11 +635,25 @@ mod tests {
         assert!(has_store(dir.path().to_str().unwrap().to_string()));
     }
 
+    /// An unmigrated store (legacy `config.toml`, no items yet) is still found
+    /// through its `.crumbs/` directory, so dropping `config.toml` as a marker
+    /// does not orphan it.
     #[test]
-    fn has_store_detects_legacy_config_toml() {
+    fn unmigrated_project_store_still_resolves() {
         let dir = tempdir().unwrap();
-        std::fs::write(dir.path().join("config.toml"), "prefix = \"cr\"\n").unwrap();
-        assert!(has_store(dir.path().to_str().unwrap().to_string()));
+        let store = dir.path().join(".crumbs");
+        std::fs::create_dir(&store).unwrap();
+        std::fs::write(store.join("config.toml"), "prefix = \"lg\"\n").unwrap();
+        let root = dir.path().to_str().unwrap();
+        assert!(has_store(root.to_string()));
+        assert_eq!(to_path(root), store);
+    }
+
+    #[test]
+    fn has_store_ignores_unrelated_config_toml() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("config.toml"), "baseURL = \"/\"\n").unwrap();
+        assert!(!has_store(dir.path().to_str().unwrap().to_string()));
     }
 
     #[test]
