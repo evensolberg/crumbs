@@ -10,6 +10,7 @@ import { search, searchKeymap, highlightSelectionMatches, openSearchPanel } from
 import { syntaxHighlighting, defaultHighlightStyle, HighlightStyle } from './codemirror.bundle.js';
 import { tags } from './codemirror.bundle.js';
 import { markdown } from './codemirror.bundle.js';
+import { localDateISO } from './date.js';
 
 const headingHighlight = HighlightStyle.define([
   { tag: tags.heading,  textDecoration: 'none', fontWeight: 'bold' },
@@ -345,7 +346,7 @@ function priorityBadge(p) {
 
 function dueHtml(due) {
   if (!due) return '';
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateISO();
   return due < today
     ? `<span class="due-overdue">!${due}</span>`
     : `<span class="due-normal">${due}</span>`;
@@ -932,9 +933,6 @@ function renderProps(item) {
     v => doUpdatePoints(item.id, Number(v)),
   ));
 
-  propRow('Created', escHtml(item.created ?? ''));
-  propRow('Updated', escHtml(item.updated ?? ''));
-
   const completedSecs = totalTrackedSecs(item.description ?? '');
   const startTs = activeTimerStart(item.description ?? '');
   if (startTs || completedSecs > 0) {
@@ -1027,6 +1025,9 @@ function renderProps(item) {
     if (e.key === 'Escape') { resolutionInput.value = loadedResolution; resolutionInput.blur(); e.stopPropagation(); }
   });
   propRow('Resolution', '').appendChild(resolutionInput);
+
+  propRow('Created', escHtml(item.created ?? ''));
+  propRow('Updated', escHtml(item.updated ?? ''));
 }
 
 function setPreviewMode(on) {
@@ -1127,7 +1128,7 @@ function insertCodeBlock() {
 }
 
 function insertDate() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateISO();
   const text = `[${today}]`;
   const { from } = view.state.selection.main;
   view.dispatch({ changes: { from, insert: text },
@@ -1621,7 +1622,7 @@ searchInput.addEventListener('search', () => {
 // ── Next ──────────────────────────────────────────────────────────────────
 
 function doNext() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDateISO();
   const open = allItems
     .filter(i => {
       if (i.status === 'closed') return false;

@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.25.4] - 2026-11-13
+
+### Fix
+
+- GUI uses local date, not UTC, for today (#93)
+- Ship date.js in the committed GUI dist/ (#93); release builds now also
+  include the Created/Updated properties-panel move from #40
+
+### Refactor
+
+- Trim date helper comment and test setup (#93)
+
 ## [0.25.3] - 2026-11-13
 
 ### Chore
