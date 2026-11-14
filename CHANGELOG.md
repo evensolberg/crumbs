@@ -2,30 +2,71 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
+## [0.25.3] - 2026-11-13
 
-## [0.25.1] - 2026-04-11
+### Chore
+
+- Bump rand in the cargo group across 1 directory (#42)
+- Remove spurious crumbs/Cargo.lock (#44)
+- Batch dependency updates (Cargo + npm)
+- Batch dependency updates (Cargo + npm)
+- Update dependencies (#59)
+- Bump @codemirror/search in /crumbs-gui (#60)
+- Bump @codemirror/language in /crumbs-gui (#61)
+- Bump @codemirror/state in /crumbs-gui (#62)
+- Bump tauri-plugin-dialog from 2.7.0 to 2.7.1 (#63)
+- Bump @codemirror/commands in /crumbs-gui (#64)
+- Bump @codemirror/view in /crumbs-gui (#65)
+- Add Mergify auto-merge, CI workflow, and Dependabot grouping (#70)
+- Bump @codemirror/autocomplete (#71)
+- Bump the cargo-all group across 1 directory with 13 updates (#87)
+- Bump the codemirror group across 1 directory with 5 updates (#82)
+- Bump @humanfs/node from 0.16.7 to 0.16.8 in /crumbs-gui (#81)
+- Bump the npm-other group across 1 directory with 3 updates (#79)
+- Triage open bugs and record follow-ups
+
+### Docs
+
+- Add close-via-CLI and gitignore index rules (#88)
 
 ### Fix
 
-- Move Created/Updated to bottom of properties panel (#40)
-- migrate_depends edge cases — blank IDs, self-cycles, test init (#39)
+- GUI store resolution fails to append .crumbs to project root paths (v0.25.2) (#57)
+- Accept --type and --status values in any case
 
-## [0.25.0] - 2026-04-11
+### Refactor
+
+- Init store in-process in case-insensitivity test
+
+## [0.25.1] - 2026-04-11
+
+### Chore
+
+- Update crumb state (cr-nk8 in-progress, add cr-kwh)
+- Close cr-nk8 (GUI multi-select complete)
+- Bump version to v0.24.0
+- Close cr-kwh (depends field removed)
+- Bump version to 0.25.0 (#38)
+- Update CHANGELOG for v0.25.1
+
+### Docs
+
+- Add multi-select bulk-edit design spec (cr-nk8)
+- Add implementation plan for GUI multi-select bulk edit (cr-nk8)
+- Add implementation plan for removing depends field (cr-kwh)
 
 ### Feat
 
 - GUI multi-select and bulk edit (cr-nk8)
+
+### Fix
+
+- Migrate_depends edge cases — blank IDs, self-cycles, test init (#39)
+- Move Created/Updated to bottom of properties panel (#40)
 
 ### Refactor
 
 - Remove depends field, auto-migrate to blocked_by/blocks (cr-kwh) (#37)
-
-## [0.24.0] - 2026-04-11
-
-### Feat
-
-- GUI multi-select and bulk edit (cr-nk8)
 
 ## [0.23.1] - 2026-04-11
 

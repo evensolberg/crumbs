@@ -26,7 +26,8 @@ impl std::fmt::Display for Status {
 impl std::str::FromStr for Status {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+        // Case-insensitive so CLI flags like `--status Open` are accepted.
+        match s.to_ascii_lowercase().as_str() {
             "open" => Ok(Self::Open),
             "in_progress" | "in-progress" => Ok(Self::InProgress),
             "blocked" => Ok(Self::Blocked),
@@ -63,7 +64,8 @@ impl std::fmt::Display for ItemType {
 impl std::str::FromStr for ItemType {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+        // Case-insensitive so CLI flags like `--type Bug` are accepted.
+        match s.to_ascii_lowercase().as_str() {
             "task" => Ok(Self::Task),
             "bug" => Ok(Self::Bug),
             "feature" => Ok(Self::Feature),
@@ -153,7 +155,14 @@ mod tests {
     fn status_from_str_invalid() {
         assert!("done".parse::<Status>().is_err());
         assert!("".parse::<Status>().is_err());
-        assert!("OPEN".parse::<Status>().is_err());
+    }
+
+    #[test]
+    fn status_from_str_ignores_case() {
+        assert_eq!("OPEN".parse::<Status>().unwrap(), Status::Open);
+        assert_eq!("In_Progress".parse::<Status>().unwrap(), Status::InProgress);
+        assert_eq!("In-Progress".parse::<Status>().unwrap(), Status::InProgress);
+        assert_eq!("Closed".parse::<Status>().unwrap(), Status::Closed);
     }
 
     #[test]
@@ -192,8 +201,16 @@ mod tests {
     #[test]
     fn item_type_from_str_invalid() {
         assert!("story".parse::<ItemType>().is_err());
-        assert!("Task".parse::<ItemType>().is_err());
         assert!("".parse::<ItemType>().is_err());
+    }
+
+    #[test]
+    fn item_type_from_str_ignores_case() {
+        assert_eq!("Task".parse::<ItemType>().unwrap(), ItemType::Task);
+        assert_eq!("BUG".parse::<ItemType>().unwrap(), ItemType::Bug);
+        assert_eq!("Feature".parse::<ItemType>().unwrap(), ItemType::Feature);
+        assert_eq!("ePiC".parse::<ItemType>().unwrap(), ItemType::Epic);
+        assert_eq!("IDEA".parse::<ItemType>().unwrap(), ItemType::Idea);
     }
 
     #[test]

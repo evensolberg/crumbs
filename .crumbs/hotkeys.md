@@ -1,13 +1,13 @@
 ---
 id: cr-a9t
 title: 'GUI: Hotkeys'
-status: open
+status: closed
 type: task
 priority: 2
 tags:
 - ux
 created: 2026-05-08
-updated: 2026-05-08
+updated: 2026-11-07
 phase: ''
 ---
 
