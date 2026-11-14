@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.26.0] - 2026-11-14
+
+### Chore
+
+- Remove the legacy config.toml migration
+
+  Note: this is a minor bump because it removes behaviour. Stores from
+  before 0.14 kept their prefix in `.crumbs/config.toml`, which crumbs
+  renamed to `crumbs.toml` on first use. That file is now ignored: an
+  unmigrated store gets the default `cr` prefix. To migrate one by hand,
+  rename `.crumbs/config.toml` to `.crumbs/crumbs.toml`.
+
+### Docs
+
+- Document store_config::load fallback
+
+### Refactor
+
+- Trim config.toml notes and test left by the removal
+
+### Test
+
+- Cover a malformed crumbs.toml falling back to the default prefix
+
 ## [0.25.5] - 2026-11-14
 
 ### Chore
